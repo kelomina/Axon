@@ -31,6 +31,7 @@ REQUIRED_NPZ_FIELDS = [
     "label",
     "source_sha256",
 ]
+EXPECTED_NEIGHBOR_COUNT = 5
 
 
 def resolve_path(path: Path) -> Path:
@@ -139,6 +140,22 @@ def lookup_manifest_sample(row: dict, by_source: dict[str, dict], by_sha: dict[s
     return None, "manifest_missing"
 
 
+def lookup_neighbor_sample(source_path: str, source_sha256: str, by_source: dict[str, dict], by_sha: dict[str, dict]) -> Optional[dict]:
+    sha = str(source_sha256 or "").casefold()
+    if sha:
+        sample = by_sha.get(sha)
+        if sample is not None:
+            return sample
+    for key in source_path_keys(source_path):
+        sample = by_source.get(key)
+        if sample is not None:
+            return sample
+    path_sha = source_sha_from_path(source_path)
+    if path_sha:
+        return by_sha.get(path_sha)
+    return None
+
+
 def resolve_cache_path(sample: dict, manifest_dir: Path) -> Path:
     cache_path = Path(sample.get("cache_path", ""))
     if cache_path.is_absolute():
@@ -212,6 +229,68 @@ def audit_npz(
     return result
 
 
+def split_pipe_values(value: object) -> list[str]:
+    return [item.strip() for item in str(value or "").split("|") if item.strip()]
+
+
+def audit_neighbor_evidence(row: dict, by_source: dict[str, dict], by_sha: dict[str, dict], manifest_dir: Path) -> dict:
+    labels = split_pipe_values(row.get("top5_neighbor_labels"))
+    similarities = split_pipe_values(row.get("top5_neighbor_similarities"))
+    shas = split_pipe_values(row.get("top5_neighbor_sha256"))
+    paths = split_pipe_values(row.get("top5_neighbor_paths"))
+    top5_lengths = {
+        "labels": len(labels),
+        "similarities": len(similarities),
+        "sha256": len(shas),
+        "paths": len(paths),
+    }
+    lengths_ok = all(count == EXPECTED_NEIGHBOR_COUNT for count in top5_lengths.values())
+    labels_ok = all(label in {"0", "1"} for label in labels) and len(labels) == EXPECTED_NEIGHBOR_COUNT
+    similarities_ok = len(similarities) == EXPECTED_NEIGHBOR_COUNT
+    if similarities_ok:
+        for value in similarities:
+            try:
+                float(value)
+            except ValueError:
+                similarities_ok = False
+                break
+
+    manifest_found = 0
+    path_exists = 0
+    cache_exists = 0
+    for index in range(max(len(paths), len(shas))):
+        path_text = paths[index] if index < len(paths) else ""
+        sha_text = shas[index] if index < len(shas) else ""
+        sample = lookup_neighbor_sample(path_text, sha_text, by_source, by_sha)
+        if sample is not None:
+            manifest_found += 1
+            cache_path = resolve_cache_path(sample, manifest_dir)
+            if cache_path.exists():
+                cache_exists += 1
+        resolved_path = resolve_path(Path(path_text)) if path_text else Path("")
+        if path_text and resolved_path.exists():
+            path_exists += 1
+
+    evidence_ok = (
+        lengths_ok
+        and labels_ok
+        and similarities_ok
+        and manifest_found == EXPECTED_NEIGHBOR_COUNT
+        and path_exists == EXPECTED_NEIGHBOR_COUNT
+        and cache_exists == EXPECTED_NEIGHBOR_COUNT
+    )
+    return {
+        "top5_lengths_ok": lengths_ok,
+        "top5_neighbor_labels_ok": labels_ok,
+        "top5_neighbor_similarities_ok": similarities_ok,
+        "top5_neighbor_manifest_found_count": manifest_found,
+        "top5_neighbor_path_exists_count": path_exists,
+        "top5_neighbor_cache_exists_count": cache_exists,
+        "top5_neighbor_evidence_ok": evidence_ok,
+        "top5_neighbor_lengths": json.dumps(top5_lengths, sort_keys=True),
+    }
+
+
 def readiness_reasons(row: dict, require_pe: bool) -> list[str]:
     reasons = []
     checks = [
@@ -224,6 +303,7 @@ def readiness_reasons(row: dict, require_pe: bool) -> list[str]:
         ("label_mismatch", row["label_ok"]),
         ("cache_source_sha256_mismatch", row["npz_source_sha256_ok"]),
         ("npz_shape_mismatch", row["npz_shape_ok"]),
+        ("top5_neighbor_evidence_incomplete", row["top5_neighbor_evidence_ok"]),
     ]
     for reason, ok in checks:
         if not ok:
@@ -286,6 +366,7 @@ def audit_manual_review_package(
             }
 
         pe_metadata = parse_pe(source_path)
+        neighbor_evidence = audit_neighbor_evidence(row, by_source, by_sha, manifest_dir)
         out = {
             **row,
             "source_exists": source_exists,
@@ -306,6 +387,7 @@ def audit_manual_review_package(
             "section_names": pe_metadata["section_names"],
             "max_section_entropy": pe_metadata["max_section_entropy"],
             "overlay_size": pe_metadata["overlay_size"],
+            **neighbor_evidence,
         }
         reasons = readiness_reasons(out, require_pe=require_pe)
         out["manual_review_ready"] = not reasons
@@ -357,8 +439,17 @@ def audit_manual_review_package(
         "manual_review_ready",
         "readiness_reasons",
         "top5_neighbor_labels",
+        "top5_neighbor_similarities",
         "top5_neighbor_sha256",
         "top5_neighbor_paths",
+        "top5_lengths_ok",
+        "top5_neighbor_labels_ok",
+        "top5_neighbor_similarities_ok",
+        "top5_neighbor_manifest_found_count",
+        "top5_neighbor_path_exists_count",
+        "top5_neighbor_cache_exists_count",
+        "top5_neighbor_evidence_ok",
+        "top5_neighbor_lengths",
         "manual_label_verdict",
         "manual_verdict_note",
         "recommended_action",
@@ -418,6 +509,11 @@ def audit_manual_review_package(
         "npz_source_sha256_ok_count": sum(1 for row in output_rows if row["npz_source_sha256_ok"]),
         "npz_shape_ok_count": sum(1 for row in output_rows if row["npz_shape_ok"]),
         "is_pe_count": sum(1 for row in output_rows if row["is_pe"]),
+        "top5_lengths_ok_count": sum(1 for row in output_rows if row["top5_lengths_ok"]),
+        "top5_neighbor_evidence_ok_count": sum(1 for row in output_rows if row["top5_neighbor_evidence_ok"]),
+        "top5_neighbor_manifest_found_total": sum(int(row["top5_neighbor_manifest_found_count"]) for row in output_rows),
+        "top5_neighbor_path_exists_total": sum(int(row["top5_neighbor_path_exists_count"]) for row in output_rows),
+        "top5_neighbor_cache_exists_total": sum(int(row["top5_neighbor_cache_exists_count"]) for row in output_rows),
         "parse_error_counts": dict(sorted(Counter(str(row["parse_error"]) for row in output_rows).items())),
         "readiness_reason_counts": dict(sorted(reason_counter.items())),
         "duplicate_source_sha256_count": sum(

@@ -117,6 +117,8 @@ Readiness audit:
 - Cache files exist and load: `260 / 260`
 - NPZ label/SHA/shape checks pass: `260 / 260`
 - PE parse succeeds: `260 / 260`
+- Top-5 neighbor evidence rows complete: `260 / 260`
+- Top-5 neighbor manifest/source/cache evidence: `1300 / 1300`
 - Review-queue ready: `true`
 - Verdict-package ready: `false`, because `manual_label_verdict` and `recommended_action` are intentionally blank until human/business adjudication.
 

@@ -61,6 +61,10 @@ def _write_review(path: Path, rows: list[dict]) -> None:
                 "prediction",
                 "prob_malicious",
                 "score_column",
+                "top5_neighbor_labels",
+                "top5_neighbor_similarities",
+                "top5_neighbor_sha256",
+                "top5_neighbor_paths",
                 "manual_label_verdict",
                 "recommended_action",
             ],
@@ -69,26 +73,57 @@ def _write_review(path: Path, rows: list[dict]) -> None:
         writer.writerows(rows)
 
 
+def _write_cache(cache_path: Path, *, label: int, sha: str, pe_dim: int = 2, stat_dim: int = 1, light_dim: int = 3) -> None:
+    cache_path.parent.mkdir(parents=True, exist_ok=True)
+    np.savez_compressed(
+        cache_path,
+        byte_sequence=np.array([77, 90], dtype=np.uint8),
+        pe_features=np.arange(pe_dim, dtype=np.float32),
+        stat_features=np.arange(stat_dim, dtype=np.float32),
+        lightweight_features=np.arange(light_dim, dtype=np.float32),
+        label=np.array(label, dtype=np.int64),
+        source_sha256=np.array(sha),
+    )
+
+
+def _make_source(tmp_path: Path, relative_name: str) -> tuple[Path, str]:
+    source_path = tmp_path / "data" / relative_name
+    source_path.parent.mkdir(parents=True, exist_ok=True)
+    source_path.write_bytes(_minimal_pe_bytes())
+    import hashlib
+
+    return source_path, hashlib.sha256(source_path.read_bytes()).hexdigest()
+
+
+def _make_neighbor_samples(tmp_path: Path, count: int = 5) -> tuple[list[dict], dict]:
+    samples = []
+    labels = []
+    similarities = []
+    shas = []
+    paths = []
+    for index in range(count):
+        source_path, sha = _make_source(tmp_path, f"neighbor-{index}.exe")
+        cache_path = tmp_path / "cache" / f"neighbor-{index}.npz"
+        _write_cache(cache_path, label=1, sha=sha)
+        samples.append({"source_path": str(source_path), "source_sha256": sha, "cache_path": str(cache_path), "label": 1})
+        labels.append("1")
+        similarities.append(f"{0.99 - index * 0.01:.8f}")
+        shas.append(sha)
+        paths.append(str(source_path))
+    return samples, {
+        "top5_neighbor_labels": "|".join(labels),
+        "top5_neighbor_similarities": "|".join(similarities),
+        "top5_neighbor_sha256": " | ".join(shas),
+        "top5_neighbor_paths": " | ".join(paths),
+    }
+
+
 def test_manual_review_readiness_reports_ready_row():
     with _case_dir("manual_readiness_ready") as tmp_path:
-        source_path = tmp_path / "data" / "sample.exe"
-        source_path.parent.mkdir(parents=True)
-        source_path.write_bytes(_minimal_pe_bytes())
-        sha = "not-computed-yet"
-        import hashlib
-
-        sha = hashlib.sha256(source_path.read_bytes()).hexdigest()
+        source_path, sha = _make_source(tmp_path, "sample.exe")
         cache_path = tmp_path / "cache" / "sample.npz"
-        cache_path.parent.mkdir()
-        np.savez_compressed(
-            cache_path,
-            byte_sequence=np.array([77, 90], dtype=np.uint8),
-            pe_features=np.array([1.0, 2.0], dtype=np.float32),
-            stat_features=np.array([0.1], dtype=np.float32),
-            lightweight_features=np.array([0.2, 0.3, 0.4], dtype=np.float32),
-            label=np.array(0, dtype=np.int64),
-            source_sha256=np.array(sha),
-        )
+        _write_cache(cache_path, label=0, sha=sha)
+        neighbor_samples, neighbor_fields = _make_neighbor_samples(tmp_path)
         manifest_path = tmp_path / "manifest.json"
         manifest_path.write_text(
             json.dumps(
@@ -104,7 +139,8 @@ def test_manual_review_readiness_reports_ready_row():
                             "cache_path": str(cache_path),
                             "label": 0,
                         }
-                    ],
+                    ]
+                    + neighbor_samples,
                 }
             ),
             encoding="utf-8",
@@ -125,6 +161,7 @@ def test_manual_review_readiness_reports_ready_row():
                     "prediction": 1,
                     "prob_malicious": "0.99",
                     "score_column": "blend_prob_malicious",
+                    **neighbor_fields,
                     "manual_label_verdict": "label_correct",
                     "recommended_action": "keep",
                 }
@@ -144,15 +181,14 @@ def test_manual_review_readiness_reports_ready_row():
     assert summary["review_queue_ready"] is True
     assert summary["verdict_package_ready"] is True
     assert summary["manual_review_ready"] is True
+    assert summary["top5_neighbor_evidence_ok_count"] == 1
     assert rows[0]["manual_review_ready"] == "True"
     assert rows[0]["readiness_reasons"] == ""
 
 
 def test_manual_review_readiness_reports_sha_and_cache_failures():
     with _case_dir("manual_readiness_failures") as tmp_path:
-        source_path = tmp_path / "data" / "sample.exe"
-        source_path.parent.mkdir(parents=True)
-        source_path.write_bytes(_minimal_pe_bytes())
+        source_path, _actual_sha = _make_source(tmp_path, "sample.exe")
         manifest_path = tmp_path / "manifest.json"
         manifest_path.write_text(
             json.dumps(
@@ -201,23 +237,10 @@ def test_manual_review_readiness_reports_sha_and_cache_failures():
 
 def test_manual_review_readiness_distinguishes_blank_verdict_package():
     with _case_dir("manual_readiness_blank_verdict") as tmp_path:
-        source_path = tmp_path / "data" / "sample.exe"
-        source_path.parent.mkdir(parents=True)
-        source_path.write_bytes(_minimal_pe_bytes())
-        import hashlib
-
-        sha = hashlib.sha256(source_path.read_bytes()).hexdigest()
+        source_path, sha = _make_source(tmp_path, "sample.exe")
         cache_path = tmp_path / "cache" / "sample.npz"
-        cache_path.parent.mkdir()
-        np.savez_compressed(
-            cache_path,
-            byte_sequence=np.array([77, 90], dtype=np.uint8),
-            pe_features=np.array([1.0], dtype=np.float32),
-            stat_features=np.array([0.1], dtype=np.float32),
-            lightweight_features=np.array([0.2], dtype=np.float32),
-            label=np.array(0, dtype=np.int64),
-            source_sha256=np.array(sha),
-        )
+        _write_cache(cache_path, label=0, sha=sha, pe_dim=1, stat_dim=1, light_dim=1)
+        neighbor_samples, neighbor_fields = _make_neighbor_samples(tmp_path)
         manifest_path = tmp_path / "manifest.json"
         manifest_path.write_text(
             json.dumps(
@@ -226,6 +249,64 @@ def test_manual_review_readiness_distinguishes_blank_verdict_package():
                     "pe_feature_dim": 1,
                     "stat_feature_dim": 1,
                     "lightweight_feature_dim": 1,
+                    "samples": [
+                        {
+                            "source_path": str(source_path),
+                            "source_sha256": sha,
+                            "cache_path": str(cache_path),
+                            "label": 0,
+                        }
+                    ]
+                    + neighbor_samples,
+                }
+            ),
+            encoding="utf-8",
+        )
+        review_csv = tmp_path / "review.csv"
+        _write_review(
+            review_csv,
+            [
+                {
+                    "review_rank": 1,
+                    "source_path": str(source_path),
+                    "source_sha256": sha,
+                    "label": 0,
+                    "prediction": 1,
+                    "prob_malicious": "0.99",
+                    **neighbor_fields,
+                    "manual_label_verdict": "",
+                    "recommended_action": "",
+                }
+            ],
+        )
+
+        summary = audit_manual_review_package(
+            review_csv=review_csv,
+            manifest_json=manifest_path,
+            output_csv=tmp_path / "readiness.csv",
+            output_json=tmp_path / "readiness.json",
+        )
+
+    assert summary["review_queue_ready"] is True
+    assert summary["verdict_package_ready"] is False
+    assert summary["manual_label_verdict_blank_count"] == 1
+    assert summary["recommended_action_blank_count"] == 1
+    assert summary["blocking_issues"] == ["manual_verdict_empty", "recommended_action_empty"]
+
+
+def test_manual_review_readiness_flags_incomplete_neighbor_evidence():
+    with _case_dir("manual_readiness_bad_neighbors") as tmp_path:
+        source_path, sha = _make_source(tmp_path, "sample.exe")
+        cache_path = tmp_path / "cache" / "sample.npz"
+        _write_cache(cache_path, label=0, sha=sha)
+        manifest_path = tmp_path / "manifest.json"
+        manifest_path.write_text(
+            json.dumps(
+                {
+                    "max_byte_length": 2,
+                    "pe_feature_dim": 2,
+                    "stat_feature_dim": 1,
+                    "lightweight_feature_dim": 3,
                     "samples": [
                         {
                             "source_path": str(source_path),
@@ -249,8 +330,12 @@ def test_manual_review_readiness_distinguishes_blank_verdict_package():
                     "label": 0,
                     "prediction": 1,
                     "prob_malicious": "0.99",
-                    "manual_label_verdict": "",
-                    "recommended_action": "",
+                    "top5_neighbor_labels": "1|1",
+                    "top5_neighbor_similarities": "0.9|0.8",
+                    "top5_neighbor_sha256": "a" * 64,
+                    "top5_neighbor_paths": "missing-a.exe",
+                    "manual_label_verdict": "label_correct",
+                    "recommended_action": "keep",
                 }
             ],
         )
@@ -262,8 +347,6 @@ def test_manual_review_readiness_distinguishes_blank_verdict_package():
             output_json=tmp_path / "readiness.json",
         )
 
-    assert summary["review_queue_ready"] is True
-    assert summary["verdict_package_ready"] is False
-    assert summary["manual_label_verdict_blank_count"] == 1
-    assert summary["recommended_action_blank_count"] == 1
-    assert summary["blocking_issues"] == ["manual_verdict_empty", "recommended_action_empty"]
+    assert summary["review_queue_ready"] is False
+    assert summary["top5_neighbor_evidence_ok_count"] == 0
+    assert summary["readiness_reason_counts"]["top5_neighbor_evidence_incomplete"] == 1
