@@ -61,3 +61,19 @@ The JSON summary reports:
 
 If `replacement_required > 0`, the next data step is to regenerate a corrected split from a candidate pool that has enough unused valid PE files. Do not reduce the 20w total and do not claim the bad rows as replacements.
 
+## Build a Corrected Split
+
+After reviewing the adjustment plan, build a corrected split:
+
+```powershell
+.\vnev\Scripts\python.exe scripts\build_corrected_split_from_plan.py `
+  --split-csv reports\random_20w_split\random_20w_split.csv `
+  --plan-csv reports\random_20w_split\manual_review_adjustment_plan.csv `
+  --data-dir data `
+  --output-csv reports\random_20w_split\corrected_manual_review_split.csv `
+  --output-json reports\random_20w_split\corrected_manual_review_split_summary.json
+```
+
+Use `--data-dir data` when replacements are required, because the existing fixed cache manifest only covers the current 20w selected rows. If you provide `--manifest-json data\.cache\manifest_38672ba0.json`, it can validate no-op plans but cannot supply fresh replacements beyond the already selected split.
+
+The corrected split builder refuses to emit a short split. If a reviewed row is excluded and no unused same-label replacement exists, it stops with an error instead of writing a 199999-row dataset.
