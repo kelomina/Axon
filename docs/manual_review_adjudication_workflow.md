@@ -112,3 +112,18 @@ This gate checks both requirements:
 - every row has a cache entry and the cache file exists
 
 If `cache_ready=false`, do not train. First extract or recover cache for rows listed in `corrected_manual_review_missing_cache.csv`, then rerun the audit.
+
+Build a bounded recovery plan from the missing-cache CSV:
+
+```powershell
+.\vnev\Scripts\python.exe scripts\build_corrected_split_cache_recovery_plan.py `
+  --missing-csv reports\random_20w_split\corrected_manual_review_missing_cache.csv `
+  --checkpoint models\random_20w_8192\best_model.pt `
+  --cache-dir data\.cache `
+  --recovery-output-json reports\random_20w_split\corrected_manual_review_cache_recovery_run.json `
+  --post-recovery-audit-command ".\vnev\Scripts\python.exe scripts\audit_corrected_split_cache_ready.py --split-csv reports\random_20w_split\corrected_manual_review_split.csv --manifest-json data\.cache\manifest_38672ba0.json --missing-cache-output reports\random_20w_split\corrected_manual_review_missing_cache.csv --output-json reports\random_20w_split\corrected_manual_review_cache_ready.json --strict" `
+  --output-json reports\random_20w_split\corrected_manual_review_cache_recovery_plan.json `
+  --output-md reports\random_20w_split\corrected_manual_review_cache_recovery_plan.md
+```
+
+The generated plan includes a dry-run command and a recovery command. Run the dry-run first. The default storage format is `uncompressed`, matching the current preference for newly extracted replacement caches.
