@@ -12,6 +12,13 @@ from pathlib import Path
 from statistics import mean
 from typing import Iterable, Sequence
 
+PROBABILITY_COLUMNS = [
+    "prob_malicious",
+    "stage2_prob_malicious",
+    "calibrator_prob_malicious",
+    "baseline_prob_malicious",
+]
+
 
 def _safe_float(value: object, default: float = 0.0) -> float:
     try:
@@ -27,8 +34,16 @@ def _safe_int(value: object, default: int = 0) -> int:
         return default
 
 
+def _probability(row: dict) -> float:
+    for column in PROBABILITY_COLUMNS:
+        value = row.get(column)
+        if value not in (None, ""):
+            return _safe_float(value)
+    return 0.0
+
+
 def _prediction(row: dict, threshold: float) -> int:
-    return int(_safe_float(row.get("prob_malicious")) >= threshold)
+    return int(_probability(row) >= threshold)
 
 
 def _error_type(row: dict, threshold: float) -> str:
@@ -74,7 +89,7 @@ def _bucket_counts(rows: Iterable[dict], threshold: float) -> list[dict]:
         for row in rows:
             groups[str(key_fn(row))].append(row)
         for value, items in groups.items():
-            probs = [_safe_float(row.get("prob_malicious")) for row in items]
+            probs = [_probability(row) for row in items]
             output.append(
                 {
                     "dimension": dimension,
@@ -108,7 +123,7 @@ def build_audit(predictions: Path, output_dir: Path, threshold: float) -> dict:
     rows = read_rows(predictions)
     enriched = []
     for row in rows:
-        prob = _safe_float(row.get("prob_malicious"))
+        prob = _probability(row)
         label = _safe_int(row.get("label"))
         error_type = _error_type(row, threshold)
         distance = abs(prob - threshold)
@@ -128,6 +143,7 @@ def build_audit(predictions: Path, output_dir: Path, threshold: float) -> dict:
 
         item = dict(row)
         item["error_type"] = error_type
+        item["prob_malicious"] = f"{prob:.10f}"
         item["prediction_at_threshold"] = _prediction(row, threshold)
         item["distance_to_threshold"] = f"{distance:.10f}"
         item["noise_bucket"] = noise_bucket
@@ -136,8 +152,8 @@ def build_audit(predictions: Path, output_dir: Path, threshold: float) -> dict:
     errors = [row for row in enriched if row["error_type"]]
     suspected = [row for row in enriched if row["noise_bucket"] != "none"]
     bucket_counter = Counter(row["noise_bucket"] for row in enriched)
-    fp_probs = [_safe_float(row.get("prob_malicious")) for row in errors if row["error_type"] == "FP"]
-    fn_probs = [_safe_float(row.get("prob_malicious")) for row in errors if row["error_type"] == "FN"]
+    fp_probs = [_probability(row) for row in errors if row["error_type"] == "FP"]
+    fn_probs = [_probability(row) for row in errors if row["error_type"] == "FN"]
     output_dir.mkdir(parents=True, exist_ok=True)
 
     fieldnames = [

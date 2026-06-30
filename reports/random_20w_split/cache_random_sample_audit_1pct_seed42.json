@@ -1,0 +1,38 @@
+{
+  "schema": "axon_cache_random_sample_audit_v1",
+  "split_csv": "E:\\Project\\python\\Axon_v2.6Exp\\reports\\random_20w_split\\random_20w_split.csv",
+  "manifest": "E:\\Project\\python\\Axon_v2.6Exp\\data\\.cache\\manifest_38672ba0.json",
+  "split": "all",
+  "seed": 42,
+  "sample_fraction": 0.01,
+  "sample_size": 2000,
+  "total_rows": 200000,
+  "checked_npz": 2000,
+  "checked_source_sha256": 2000,
+  "pass_count": 2000,
+  "failure_count": 0,
+  "failed_sample_count": 0,
+  "failure_reason_counts": {},
+  "manifest_match_counts": {
+    "source_path": 2000
+  },
+  "expected_shapes": {
+    "byte_sequence": [
+      8192
+    ],
+    "pe_features": [
+      256
+    ],
+    "stat_features": [
+      49
+    ],
+    "lightweight_features": [
+      256
+    ]
+  },
+  "outputs": {
+    "failures_csv": "E:\\Project\\python\\Axon_v2.6Exp\\reports\\random_20w_split\\cache_random_sample_audit_1pct_seed42_failures.csv",
+    "sample_csv": "E:\\Project\\python\\Axon_v2.6Exp\\reports\\random_20w_split\\cache_random_sample_audit_1pct_seed42_sample.csv",
+    "summary_json": "E:\\Project\\python\\Axon_v2.6Exp\\reports\\random_20w_split\\cache_random_sample_audit_1pct_seed42.json"
+  }
+}
