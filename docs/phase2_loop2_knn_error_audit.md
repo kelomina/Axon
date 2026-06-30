@@ -111,3 +111,42 @@ Eval-Agent:
 
 - Keep Test-10k and full-test frozen for confirmation only.
 - If manual adjudication produces a revised train/val policy, rerun Val from scratch before any new Test-10k.
+
+## Manual Review Package
+
+A model-supported manual review package has been generated:
+
+- CSV: `reports/random_20w_split/stage2_knn_model_supported_p0_p1_manual_review.csv`
+- JSON: `reports/random_20w_split/stage2_knn_model_supported_p0_p1_manual_review.json`
+- Available model-supported P0/P1 rows: `843`
+- Selected rows: `80`
+- FP/FN: `40 / 40`
+- Reasons:
+  - severe FP (`prob >= 0.95`): `40`
+  - severe FN (`prob <= 0.05`): `40`
+
+The selected rows include manual columns:
+
+- `manual_label_verdict`
+- `manual_verdict_note`
+- `recommended_action`
+
+This package should be the next human adjudication target. It intentionally does not change labels or remove samples.
+
+## High-Similarity Opposite-Label Conflicts
+
+Neighbor conflict summary has been generated:
+
+- JSON: `reports/random_20w_split/stage2_knn_full_test_p0_p1_neighbor_conflicts.json`
+- CSV: `reports/random_20w_split/stage2_knn_full_test_p0_p1_high_similarity_conflicts.csv`
+
+Definition used:
+
+`nearest_similarity >= 0.95`, `opposite_label_ratio >= 0.8`, and `support_bucket == neighbors_support_model_prediction`.
+
+Result:
+
+- High-similarity opposite-label conflicts: `49`
+- Error type: all `49` are FP from the white bucket.
+
+Interpretation: at least `49` high-priority white-bucket samples are extremely close to mostly black train neighbors. This does not prove the white label is wrong, but it is strong enough that those rows should be treated as P0 manual adjudication cases before further model tuning.
