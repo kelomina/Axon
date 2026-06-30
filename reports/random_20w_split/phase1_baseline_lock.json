@@ -1,0 +1,66 @@
+{
+  "schema": "axon_phase1_baseline_lock_v1",
+  "created_at": "2026-07-01",
+  "git": {
+    "repository_initialized": true,
+    "phase1_branch": "codex/phase1-baseline-lock",
+    "base_branch_before_phase1": "master",
+    "dirty_worktree_note": "The worktree already contained many modified/untracked files before this baseline lock. This commit intentionally records Phase 1 audit evidence only."
+  },
+  "dataset": {
+    "split_csv": "reports/random_20w_split/random_20w_split.csv",
+    "manifest": "data/.cache/manifest_38672ba0.json",
+    "coverage_report": "reports/random_20w_split/random_20w_8192_uncompressed_cache_coverage_audit_replaced_130.json",
+    "total_rows": 200000,
+    "covered_rows": 200000,
+    "missing_rows": 0,
+    "coverage_ratio": 1.0,
+    "split_ratio": "train:val:test = 1:1:8",
+    "train_rows": 20000,
+    "val_rows": 20000,
+    "test_rows": 160000,
+    "replacement_note": "The 130 bad strict-PE feature rows were replaced by newly sampled strict-valid files, not fallback-filled."
+  },
+  "baseline_model": {
+    "checkpoint": "models/random_20w_8192/best_model.pt",
+    "config": "config/random_20w_8192.toml",
+    "train_eval": "reports/random_20w_split/random_20w_8192_replaced_train_eval.json",
+    "val_eval": "reports/random_20w_split/random_20w_8192_replaced_val_eval.json",
+    "test10k_eval": "reports/random_20w_split/random_20w_8192_replaced_test10k_eval.json",
+    "metrics": {
+      "train": {
+        "samples": 20000,
+        "f1": 0.9284412955465587,
+        "auc": 0.9776277200000001,
+        "errors": 1414
+      },
+      "val": {
+        "samples": 20000,
+        "f1": 0.9297231518101612,
+        "auc": 0.9757015150000001,
+        "errors": 1386
+      },
+      "test10k": {
+        "samples": 10000,
+        "f1": 0.9298531810766721,
+        "auc": 0.978085456288255,
+        "errors": 688
+      }
+    }
+  },
+  "best_confirmed_candidate_so_far": {
+    "name": "random20w_replaced_logreg_calibrator",
+    "model": "models/random_20w_8192/random20w_replaced_logreg_calibrator.pkl",
+    "train_val_report": "reports/random_20w_split/random_20w_8192_replaced_calibrator_train_val.json",
+    "test10k_report": "reports/random_20w_split/random_20w_8192_replaced_calibrator_test10k_eval.json",
+    "val_f1": 0.9687640113585413,
+    "test10k_f1": 0.9724110355857657,
+    "status": "stronger than raw baseline but far below 0.999 target"
+  },
+  "validation_policy": {
+    "val_gate_reference_f1": 0.9687640113585413,
+    "test10k_allowed_only_after_clear_val_improvement": true,
+    "full_160k_test_allowed_only_after_test10k_confirmation": true,
+    "noise_audit_required": true
+  }
+}
