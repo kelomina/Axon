@@ -63,13 +63,28 @@ If `replacement_required > 0`, the next data step is to regenerate a corrected s
 
 ## Build a Corrected Split
 
-After reviewing the adjustment plan, build a corrected split:
+If replacements are required, first build an unused raw-PE candidate pool:
+
+```powershell
+.\vnev\Scripts\python.exe scripts\build_replacement_candidate_pool.py `
+  --data-dir data `
+  --split-csv reports\random_20w_split\random_20w_split.csv `
+  --manifest-json data\.cache\manifest_38672ba0.json `
+  --required-label0 0 `
+  --required-label1 0 `
+  --output-csv reports\random_20w_split\replacement_candidate_pool.csv `
+  --output-json reports\random_20w_split\replacement_candidate_pool_summary.json
+```
+
+Set `--required-label0` and `--required-label1` to the counts reported by `replacement_counts_by_original_label` in the adjustment plan. If `replacement_shortfall` is not empty, stop and collect more valid samples before rebuilding the corrected split.
+
+After reviewing the candidate pool, build a corrected split:
 
 ```powershell
 .\vnev\Scripts\python.exe scripts\build_corrected_split_from_plan.py `
   --split-csv reports\random_20w_split\random_20w_split.csv `
   --plan-csv reports\random_20w_split\manual_review_adjustment_plan.csv `
-  --data-dir data `
+  --candidate-csv reports\random_20w_split\replacement_candidate_pool.csv `
   --output-csv reports\random_20w_split\corrected_manual_review_split.csv `
   --output-json reports\random_20w_split\corrected_manual_review_split_summary.json
 ```
