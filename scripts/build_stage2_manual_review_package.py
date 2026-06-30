@@ -30,9 +30,23 @@ def _int(row: dict, key: str, default: int = 0) -> int:
         return default
 
 
+def _probability(row: dict) -> float:
+    return _float(row, "prob_malicious", _float(row, "stage2_prob_malicious"))
+
+
+def _score_column(row: dict) -> str:
+    if row.get("score_column"):
+        return row["score_column"]
+    if row.get("stage2_prob_malicious"):
+        return "stage2_prob_malicious"
+    if row.get("prob_malicious"):
+        return "prob_malicious"
+    return ""
+
+
 def _sort_key(row: dict) -> tuple:
     error_type = row.get("error_type", "")
-    prob = _float(row, "stage2_prob_malicious")
+    prob = _probability(row)
     confidence = 1.0 - prob if error_type == "FN" else prob
     return (
         _int(row, "priority", 999),
@@ -74,6 +88,9 @@ def build_package(
     for rank, row in enumerate(selected, start=1):
         row["review_rank"] = rank
         row["path_hint"] = _path_hint(row.get("source_path", ""))
+        row["prob_malicious"] = f"{_probability(row):.10f}"
+        row["stage2_prob_malicious"] = row.get("stage2_prob_malicious") or row["prob_malicious"]
+        row["score_column"] = _score_column(row)
         row["manual_label_verdict"] = ""
         row["manual_verdict_note"] = ""
         row["recommended_action"] = ""
@@ -89,6 +106,8 @@ def build_package(
         "source_sha256",
         "label",
         "prediction",
+        "prob_malicious",
+        "score_column",
         "stage2_prob_malicious",
         "base_prob_malicious",
         "top_k",

@@ -42,6 +42,20 @@ def threshold_key(similarity: float, opposite_ratio: float) -> str:
     return f"{sim_bucket}__{ratio_bucket}"
 
 
+def probability_value(row: dict) -> str:
+    return row.get("prob_malicious") or row.get("stage2_prob_malicious") or ""
+
+
+def score_column_value(row: dict) -> str:
+    if row.get("score_column"):
+        return row["score_column"]
+    if row.get("stage2_prob_malicious"):
+        return "stage2_prob_malicious"
+    if row.get("prob_malicious"):
+        return "prob_malicious"
+    return ""
+
+
 def summarize(input_csv: Path, output_json: Path, output_csv: Path, max_priority: int) -> dict:
     rows = [row for row in read_rows(input_csv) if as_int(row.get("priority", "999"), 999) <= int(max_priority)]
     enriched = []
@@ -58,6 +72,9 @@ def summarize(input_csv: Path, output_json: Path, output_csv: Path, max_priority
         support_counts[row.get("support_bucket", "")] += 1
         out = {
             **row,
+            "prob_malicious": probability_value(row),
+            "stage2_prob_malicious": row.get("stage2_prob_malicious") or probability_value(row),
+            "score_column": score_column_value(row),
             "conflict_bucket": key,
             "high_similarity_opposite_label_conflict": (
                 nearest_similarity >= 0.95
@@ -88,6 +105,8 @@ def summarize(input_csv: Path, output_json: Path, output_csv: Path, max_priority
         "source_sha256",
         "label",
         "prediction",
+        "prob_malicious",
+        "score_column",
         "stage2_prob_malicious",
         "base_prob_malicious",
         "neighbor_label_counts",
