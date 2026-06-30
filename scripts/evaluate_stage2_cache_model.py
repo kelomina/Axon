@@ -20,6 +20,7 @@ for item in (PROJECT_ROOT, SCRIPTS_DIR, SRC_DIR):
 from config import AxonExperimentConfig  # noqa: E402
 from train_stage2_cache_matrix import (  # noqa: E402
     FeatureConfig,
+    append_frozen_knn_features,
     build_matrix,
     metrics_at_threshold,
     predict_scores,
@@ -38,6 +39,7 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     parser.add_argument("--output-predictions-csv", type=Path, required=True)
     parser.add_argument("--max-rows", type=int, default=None)
     parser.add_argument("--threshold", type=float, default=None)
+    parser.add_argument("--knn-batch-size", type=int, default=None)
     return parser.parse_args(argv)
 
 
@@ -55,6 +57,16 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     rows = read_prediction_rows(args.predictions, args.max_rows)
     matrix, labels, base_probs, kept_rows, counts = build_matrix(rows, checkpoint_config, feature_config)
+    base_feature_dim = int(matrix.shape[1])
+    knn_payload = payload.get("knn") or {}
+    if knn_payload.get("enabled"):
+        batch_size = int(args.knn_batch_size or knn_payload.get("batch_size") or 2048)
+        matrix = append_frozen_knn_features(
+            matrix,
+            knn_payload["reference"],
+            knn_payload["top_ks"],
+            batch_size=batch_size,
+        )
     scores = predict_scores(model, matrix)
     metrics = metrics_at_threshold(scores, labels, threshold)
     output_predictions = resolve_path(args.output_predictions_csv)
@@ -70,7 +82,13 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "threshold": threshold,
         "feature_config": feature_config.__dict__,
         "records": counts,
+        "base_feature_dim": base_feature_dim,
         "feature_dim": int(matrix.shape[1]),
+        "knn_config": {
+            "enabled": bool(knn_payload.get("enabled")),
+            "top_ks": knn_payload.get("top_ks"),
+            "feature_names": knn_payload.get("feature_names"),
+        },
         "metrics": metrics,
         "noise_summary": summarize_noise(labels, base_probs),
     }

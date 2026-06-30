@@ -23,6 +23,7 @@ import numpy as np
 from sklearn.ensemble import ExtraTreesClassifier, HistGradientBoostingClassifier, RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, confusion_matrix, f1_score, precision_score, recall_score, roc_auc_score
+from sklearn.model_selection import StratifiedKFold
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 
@@ -51,6 +52,15 @@ def parse_thresholds(text: str) -> list[float]:
         count = int(math.floor((stop - start) / step)) + 1
         return [round(start + step * index, 10) for index in range(count)]
     return [float(item.strip()) for item in text.split(",") if item.strip()]
+
+
+def parse_int_list(text: str) -> list[int]:
+    values = [int(item.strip()) for item in text.split(",") if item.strip()]
+    if not values:
+        raise ValueError("Expected at least one integer")
+    if any(value <= 0 for value in values):
+        raise ValueError(f"All values must be positive: {values}")
+    return sorted(set(values))
 
 
 def read_prediction_rows(path: Path, max_rows: Optional[int] = None) -> list[dict]:
@@ -185,6 +195,161 @@ def build_matrix(
         kept_rows,
         {"total": len(rows), "kept": len(labels), "skipped_missing_cache": skipped_missing_cache},
     )
+
+
+def _fit_standard_l2_reference(matrix: np.ndarray) -> dict:
+    mean = matrix.mean(axis=0, dtype=np.float64).astype(np.float32)
+    std = matrix.std(axis=0, dtype=np.float64).astype(np.float32)
+    std = np.where(std < 1.0e-6, 1.0, std).astype(np.float32)
+    centered = (matrix.astype(np.float32, copy=False) - mean) / std
+    norms = np.linalg.norm(centered, axis=1, keepdims=True)
+    normalized = centered / np.maximum(norms, 1.0e-8)
+    return {"mean": mean, "std": std, "normalized": normalized.astype(np.float32, copy=False)}
+
+
+def _normalize_with_reference(matrix: np.ndarray, reference: dict) -> np.ndarray:
+    centered = (matrix.astype(np.float32, copy=False) - reference["mean"]) / reference["std"]
+    norms = np.linalg.norm(centered, axis=1, keepdims=True)
+    return (centered / np.maximum(norms, 1.0e-8)).astype(np.float32, copy=False)
+
+
+def _knn_feature_names(top_ks: Sequence[int]) -> list[str]:
+    names = []
+    for top_k in top_ks:
+        names.extend(
+            [
+                f"knn{top_k}_mal_ratio",
+                f"knn{top_k}_benign_ratio",
+                f"knn{top_k}_label_margin",
+                f"knn{top_k}_weighted_mal_ratio",
+                f"knn{top_k}_mean_similarity",
+                f"knn{top_k}_min_similarity",
+            ]
+        )
+    names.extend(["knn_top1_label", "knn_top1_similarity", "knn_top1_top2_gap"])
+    return names
+
+
+def _knn_support_features_from_norm(
+    query_norm: np.ndarray,
+    memory_norm: np.ndarray,
+    memory_labels: np.ndarray,
+    top_ks: Sequence[int],
+    *,
+    batch_size: int,
+) -> np.ndarray:
+    if memory_norm.shape[0] == 0:
+        raise ValueError("kNN memory is empty")
+    top_ks = [min(int(top_k), int(memory_norm.shape[0])) for top_k in top_ks]
+    max_k = max(top_ks)
+    feature_dim = len(_knn_feature_names(top_ks))
+    features = np.empty((query_norm.shape[0], feature_dim), dtype=np.float32)
+    memory_labels = memory_labels.astype(np.float32, copy=False)
+    batch_size = max(1, int(batch_size))
+
+    for start in range(0, query_norm.shape[0], batch_size):
+        stop = min(start + batch_size, query_norm.shape[0])
+        similarities = query_norm[start:stop] @ memory_norm.T
+        top_unsorted = np.argpartition(-similarities, max_k - 1, axis=1)[:, :max_k]
+        top_sim_unsorted = np.take_along_axis(similarities, top_unsorted, axis=1)
+        top_order = np.argsort(-top_sim_unsorted, axis=1)
+        top_idx = np.take_along_axis(top_unsorted, top_order, axis=1)
+        top_sim = np.take_along_axis(similarities, top_idx, axis=1).astype(np.float32, copy=False)
+        top_labels = memory_labels[top_idx]
+
+        batch_features = np.empty((stop - start, feature_dim), dtype=np.float32)
+        column = 0
+        for top_k in top_ks:
+            labels_k = top_labels[:, :top_k]
+            sim_k = top_sim[:, :top_k]
+            mal_ratio = labels_k.mean(axis=1)
+            weights = np.clip((sim_k + 1.0) * 0.5, 1.0e-6, None)
+            weighted_mal_ratio = (labels_k * weights).sum(axis=1) / np.maximum(weights.sum(axis=1), 1.0e-6)
+            batch_features[:, column] = mal_ratio
+            batch_features[:, column + 1] = 1.0 - mal_ratio
+            batch_features[:, column + 2] = 2.0 * mal_ratio - 1.0
+            batch_features[:, column + 3] = weighted_mal_ratio
+            batch_features[:, column + 4] = sim_k.mean(axis=1)
+            batch_features[:, column + 5] = sim_k[:, -1]
+            column += 6
+
+        top2_index = 1 if top_sim.shape[1] > 1 else 0
+        batch_features[:, column] = top_labels[:, 0]
+        batch_features[:, column + 1] = top_sim[:, 0]
+        batch_features[:, column + 2] = top_sim[:, 0] - top_sim[:, top2_index]
+        features[start:stop] = batch_features
+
+    return features
+
+
+def build_oof_knn_features(
+    matrix: np.ndarray,
+    labels: np.ndarray,
+    *,
+    top_ks: Sequence[int],
+    folds: int,
+    seed: int,
+    batch_size: int,
+) -> tuple[np.ndarray, dict]:
+    if folds < 2:
+        raise ValueError("OOF kNN requires at least 2 folds")
+    folds = min(int(folds), int(np.bincount(labels).min()))
+    if folds < 2:
+        raise ValueError("Not enough samples per class for OOF kNN")
+
+    reference = _fit_standard_l2_reference(matrix)
+    normalized = reference["normalized"]
+    features = np.empty((matrix.shape[0], len(_knn_feature_names(top_ks))), dtype=np.float32)
+    splitter = StratifiedKFold(n_splits=folds, shuffle=True, random_state=seed)
+    fold_sizes = []
+    for fold_index, (memory_idx, query_idx) in enumerate(splitter.split(matrix, labels)):
+        fold_sizes.append(int(query_idx.shape[0]))
+        features[query_idx] = _knn_support_features_from_norm(
+            normalized[query_idx],
+            normalized[memory_idx],
+            labels[memory_idx],
+            top_ks,
+            batch_size=batch_size,
+        )
+        print(
+            f"[knn-oof] fold={fold_index + 1}/{folds} query={query_idx.shape[0]} memory={memory_idx.shape[0]}",
+            flush=True,
+        )
+    return features, {"folds": folds, "fold_sizes": fold_sizes}
+
+
+def build_frozen_knn_reference(matrix: np.ndarray, labels: np.ndarray) -> dict:
+    reference = _fit_standard_l2_reference(matrix)
+    return {
+        "mean": reference["mean"],
+        "std": reference["std"],
+        "memory_norm": reference["normalized"],
+        "memory_labels": labels.astype(np.int64, copy=False),
+    }
+
+
+def append_frozen_knn_features(
+    matrix: np.ndarray,
+    frozen_reference: dict,
+    top_ks: Sequence[int],
+    *,
+    batch_size: int,
+) -> np.ndarray:
+    query_norm = _normalize_with_reference(
+        matrix,
+        {
+            "mean": frozen_reference["mean"],
+            "std": frozen_reference["std"],
+        },
+    )
+    knn_features = _knn_support_features_from_norm(
+        query_norm,
+        frozen_reference["memory_norm"],
+        frozen_reference["memory_labels"],
+        top_ks,
+        batch_size=batch_size,
+    )
+    return np.hstack([matrix, knn_features]).astype(np.float32, copy=False)
 
 
 def metrics_at_threshold(scores: np.ndarray, labels: np.ndarray, threshold: float) -> dict:
@@ -398,6 +563,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser.add_argument("--feature-set", choices=["tabular", "extended"], default="extended")
     parser.add_argument("--noise-modes", default="none,soft_conflict_downweight,trim_extreme_conflict")
     parser.add_argument("--test-val-f1-gate", type=float, default=0.980)
+    parser.add_argument("--knn-features", action="store_true", help="Append train-only kNN label-support features.")
+    parser.add_argument("--knn-top-k", default="5,10,25,50")
+    parser.add_argument("--knn-folds", type=int, default=5)
+    parser.add_argument("--knn-batch-size", type=int, default=2048)
     parser.add_argument("--seed", type=int, default=42)
     args = parser.parse_args(argv)
 
@@ -420,6 +589,42 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     train_x, train_y, train_base, train_kept_rows, train_counts = build_matrix(train_rows, checkpoint_config, feature_config)
     val_x, val_y, val_base, val_kept_rows, val_counts = build_matrix(val_rows, checkpoint_config, feature_config)
     print(f"[matrix] train={train_x.shape} val={val_x.shape}", flush=True)
+
+    base_feature_dim = int(train_x.shape[1])
+    knn_config = {
+        "enabled": bool(args.knn_features),
+        "top_ks": parse_int_list(args.knn_top_k),
+        "folds": int(args.knn_folds),
+        "batch_size": int(args.knn_batch_size),
+        "feature_names": [],
+        "oof": None,
+    }
+    frozen_knn_reference = None
+    if args.knn_features:
+        top_ks = knn_config["top_ks"]
+        knn_config["feature_names"] = _knn_feature_names(top_ks)
+        print(
+            f"[knn] building OOF train features top_k={top_ks} folds={args.knn_folds} batch={args.knn_batch_size}",
+            flush=True,
+        )
+        train_knn, oof_info = build_oof_knn_features(
+            train_x,
+            train_y,
+            top_ks=top_ks,
+            folds=int(args.knn_folds),
+            seed=int(args.seed),
+            batch_size=int(args.knn_batch_size),
+        )
+        frozen_knn_reference = build_frozen_knn_reference(train_x, train_y)
+        val_x = append_frozen_knn_features(
+            val_x,
+            frozen_knn_reference,
+            top_ks,
+            batch_size=int(args.knn_batch_size),
+        )
+        train_x = np.hstack([train_x, train_knn]).astype(np.float32, copy=False)
+        knn_config["oof"] = oof_info
+        print(f"[knn] augmented train={train_x.shape} val={val_x.shape}", flush=True)
 
     thresholds = parse_thresholds(args.thresholds)
     baseline_val_best = select_best_threshold(val_base, val_y, thresholds)
@@ -471,7 +676,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "test_predictions": str(resolve_path(args.test_predictions)) if args.test_predictions else None,
         "feature_config": feature_config.__dict__,
         "records": {"train": train_counts, "val": val_counts},
+        "base_feature_dim": base_feature_dim,
         "feature_dim": int(train_x.shape[1]),
+        "knn_config": knn_config,
         "noise_summary": {
             "train": summarize_noise(train_y, train_base),
             "val": summarize_noise(val_y, val_base),
@@ -488,6 +695,13 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     if args.test_predictions is not None and selected_f1 >= float(args.test_val_f1_gate):
         test_rows = read_prediction_rows(args.test_predictions, args.max_test_rows)
         test_x, test_y, test_base, test_kept_rows, test_counts = build_matrix(test_rows, checkpoint_config, feature_config)
+        if args.knn_features:
+            test_x = append_frozen_knn_features(
+                test_x,
+                frozen_knn_reference,
+                knn_config["top_ks"],
+                batch_size=int(args.knn_batch_size),
+            )
         test_scores = predict_scores(selected_model, test_x)
         test_metrics = metrics_at_threshold(test_scores, test_y, selected_threshold)
         report["records"]["test"] = test_counts
@@ -512,6 +726,13 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 "threshold": selected_threshold,
                 "selected": selected,
                 "checkpoint_config": checkpoint_config.to_dict(),
+                "knn": {
+                    "enabled": bool(args.knn_features),
+                    "top_ks": knn_config["top_ks"],
+                    "batch_size": int(args.knn_batch_size),
+                    "feature_names": knn_config["feature_names"],
+                    "reference": frozen_knn_reference,
+                },
             },
             handle,
         )
