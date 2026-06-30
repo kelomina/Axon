@@ -70,3 +70,30 @@ The blend passes the Test-10k confirmation gate. It is eligible for one frozen 1
 
 No full-test threshold sweep or weight tuning is allowed.
 
+## Frozen 160k Full-Test Result
+
+Reports:
+
+- `reports/random_20w_split/stage2_cache_matrix_replaced_extended_frozen_full_test_eval.json`
+- `reports/random_20w_split/stage2_cache_matrix_replaced_extended_frozen_full_test_predictions.csv`
+- `reports/random_20w_split/stage2_blend_val_selected_full_test_eval.json`
+- `reports/random_20w_split/stage2_blend_val_selected_full_test_predictions.csv`
+
+The missing `stage2_extended` full-test predictions were generated from the already frozen Val-selected Stage2 model. No fitting or threshold sweep was performed.
+
+Frozen full-test blend result:
+
+- Rows: `160000`
+- Threshold: `0.55`
+- F1: `0.9832884232`
+- Errors: `2673 / 160000`
+- FP/FN: `1311 / 1362`
+- AUC: `0.9984320450`
+
+Previous frozen kNN Stage2 full-test result:
+
+- F1: `0.9828037453`
+- Errors: `2753 / 160000`
+- FP/FN: `1423 / 1330`
+
+The blend reduces full-test errors by `80`, mostly by reducing false positives. This is a real but modest model-side gain. It is still far below the `F1 >= 99.9%` target, so the next loop should return to Phase 2 noise/source-label adjudication rather than treating the model path as solved.
