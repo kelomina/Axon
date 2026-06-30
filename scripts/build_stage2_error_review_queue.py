@@ -28,7 +28,8 @@ def write_csv(path: Path, rows: Sequence[dict]) -> None:
         "label",
         "split",
         "sample_index",
-        "stage2_prob_malicious",
+        "prob_malicious",
+        "score_column",
         "prediction",
         "manual_label_verdict",
         "manual_verdict_note",
@@ -58,7 +59,13 @@ def priority_for_error(label: int, prob: float) -> tuple[int, str]:
     return 3, "near_threshold_fp"
 
 
-def build_queue(predictions_csv: Path, output_csv: Path, output_json: Path, max_examples: int) -> dict:
+def build_queue(
+    predictions_csv: Path,
+    output_csv: Path,
+    output_json: Path,
+    max_examples: int,
+    score_column: str = "stage2_prob_malicious",
+) -> dict:
     rows = read_rows(predictions_csv)
     errors: list[dict] = []
     priority_counts: Counter[str] = Counter()
@@ -69,7 +76,7 @@ def build_queue(predictions_csv: Path, output_csv: Path, output_json: Path, max_
         prediction = int(row["prediction"])
         if label == prediction:
             continue
-        prob = float(row["stage2_prob_malicious"])
+        prob = float(row[score_column])
         priority, reason = priority_for_error(label, prob)
         error_type = "FN" if label == 1 else "FP"
         priority_counts[str(priority)] += 1
@@ -78,6 +85,8 @@ def build_queue(predictions_csv: Path, output_csv: Path, output_json: Path, max_
         errors.append(
             {
                 **row,
+                "prob_malicious": f"{prob:.10f}",
+                "score_column": score_column,
                 "priority": priority,
                 "error_type": error_type,
                 "reason": reason,
@@ -91,7 +100,7 @@ def build_queue(predictions_csv: Path, output_csv: Path, output_json: Path, max_
         key=lambda row: (
             int(row["priority"]),
             0 if row["error_type"] == "FN" else 1,
-            float(row["stage2_prob_malicious"]) if row["error_type"] == "FN" else -float(row["stage2_prob_malicious"]),
+            float(row["prob_malicious"]) if row["error_type"] == "FN" else -float(row["prob_malicious"]),
             row.get("source_path", ""),
         )
     )
@@ -99,6 +108,7 @@ def build_queue(predictions_csv: Path, output_csv: Path, output_json: Path, max_
     summary = {
         "schema": "axon_stage2_error_review_queue_v1",
         "predictions_csv": str(predictions_csv),
+        "score_column": score_column,
         "rows_total": len(rows),
         "errors_total": len(errors),
         "error_type_counts": dict(sorted(error_type_counts.items())),
@@ -118,8 +128,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser.add_argument("--output-csv", type=Path, required=True)
     parser.add_argument("--output-json", type=Path, required=True)
     parser.add_argument("--max-examples", type=int, default=30)
+    parser.add_argument("--score-column", default="stage2_prob_malicious")
     args = parser.parse_args(argv)
-    summary = build_queue(args.predictions_csv, args.output_csv, args.output_json, args.max_examples)
+    summary = build_queue(args.predictions_csv, args.output_csv, args.output_json, args.max_examples, args.score_column)
     print(json.dumps(summary, indent=2, ensure_ascii=False))
     return 0
 
