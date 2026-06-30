@@ -1,0 +1,63 @@
+# Manual Review Adjudication Workflow
+
+## Purpose
+
+The manual review CSV is the human/business evidence layer. It should not directly rewrite the split or cache. The adjudication script converts filled review rows into a non-destructive plan that can be inspected before any new train/val experiment.
+
+Script:
+
+- `scripts/apply_manual_review_verdicts.py`
+
+Primary inputs:
+
+- Review CSV: `reports/random_20w_split/stage2_knn_model_supported_p0_p1_manual_review.csv`
+- Split CSV: `reports/random_20w_split/random_20w_split.csv`
+
+## Accepted Manual Fields
+
+Use `manual_label_verdict` for the human decision:
+
+- `label_correct`: current label is correct
+- `label_wrong`: current label is wrong and should be flipped unless a corrected label column says otherwise
+- `out_of_scope`: sample should not count as an in-scope malware/benign sample
+- `feature_broken`: sample features or source file are not valid for this experiment
+- `uncertain`: not enough evidence
+
+Use `recommended_action` for the operational recommendation:
+
+- `keep_label`
+- `relabel_train_only`
+- `replace_sample`
+- `quarantine_source_group`
+- `needs_more_evidence`
+- `model_blindspot`
+
+## Run
+
+```powershell
+.\vnev\Scripts\python.exe scripts\apply_manual_review_verdicts.py `
+  --review-csv reports\random_20w_split\stage2_knn_model_supported_p0_p1_manual_review.csv `
+  --split-csv reports\random_20w_split\random_20w_split.csv `
+  --output-csv reports\random_20w_split\manual_review_adjustment_plan.csv `
+  --output-json reports\random_20w_split\manual_review_adjustment_plan.json
+```
+
+## Safety Rules
+
+- The script does not edit the original split, raw data, or feature cache.
+- Empty or uncertain review rows produce no action.
+- Test-split verdicts are held out of training policy by default.
+- `out_of_scope` and `feature_broken` rows become `exclude_and_replace`.
+- Excluded rows require fresh replacement sampling from valid unused candidates with the same intended label. They are not used to fill their own slots.
+
+## Interpretation
+
+The JSON summary reports:
+
+- `planned_rows`: rows with an actionable manual decision
+- `replacement_required`: rows that must be excluded and replaced
+- `replacement_counts_by_original_label`: how many same-label replacement candidates are needed
+- `training_policy_rows`: rows that are eligible to affect train/val policy
+
+If `replacement_required > 0`, the next data step is to regenerate a corrected split from a candidate pool that has enough unused valid PE files. Do not reduce the 20w total and do not claim the bad rows as replacements.
+
