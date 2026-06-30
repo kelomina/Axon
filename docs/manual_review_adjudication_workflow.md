@@ -92,3 +92,23 @@ After reviewing the candidate pool, build a corrected split:
 Use `--data-dir data` when replacements are required, because the existing fixed cache manifest only covers the current 20w selected rows. If you provide `--manifest-json data\.cache\manifest_38672ba0.json`, it can validate no-op plans but cannot supply fresh replacements beyond the already selected split.
 
 The corrected split builder refuses to emit a short split. If a reviewed row is excluded and no unused same-label replacement exists, it stops with an error instead of writing a 199999-row dataset.
+
+## Cache Readiness Gate
+
+Before training from a corrected split, run the strict cache readiness audit:
+
+```powershell
+.\vnev\Scripts\python.exe scripts\audit_corrected_split_cache_ready.py `
+  --split-csv reports\random_20w_split\corrected_manual_review_split.csv `
+  --manifest-json data\.cache\manifest_38672ba0.json `
+  --missing-cache-output reports\random_20w_split\corrected_manual_review_missing_cache.csv `
+  --output-json reports\random_20w_split\corrected_manual_review_cache_ready.json `
+  --strict
+```
+
+This gate checks both requirements:
+
+- the corrected split is still exactly `200000 = 20000 train + 20000 val + 160000 test`
+- every row has a cache entry and the cache file exists
+
+If `cache_ready=false`, do not train. First extract or recover cache for rows listed in `corrected_manual_review_missing_cache.csv`, then rerun the audit.
