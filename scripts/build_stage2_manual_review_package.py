@@ -71,6 +71,23 @@ def _path_hint(source_path: str) -> str:
     return "/".join(parts[:4])
 
 
+def _dedupe_key(row: dict) -> str:
+    return str(row.get("source_sha256") or row.get("source_path") or "").casefold()
+
+
+def _dedupe_rows(rows: Sequence[dict]) -> list[dict]:
+    deduped = []
+    seen = set()
+    for row in rows:
+        key = _dedupe_key(row)
+        if key and key in seen:
+            continue
+        if key:
+            seen.add(key)
+        deduped.append(row)
+    return deduped
+
+
 def build_package(
     neighbor_csv: Path,
     output_csv: Path,
@@ -84,7 +101,7 @@ def build_package(
         row for row in read_rows(neighbor_csv)
         if row.get("support_bucket") == support_bucket and _int(row, "priority", 999) <= int(max_priority)
     ]
-    selected = _select(rows, "FP", fp_count) + _select(rows, "FN", fn_count)
+    selected = _select(_dedupe_rows(rows), "FP", fp_count) + _select(_dedupe_rows(rows), "FN", fn_count)
     for rank, row in enumerate(selected, start=1):
         row["review_rank"] = rank
         row["path_hint"] = _path_hint(row.get("source_path", ""))

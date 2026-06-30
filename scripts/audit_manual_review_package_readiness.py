@@ -1,0 +1,463 @@
+#!/usr/bin/env python3
+"""Audit whether manual-review package rows have complete source/cache evidence."""
+
+from __future__ import annotations
+
+import argparse
+import csv
+import hashlib
+import json
+import sys
+from collections import Counter
+from pathlib import Path
+from typing import Optional, Sequence
+
+import numpy as np
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+SCRIPTS_DIR = PROJECT_ROOT / "scripts"
+for item in (PROJECT_ROOT, SCRIPTS_DIR):
+    if str(item) not in sys.path:
+        sys.path.insert(0, str(item))
+
+from audit_pe_metadata_queue import parse_pe  # noqa: E402
+
+
+REQUIRED_NPZ_FIELDS = [
+    "byte_sequence",
+    "pe_features",
+    "stat_features",
+    "lightweight_features",
+    "label",
+    "source_sha256",
+]
+
+
+def resolve_path(path: Path) -> Path:
+    return path if path.is_absolute() else PROJECT_ROOT / path
+
+
+def read_csv_rows(path: Path) -> list[dict]:
+    with resolve_path(path).open("r", encoding="utf-8-sig", newline="") as handle:
+        return list(csv.DictReader(handle))
+
+
+def normalize_path(path_text: str) -> str:
+    return str(Path(path_text)).replace("/", "\\").casefold()
+
+
+def project_relative_path_key(path_text: str) -> Optional[str]:
+    if not path_text:
+        return None
+    normalized = normalize_path(path_text)
+    root = normalize_path(str(PROJECT_ROOT)).rstrip("\\")
+    prefix = root + "\\"
+    if normalized.startswith(prefix):
+        return normalized[len(prefix):]
+    return None
+
+
+def source_path_keys(path_text: str) -> list[str]:
+    if not path_text:
+        return []
+    keys = {normalize_path(path_text)}
+    path = Path(path_text)
+    if not path.is_absolute():
+        keys.add(normalize_path(str(PROJECT_ROOT / path)))
+    relative_key = project_relative_path_key(path_text)
+    if relative_key:
+        keys.add(relative_key)
+    keys.add(path.name.casefold())
+    return list(keys)
+
+
+def _looks_sha256(value: str) -> bool:
+    text = value.casefold()
+    return len(text) == 64 and all(char in "0123456789abcdef" for char in text)
+
+
+def source_sha_from_path(path_text: str) -> Optional[str]:
+    stem = Path(path_text).stem.casefold()
+    if _looks_sha256(stem):
+        return stem
+    name = Path(path_text).name.casefold()
+    if _looks_sha256(name):
+        return name
+    return None
+
+
+def sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def scalar_text(value: object) -> str:
+    array = np.asarray(value)
+    if array.shape == ():
+        return str(array.item())
+    return str(value)
+
+
+def load_manifest(manifest_path: Path) -> tuple[dict, dict[str, dict], dict[str, dict]]:
+    resolved = resolve_path(manifest_path)
+    payload = json.loads(resolved.read_text(encoding="utf-8"))
+    by_source: dict[str, dict] = {}
+    by_sha: dict[str, dict] = {}
+    for sample in payload.get("samples", []):
+        source_path = sample.get("source_path", "")
+        for key in source_path_keys(source_path):
+            by_source.setdefault(key, sample)
+        source_sha256 = str(sample.get("source_sha256") or "").casefold()
+        if source_sha256:
+            by_sha.setdefault(source_sha256, sample)
+        path_sha = source_sha_from_path(source_path)
+        if path_sha:
+            by_sha.setdefault(path_sha, sample)
+    return payload, by_source, by_sha
+
+
+def lookup_manifest_sample(row: dict, by_source: dict[str, dict], by_sha: dict[str, dict]) -> tuple[Optional[dict], str]:
+    for key in source_path_keys(row.get("source_path", "")):
+        sample = by_source.get(key)
+        if sample is not None:
+            return sample, "source_path"
+
+    explicit_sha = str(row.get("source_sha256") or "").casefold()
+    if explicit_sha:
+        sample = by_sha.get(explicit_sha)
+        if sample is not None:
+            return sample, "source_sha256"
+
+    path_sha = source_sha_from_path(row.get("source_path", ""))
+    if path_sha:
+        sample = by_sha.get(path_sha)
+        if sample is not None:
+            return sample, "source_sha256_from_path"
+    return None, "manifest_missing"
+
+
+def resolve_cache_path(sample: dict, manifest_dir: Path) -> Path:
+    cache_path = Path(sample.get("cache_path", ""))
+    if cache_path.is_absolute():
+        return cache_path
+    return manifest_dir / cache_path.name
+
+
+def shape_expected(manifest: dict, key: str) -> Optional[tuple[int, ...]]:
+    value = int(manifest.get(key, 0) or 0)
+    if value <= 0:
+        return None
+    return (value,)
+
+
+def audit_npz(
+    *,
+    cache_path: Path,
+    manifest: dict,
+    row: dict,
+    sample: dict,
+    actual_source_sha256: str,
+) -> dict:
+    result = {
+        "npz_loaded": False,
+        "npz_error": "",
+        "npz_missing_fields": "",
+        "npz_label": "",
+        "label_ok": False,
+        "npz_source_sha256": "",
+        "npz_source_sha256_ok": False,
+        "npz_shape_ok": True,
+        "npz_shape_errors": "",
+    }
+    try:
+        with np.load(cache_path, allow_pickle=False) as data:
+            result["npz_loaded"] = True
+            missing = [field for field in REQUIRED_NPZ_FIELDS if field not in data.files]
+            if missing:
+                result["npz_missing_fields"] = "|".join(missing)
+                return result
+
+            expected_label = int(row.get("label", sample.get("label")))
+            manifest_label = int(sample.get("label", expected_label))
+            npz_label = int(np.asarray(data["label"]).item())
+            result["npz_label"] = str(npz_label)
+            result["label_ok"] = npz_label == expected_label == manifest_label
+
+            npz_sha = scalar_text(data["source_sha256"]).casefold()
+            expected_sha = str(row.get("source_sha256") or sample.get("source_sha256") or actual_source_sha256).casefold()
+            manifest_sha = str(sample.get("source_sha256") or "").casefold()
+            result["npz_source_sha256"] = npz_sha
+            result["npz_source_sha256_ok"] = bool(npz_sha) and npz_sha == expected_sha == manifest_sha == actual_source_sha256
+
+            shape_checks = [
+                ("byte_sequence", shape_expected(manifest, "max_byte_length")),
+                ("pe_features", shape_expected(manifest, "pe_feature_dim")),
+                ("stat_features", shape_expected(manifest, "stat_feature_dim")),
+                ("lightweight_features", shape_expected(manifest, "lightweight_feature_dim")),
+            ]
+            shape_errors = []
+            for field, expected_shape in shape_checks:
+                if expected_shape is None:
+                    continue
+                actual_shape = tuple(data[field].shape)
+                if actual_shape != expected_shape:
+                    shape_errors.append(f"{field}:actual={actual_shape}:expected={expected_shape}")
+            result["npz_shape_ok"] = not shape_errors
+            result["npz_shape_errors"] = "|".join(shape_errors)
+    except Exception as exc:  # pragma: no cover - operational detail is reported in CSV/JSON.
+        result["npz_error"] = repr(exc)
+    return result
+
+
+def readiness_reasons(row: dict, require_pe: bool) -> list[str]:
+    reasons = []
+    checks = [
+        ("source_missing", row["source_exists"]),
+        ("source_sha256_mismatch", row["source_sha256_ok"]),
+        ("manifest_missing", row["manifest_found"]),
+        ("cache_missing", row["cache_exists"]),
+        ("npz_load_failed", row["npz_loaded"]),
+        ("npz_missing_fields", not bool(row["npz_missing_fields"])),
+        ("label_mismatch", row["label_ok"]),
+        ("cache_source_sha256_mismatch", row["npz_source_sha256_ok"]),
+        ("npz_shape_mismatch", row["npz_shape_ok"]),
+    ]
+    for reason, ok in checks:
+        if not ok:
+            reasons.append(reason)
+    if require_pe and not row["is_pe"]:
+        reasons.append(f"not_valid_pe:{row['parse_error'] or 'unknown'}")
+    return reasons
+
+
+def _is_blank(value: object) -> bool:
+    return str(value or "").strip() == ""
+
+
+def audit_manual_review_package(
+    *,
+    review_csv: Path,
+    manifest_json: Path,
+    output_csv: Path,
+    output_json: Path,
+    require_pe: bool = True,
+) -> dict:
+    rows = read_csv_rows(review_csv)
+    manifest, by_source, by_sha = load_manifest(manifest_json)
+    manifest_dir = resolve_path(manifest_json).parent
+    output_rows: list[dict] = []
+    match_counts: Counter[str] = Counter()
+
+    for row in rows:
+        source_path = resolve_path(Path(row.get("source_path", "")))
+        source_exists = source_path.exists()
+        actual_sha = sha256_file(source_path).casefold() if source_exists else ""
+        expected_sha = str(row.get("source_sha256") or "").casefold()
+        source_sha_ok = source_exists and (not expected_sha or actual_sha == expected_sha)
+
+        sample, match_reason = lookup_manifest_sample(row, by_source, by_sha)
+        manifest_found = sample is not None
+        match_counts[match_reason] += 1
+        cache_path = resolve_cache_path(sample, manifest_dir) if sample is not None else Path("")
+        cache_exists = bool(sample) and cache_path.exists()
+
+        if cache_exists:
+            npz_result = audit_npz(
+                cache_path=cache_path,
+                manifest=manifest,
+                row=row,
+                sample=sample,
+                actual_source_sha256=actual_sha,
+            )
+        else:
+            npz_result = {
+                "npz_loaded": False,
+                "npz_error": "",
+                "npz_missing_fields": "",
+                "npz_label": "",
+                "label_ok": False,
+                "npz_source_sha256": "",
+                "npz_source_sha256_ok": False,
+                "npz_shape_ok": False,
+                "npz_shape_errors": "",
+            }
+
+        pe_metadata = parse_pe(source_path)
+        out = {
+            **row,
+            "source_exists": source_exists,
+            "actual_source_sha256": actual_sha,
+            "source_sha256_ok": source_sha_ok,
+            "manifest_found": manifest_found,
+            "manifest_match_reason": match_reason,
+            "manifest_source_sha256": sample.get("source_sha256", "") if sample else "",
+            "manifest_label": sample.get("label", "") if sample else "",
+            "manifest_cache_path": str(cache_path) if sample else "",
+            "cache_exists": cache_exists,
+            **npz_result,
+            "is_pe": bool(pe_metadata["is_pe"]),
+            "parse_error": pe_metadata["parse_error"],
+            "file_size": pe_metadata["file_size"],
+            "machine": pe_metadata["machine"],
+            "number_of_sections": pe_metadata["number_of_sections"],
+            "section_names": pe_metadata["section_names"],
+            "max_section_entropy": pe_metadata["max_section_entropy"],
+            "overlay_size": pe_metadata["overlay_size"],
+        }
+        reasons = readiness_reasons(out, require_pe=require_pe)
+        out["manual_review_ready"] = not reasons
+        out["readiness_reasons"] = "|".join(reasons)
+        output_rows.append(out)
+
+    fieldnames = [
+        "review_rank",
+        "support_bucket",
+        "priority",
+        "reason",
+        "error_type",
+        "source_path",
+        "source_sha256",
+        "label",
+        "prediction",
+        "prob_malicious",
+        "score_column",
+        "base_prob_malicious",
+        "neighbor_label_counts",
+        "opposite_label_ratio",
+        "nearest_similarity",
+        "source_exists",
+        "actual_source_sha256",
+        "source_sha256_ok",
+        "manifest_found",
+        "manifest_match_reason",
+        "manifest_source_sha256",
+        "manifest_label",
+        "manifest_cache_path",
+        "cache_exists",
+        "npz_loaded",
+        "npz_error",
+        "npz_missing_fields",
+        "npz_label",
+        "label_ok",
+        "npz_source_sha256",
+        "npz_source_sha256_ok",
+        "npz_shape_ok",
+        "npz_shape_errors",
+        "is_pe",
+        "parse_error",
+        "file_size",
+        "machine",
+        "number_of_sections",
+        "section_names",
+        "max_section_entropy",
+        "overlay_size",
+        "manual_review_ready",
+        "readiness_reasons",
+        "top5_neighbor_labels",
+        "top5_neighbor_sha256",
+        "top5_neighbor_paths",
+        "manual_label_verdict",
+        "manual_verdict_note",
+        "recommended_action",
+    ]
+    output_csv = resolve_path(output_csv)
+    output_csv.parent.mkdir(parents=True, exist_ok=True)
+    with output_csv.open("w", encoding="utf-8-sig", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fieldnames, extrasaction="ignore", lineterminator="\n")
+        writer.writeheader()
+        writer.writerows(output_rows)
+
+    readiness_counter = Counter("ready" if row["manual_review_ready"] else "not_ready" for row in output_rows)
+    verdict_blank_count = sum(1 for row in output_rows if _is_blank(row.get("manual_label_verdict")))
+    action_blank_count = sum(1 for row in output_rows if _is_blank(row.get("recommended_action")))
+    verdict_package_ready = (
+        readiness_counter["not_ready"] == 0
+        and verdict_blank_count == 0
+        and action_blank_count == 0
+    )
+    reason_counter: Counter[str] = Counter()
+    for row in output_rows:
+        for reason in str(row["readiness_reasons"]).split("|"):
+            if reason:
+                reason_counter[reason] += 1
+
+    summary = {
+        "schema": "axon_manual_review_package_readiness_audit_v1",
+        "review_csv": str(resolve_path(review_csv)),
+        "manifest_json": str(resolve_path(manifest_json)),
+        "require_pe": bool(require_pe),
+        "total_rows": len(output_rows),
+        "ready_rows": readiness_counter["ready"],
+        "not_ready_rows": readiness_counter["not_ready"],
+        "review_queue_ready": readiness_counter["not_ready"] == 0,
+        "verdict_package_ready": verdict_package_ready,
+        "manual_review_ready": readiness_counter["not_ready"] == 0,
+        "manual_label_verdict_blank_count": verdict_blank_count,
+        "recommended_action_blank_count": action_blank_count,
+        "blocking_issues": [
+            issue
+            for issue, present in [
+                ("review_queue_not_ready", readiness_counter["not_ready"] > 0),
+                ("manual_verdict_empty", verdict_blank_count > 0),
+                ("recommended_action_empty", action_blank_count > 0),
+            ]
+            if present
+        ],
+        "label_counts": dict(sorted(Counter(str(row.get("label", "")) for row in output_rows).items())),
+        "error_type_counts": dict(sorted(Counter(str(row.get("error_type", "")) for row in output_rows).items())),
+        "priority_counts": dict(sorted(Counter(str(row.get("priority", "")) for row in output_rows).items())),
+        "manifest_match_counts": dict(sorted(match_counts.items())),
+        "source_exists_count": sum(1 for row in output_rows if row["source_exists"]),
+        "source_sha256_ok_count": sum(1 for row in output_rows if row["source_sha256_ok"]),
+        "cache_exists_count": sum(1 for row in output_rows if row["cache_exists"]),
+        "npz_loaded_count": sum(1 for row in output_rows if row["npz_loaded"]),
+        "npz_label_ok_count": sum(1 for row in output_rows if row["label_ok"]),
+        "npz_source_sha256_ok_count": sum(1 for row in output_rows if row["npz_source_sha256_ok"]),
+        "npz_shape_ok_count": sum(1 for row in output_rows if row["npz_shape_ok"]),
+        "is_pe_count": sum(1 for row in output_rows if row["is_pe"]),
+        "parse_error_counts": dict(sorted(Counter(str(row["parse_error"]) for row in output_rows).items())),
+        "readiness_reason_counts": dict(sorted(reason_counter.items())),
+        "duplicate_source_sha256_count": sum(
+            1
+            for _sha, count in Counter(str(row.get("source_sha256", "")).casefold() for row in output_rows).items()
+            if _sha and count > 1
+        ),
+        "examples_not_ready": [row for row in output_rows if not row["manual_review_ready"]][:20],
+        "outputs": {
+            "readiness_csv": str(output_csv),
+            "summary_json": str(resolve_path(output_json)),
+        },
+    }
+    output_json = resolve_path(output_json)
+    output_json.parent.mkdir(parents=True, exist_ok=True)
+    output_json.write_text(json.dumps(summary, indent=2, ensure_ascii=False), encoding="utf-8")
+    return summary
+
+
+def main(argv: Optional[Sequence[str]] = None) -> int:
+    parser = argparse.ArgumentParser(description="Audit manual-review package source/cache readiness.")
+    parser.add_argument("--review-csv", type=Path, required=True)
+    parser.add_argument("--manifest-json", type=Path, required=True)
+    parser.add_argument("--output-csv", type=Path, required=True)
+    parser.add_argument("--output-json", type=Path, required=True)
+    parser.add_argument("--no-require-pe", action="store_true")
+    parser.add_argument("--strict", action="store_true", help="Exit non-zero unless every row is review-ready.")
+    args = parser.parse_args(argv)
+    summary = audit_manual_review_package(
+        review_csv=args.review_csv,
+        manifest_json=args.manifest_json,
+        output_csv=args.output_csv,
+        output_json=args.output_json,
+        require_pe=not bool(args.no_require_pe),
+    )
+    print(json.dumps(summary, indent=2, ensure_ascii=False))
+    if args.strict and not summary["manual_review_ready"]:
+        return 2
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -97,13 +97,28 @@ Generated outputs:
 
 - CSV: `reports/random_20w_split/stage2_blend_p0_p1_model_supported_manual_review_top260.csv`
 - JSON: `reports/random_20w_split/stage2_blend_p0_p1_model_supported_manual_review_top260.json`
+- Readiness CSV: `reports/random_20w_split/stage2_blend_p0_p1_model_supported_manual_review_top260_readiness.csv`
+- Readiness JSON: `reports/random_20w_split/stage2_blend_p0_p1_model_supported_manual_review_top260_readiness.json`
 
 Selection:
 
 - Source: P0/P1 rows where neighbors support the model prediction
 - Selected rows: `260`
 - FP/FN: `130 / 130`
-- Reasons: `130` severe FP (`prob >= 0.95`) and `130` severe FN (`prob <= 0.05`)
+- Reasons: `130` severe FP (`prob >= 0.95`), `128` severe FN (`prob <= 0.05`), and `2` high-confidence FN (`prob <= 0.15`)
+- Duplicate `source_sha256`: `0`
+- Priority split: `258` P0, `2` P1
+
+Readiness audit:
+
+- Source files exist: `260 / 260`
+- Source SHA256 matches review row: `260 / 260`
+- Manifest matches by source path: `260 / 260`
+- Cache files exist and load: `260 / 260`
+- NPZ label/SHA/shape checks pass: `260 / 260`
+- PE parse succeeds: `260 / 260`
+- Review-queue ready: `true`
+- Verdict-package ready: `false`, because `manual_label_verdict` and `recommended_action` are intentionally blank until human/business adjudication.
 
 This package is only an adjudication queue. It must not be used to tune thresholds, blend weights, or model hyperparameters directly. If a reviewed file is confirmed invalid or mislabeled, the corrected split must replace the bad file with a fresh valid candidate of the intended class and then re-audit cache coverage back to exactly `200000` rows.
 
