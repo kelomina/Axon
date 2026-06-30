@@ -380,7 +380,149 @@ def suspected_noise_mask(labels: np.ndarray, base_probs: np.ndarray, *, low: flo
     return ((labels == 1) & (base_probs <= low)) | ((labels == 0) & (base_probs >= high))
 
 
-def sample_weights(labels: np.ndarray, base_probs: np.ndarray, mode: str) -> np.ndarray:
+def _knn_reference_columns(knn_feature_names: Sequence[str]) -> dict:
+    top_ks = []
+    for name in knn_feature_names:
+        if not name.startswith("knn") or not name.endswith("_mal_ratio"):
+            continue
+        value = name[3 : -len("_mal_ratio")]
+        if value.isdigit():
+            top_ks.append(int(value))
+    if not top_ks:
+        raise ValueError("No kNN malicious-ratio feature columns were found")
+
+    ref_k = 25 if 25 in top_ks else max(top_ks)
+    aux_k = 10 if 10 in top_ks else min(top_ks)
+    columns = {name: index for index, name in enumerate(knn_feature_names)}
+    required = [
+        f"knn{ref_k}_mal_ratio",
+        f"knn{ref_k}_weighted_mal_ratio",
+        f"knn{aux_k}_mal_ratio",
+        f"knn{aux_k}_weighted_mal_ratio",
+    ]
+    for name in required:
+        if name not in columns:
+            raise ValueError(f"Missing kNN feature column: {name}")
+    return {
+        "ref_k": ref_k,
+        "aux_k": aux_k,
+        "ref_mal_ratio": columns[f"knn{ref_k}_mal_ratio"],
+        "ref_weighted_mal_ratio": columns[f"knn{ref_k}_weighted_mal_ratio"],
+        "aux_mal_ratio": columns[f"knn{aux_k}_mal_ratio"],
+        "aux_weighted_mal_ratio": columns[f"knn{aux_k}_weighted_mal_ratio"],
+        "top1_label": columns.get("knn_top1_label"),
+        "top1_similarity": columns.get("knn_top1_similarity"),
+        "top1_top2_gap": columns.get("knn_top1_top2_gap"),
+    }
+
+
+def knn_conflict_masks(
+    labels: np.ndarray,
+    knn_features: np.ndarray,
+    knn_feature_names: Sequence[str],
+) -> tuple[dict[str, np.ndarray], dict]:
+    columns = _knn_reference_columns(knn_feature_names)
+    labels = labels.astype(np.int64, copy=False)
+    label0 = labels == 0
+    label1 = labels == 1
+
+    ref_mal_ratio = knn_features[:, columns["ref_mal_ratio"]]
+    ref_weighted_mal_ratio = knn_features[:, columns["ref_weighted_mal_ratio"]]
+    aux_mal_ratio = knn_features[:, columns["aux_mal_ratio"]]
+    aux_weighted_mal_ratio = knn_features[:, columns["aux_weighted_mal_ratio"]]
+
+    ref_opp_ratio = np.where(label1, 1.0 - ref_mal_ratio, ref_mal_ratio)
+    ref_weighted_opp_ratio = np.where(label1, 1.0 - ref_weighted_mal_ratio, ref_weighted_mal_ratio)
+    aux_opp_ratio = np.where(label1, 1.0 - aux_mal_ratio, aux_mal_ratio)
+    aux_weighted_opp_ratio = np.where(label1, 1.0 - aux_weighted_mal_ratio, aux_weighted_mal_ratio)
+
+    if columns["top1_similarity"] is not None:
+        top1_similarity = knn_features[:, columns["top1_similarity"]]
+    else:
+        top1_similarity = np.ones(labels.shape[0], dtype=np.float32)
+
+    strong = (ref_opp_ratio >= 0.80) & (ref_weighted_opp_ratio >= 0.80) & (top1_similarity >= 0.95)
+    medium = strong | (
+        (top1_similarity >= 0.90)
+        & (
+            ((aux_opp_ratio >= 0.70) & (aux_weighted_opp_ratio >= 0.70))
+            | ((ref_opp_ratio >= 0.70) & (ref_weighted_opp_ratio >= 0.65))
+        )
+    )
+
+    if columns["top1_label"] is not None:
+        top1_label = np.rint(knn_features[:, columns["top1_label"]]).astype(np.int64)
+        top1_opposes_label = top1_label != labels
+    else:
+        top1_opposes_label = np.zeros(labels.shape[0], dtype=bool)
+    exact_opposite = (
+        top1_opposes_label
+        & (ref_opp_ratio >= 0.90)
+        & (ref_weighted_opp_ratio >= 0.85)
+        & (top1_similarity >= 0.95)
+    )
+
+    masks = {
+        "medium": medium,
+        "strong": strong,
+        "exact_opposite": exact_opposite,
+    }
+    metadata = {
+        "rule_version": "train_oof_knn_conflict_v2",
+        "ref_k": int(columns["ref_k"]),
+        "aux_k": int(columns["aux_k"]),
+        "rules": {
+            "opposite_ratio": "label1 uses 1-malicious_ratio; label0 uses malicious_ratio",
+            "medium": "top1_similarity>=0.90 and (aux opposite ratio>=0.70/weighted>=0.70 or ref opposite ratio>=0.70/weighted>=0.65)",
+            "strong": "ref opposite ratio>=0.80 and weighted opposite ratio>=0.80 and top1_similarity>=0.95",
+            "exact_opposite": "top1 label opposes dataset label, ref opposite ratio>=0.90, weighted opposite ratio>=0.85, top1_similarity>=0.95",
+        },
+    }
+    metadata["top1_similarity_mean"] = float(top1_similarity.mean())
+    metadata["ref_opposite_ratio_mean"] = float(ref_opp_ratio.mean())
+    metadata["ref_opposite_ratio_p95"] = float(np.quantile(ref_opp_ratio, 0.95))
+    metadata["aux_opposite_ratio_mean"] = float(aux_opp_ratio.mean())
+    metadata["aux_opposite_ratio_p95"] = float(np.quantile(aux_opp_ratio, 0.95))
+    return masks, metadata
+
+
+def summarize_knn_conflicts(
+    labels: np.ndarray,
+    knn_features: Optional[np.ndarray],
+    knn_feature_names: Sequence[str],
+) -> dict:
+    if knn_features is None:
+        return {"enabled": False}
+    masks, metadata = knn_conflict_masks(labels, knn_features, knn_feature_names)
+    summary = {"enabled": True, **metadata}
+    for name, mask in masks.items():
+        summary[f"{name}_count"] = int(mask.sum())
+        summary[f"{name}_ratio"] = float(mask.mean())
+        summary[f"{name}_label0"] = int((mask & (labels == 0)).sum())
+        summary[f"{name}_label1"] = int((mask & (labels == 1)).sum())
+    return summary
+
+
+def summarize_weights(labels: np.ndarray, weights: np.ndarray) -> dict:
+    positive = weights > 0.0
+    return {
+        "effective_train_rows": int(np.count_nonzero(positive)),
+        "zero_weight_rows": int(np.count_nonzero(~positive)),
+        "mean_weight": float(weights.mean()),
+        "min_weight": float(weights.min()),
+        "label0_zero_weight": int((~positive & (labels == 0)).sum()),
+        "label1_zero_weight": int((~positive & (labels == 1)).sum()),
+    }
+
+
+def sample_weights(
+    labels: np.ndarray,
+    base_probs: np.ndarray,
+    mode: str,
+    *,
+    knn_features: Optional[np.ndarray] = None,
+    knn_feature_names: Sequence[str] = (),
+) -> np.ndarray:
     weights = np.ones(labels.shape[0], dtype=np.float32)
     if mode == "none":
         return weights
@@ -394,6 +536,21 @@ def sample_weights(labels: np.ndarray, base_probs: np.ndarray, mode: str) -> np.
         severe = suspected_noise_mask(labels, base_probs, low=0.03, high=0.97)
         weights[severe] = 0.0
         return weights
+    if mode.startswith("knn_"):
+        if knn_features is None:
+            raise ValueError(f"Noise mode {mode} requires --knn-features")
+        masks, _metadata = knn_conflict_masks(labels, knn_features, knn_feature_names)
+        if mode == "knn_soft_conflict_downweight":
+            weights[masks["medium"]] = 0.60
+            weights[masks["strong"]] = 0.25
+            weights[masks["exact_opposite"]] = 0.10
+            return weights
+        if mode == "knn_trim_strong_conflict":
+            weights[masks["strong"]] = 0.0
+            return weights
+        if mode == "knn_trim_exact_opposite":
+            weights[masks["exact_opposite"]] = 0.0
+            return weights
     raise ValueError(f"Unknown noise mode: {mode}")
 
 
@@ -482,6 +639,18 @@ def model_candidates(seed: int) -> list[tuple[str, object]]:
     ]
 
 
+def filter_model_candidates(candidates: list[tuple[str, object]], names: str) -> list[tuple[str, object]]:
+    selected_names = [name.strip() for name in names.split(",") if name.strip()]
+    if not selected_names:
+        return candidates
+    selected = [(name, model) for name, model in candidates if name in selected_names]
+    missing = sorted(set(selected_names) - {name for name, _model in selected})
+    if missing:
+        available = ", ".join(name for name, _model in candidates)
+        raise ValueError(f"Unknown model candidate(s): {missing}. Available: {available}")
+    return selected
+
+
 def predict_scores(model, matrix: np.ndarray) -> np.ndarray:
     if hasattr(model, "predict_proba"):
         return model.predict_proba(matrix)[:, 1].astype(np.float32, copy=False)
@@ -567,6 +736,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser.add_argument("--knn-top-k", default="5,10,25,50")
     parser.add_argument("--knn-folds", type=int, default=5)
     parser.add_argument("--knn-batch-size", type=int, default=2048)
+    parser.add_argument(
+        "--model-candidates",
+        default="",
+        help="Comma-separated model candidate names. Empty keeps the full default matrix.",
+    )
     parser.add_argument("--seed", type=int, default=42)
     args = parser.parse_args(argv)
 
@@ -600,6 +774,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "oof": None,
     }
     frozen_knn_reference = None
+    train_knn = None
     if args.knn_features:
         top_ks = knn_config["top_ks"]
         knn_config["feature_names"] = _knn_feature_names(top_ks)
@@ -631,10 +806,18 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     results = []
     fitted = []
     noise_modes = [item.strip() for item in args.noise_modes.split(",") if item.strip()]
+    candidates = filter_model_candidates(model_candidates(int(args.seed)), args.model_candidates)
     for noise_mode in noise_modes:
-        weights = sample_weights(train_y, train_base, noise_mode)
-        effective_train_rows = int(np.count_nonzero(weights > 0.0))
-        for model_name, model in model_candidates(int(args.seed)):
+        weights = sample_weights(
+            train_y,
+            train_base,
+            noise_mode,
+            knn_features=train_knn,
+            knn_feature_names=knn_config["feature_names"],
+        )
+        weight_summary = summarize_weights(train_y, weights)
+        effective_train_rows = int(weight_summary["effective_train_rows"])
+        for model_name, model in candidates:
             start = time.perf_counter()
             fit_kwargs = {}
             if not isinstance(model, type(make_pipeline(StandardScaler(), LogisticRegression()))):
@@ -653,6 +836,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 "noise_mode": noise_mode,
                 "fit_sec": fit_sec,
                 "effective_train_rows": effective_train_rows,
+                "weight_summary": weight_summary,
                 "val_best": val_best,
                 "clean_val_at_val_threshold": clean_val,
                 "delta_val_f1_vs_baseline": val_best["f1"] - baseline_val_best["f1"],
@@ -683,6 +867,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             "train": summarize_noise(train_y, train_base),
             "val": summarize_noise(val_y, val_base),
         },
+        "knn_conflict_summary": summarize_knn_conflicts(train_y, train_knn, knn_config["feature_names"]),
         "baseline_val_best": baseline_val_best,
         "models": sorted(results, key=lambda row: (row["val_best"]["f1"], -row["val_best"]["errors"]), reverse=True),
         "selected_by_val": selected,
