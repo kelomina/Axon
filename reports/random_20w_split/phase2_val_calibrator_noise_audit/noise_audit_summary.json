@@ -1,0 +1,34 @@
+{
+  "schema": "axon_prediction_noise_audit_v1",
+  "predictions": "reports\\random_20w_split\\phase2_val_calibrator_predictions.csv",
+  "threshold": 0.44,
+  "samples": 20000,
+  "errors": 627,
+  "false_positive_count": 350,
+  "false_negative_count": 277,
+  "fp_prob": {
+    "avg": 0.7471020666442857,
+    "min": 0.4404480643,
+    "max": 0.9999413006
+  },
+  "fn_prob": {
+    "avg": 0.22731010088447653,
+    "min": 0.0,
+    "max": 0.4391435439
+  },
+  "noise_bucket_counts": {
+    "high_fn_conflict_prob_le_0.05": 28,
+    "high_fp_conflict_prob_ge_0.95": 40,
+    "near_threshold_error_le_0.05": 78,
+    "near_threshold_error_le_0.10": 59,
+    "none": 19747,
+    "severe_fn_conflict_prob_le_0.01": 9,
+    "severe_fp_conflict_prob_ge_0.99": 39
+  },
+  "suspected_count": 253,
+  "outputs": {
+    "suspected_csv": "reports\\random_20w_split\\phase2_val_calibrator_noise_audit\\suspected_noise_and_hard_examples.csv",
+    "breakdown_csv": "reports\\random_20w_split\\phase2_val_calibrator_noise_audit\\noise_breakdown.csv",
+    "summary_json": "reports\\random_20w_split\\phase2_val_calibrator_noise_audit\\noise_audit_summary.json"
+  }
+}
