@@ -646,7 +646,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser.add_argument("--output-csv", type=Path, required=True)
     parser.add_argument("--output-json", type=Path, required=True)
     parser.add_argument("--no-require-pe", action="store_true")
-    parser.add_argument("--strict", action="store_true", help="Exit non-zero unless every row is review-ready.")
+    parser.add_argument(
+        "--strict",
+        action="store_true",
+        help="Exit non-zero unless evidence is ready and manual verdict/action fields are complete and consistent.",
+    )
     args = parser.parse_args(argv)
     summary = audit_manual_review_package(
         review_csv=args.review_csv,
@@ -656,7 +660,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         require_pe=not bool(args.no_require_pe),
     )
     print(json.dumps(summary, indent=2, ensure_ascii=False))
-    if args.strict and not summary["manual_review_ready"]:
+    if args.strict and not summary["verdict_package_ready"]:
         return 2
     return 0
 

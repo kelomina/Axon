@@ -13,7 +13,7 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 
-from audit_manual_review_package_readiness import audit_manual_review_package  # noqa: E402
+from audit_manual_review_package_readiness import audit_manual_review_package, main  # noqa: E402
 
 
 @contextmanager
@@ -477,3 +477,266 @@ def test_manual_review_readiness_rejects_inconsistent_manual_field_pair():
     assert rows[0]["manual_verdict_category"] == "exclude"
     assert rows[0]["recommended_action_category"] == "relabel"
     assert rows[0]["manual_fields_consistent"] == "False"
+
+
+def test_strict_cli_fails_when_review_ready_but_manual_verdicts_blank():
+    with _case_dir("manual_readiness_strict_blank_verdict") as tmp_path:
+        source_path, sha = _make_source(tmp_path, "sample.exe")
+        cache_path = tmp_path / "cache" / "sample.npz"
+        _write_cache(cache_path, label=0, sha=sha, pe_dim=1, stat_dim=1, light_dim=1)
+        neighbor_samples, neighbor_fields = _make_neighbor_samples(tmp_path)
+        manifest_path = tmp_path / "manifest.json"
+        manifest_path.write_text(
+            json.dumps(
+                {
+                    "max_byte_length": 2,
+                    "pe_feature_dim": 1,
+                    "stat_feature_dim": 1,
+                    "lightweight_feature_dim": 1,
+                    "samples": [
+                        {
+                            "source_path": str(source_path),
+                            "source_sha256": sha,
+                            "cache_path": str(cache_path),
+                            "label": 0,
+                        }
+                    ]
+                    + neighbor_samples,
+                }
+            ),
+            encoding="utf-8",
+        )
+        review_csv = tmp_path / "review.csv"
+        _write_review(
+            review_csv,
+            [
+                {
+                    "review_rank": 1,
+                    "source_path": str(source_path),
+                    "source_sha256": sha,
+                    "label": 0,
+                    "prediction": 1,
+                    "prob_malicious": "0.99",
+                    **neighbor_fields,
+                    "manual_label_verdict": "",
+                    "recommended_action": "",
+                }
+            ],
+        )
+
+        exit_code = main(
+            [
+                "--review-csv",
+                str(review_csv),
+                "--manifest-json",
+                str(manifest_path),
+                "--output-csv",
+                str(tmp_path / "readiness.csv"),
+                "--output-json",
+                str(tmp_path / "readiness.json"),
+                "--strict",
+            ]
+        )
+        summary = json.loads((tmp_path / "readiness.json").read_text(encoding="utf-8"))
+
+    assert summary["review_queue_ready"] is True
+    assert summary["verdict_package_ready"] is False
+    assert summary["blocking_issues"] == ["manual_verdict_empty", "recommended_action_empty"]
+    assert exit_code == 2
+
+
+def test_strict_cli_passes_when_verdict_package_ready():
+    with _case_dir("manual_readiness_strict_ready") as tmp_path:
+        source_path, sha = _make_source(tmp_path, "sample.exe")
+        cache_path = tmp_path / "cache" / "sample.npz"
+        _write_cache(cache_path, label=0, sha=sha, pe_dim=1, stat_dim=1, light_dim=1)
+        neighbor_samples, neighbor_fields = _make_neighbor_samples(tmp_path)
+        manifest_path = tmp_path / "manifest.json"
+        manifest_path.write_text(
+            json.dumps(
+                {
+                    "max_byte_length": 2,
+                    "pe_feature_dim": 1,
+                    "stat_feature_dim": 1,
+                    "lightweight_feature_dim": 1,
+                    "samples": [
+                        {
+                            "source_path": str(source_path),
+                            "source_sha256": sha,
+                            "cache_path": str(cache_path),
+                            "label": 0,
+                        }
+                    ]
+                    + neighbor_samples,
+                }
+            ),
+            encoding="utf-8",
+        )
+        review_csv = tmp_path / "review.csv"
+        _write_review(
+            review_csv,
+            [
+                {
+                    "review_rank": 1,
+                    "source_path": str(source_path),
+                    "source_sha256": sha,
+                    "label": 0,
+                    "prediction": 1,
+                    "prob_malicious": "0.99",
+                    **neighbor_fields,
+                    "manual_label_verdict": "label_correct",
+                    "recommended_action": "keep_label",
+                }
+            ],
+        )
+
+        exit_code = main(
+            [
+                "--review-csv",
+                str(review_csv),
+                "--manifest-json",
+                str(manifest_path),
+                "--output-csv",
+                str(tmp_path / "readiness.csv"),
+                "--output-json",
+                str(tmp_path / "readiness.json"),
+                "--strict",
+            ]
+        )
+        summary = json.loads((tmp_path / "readiness.json").read_text(encoding="utf-8"))
+
+    assert summary["review_queue_ready"] is True
+    assert summary["verdict_package_ready"] is True
+    assert summary["blocking_issues"] == []
+    assert exit_code == 0
+
+
+def test_non_strict_cli_reports_blank_verdicts_without_failing():
+    with _case_dir("manual_readiness_non_strict_blank_verdict") as tmp_path:
+        source_path, sha = _make_source(tmp_path, "sample.exe")
+        cache_path = tmp_path / "cache" / "sample.npz"
+        _write_cache(cache_path, label=0, sha=sha, pe_dim=1, stat_dim=1, light_dim=1)
+        neighbor_samples, neighbor_fields = _make_neighbor_samples(tmp_path)
+        manifest_path = tmp_path / "manifest.json"
+        manifest_path.write_text(
+            json.dumps(
+                {
+                    "max_byte_length": 2,
+                    "pe_feature_dim": 1,
+                    "stat_feature_dim": 1,
+                    "lightweight_feature_dim": 1,
+                    "samples": [
+                        {
+                            "source_path": str(source_path),
+                            "source_sha256": sha,
+                            "cache_path": str(cache_path),
+                            "label": 0,
+                        }
+                    ]
+                    + neighbor_samples,
+                }
+            ),
+            encoding="utf-8",
+        )
+        review_csv = tmp_path / "review.csv"
+        _write_review(
+            review_csv,
+            [
+                {
+                    "review_rank": 1,
+                    "source_path": str(source_path),
+                    "source_sha256": sha,
+                    "label": 0,
+                    "prediction": 1,
+                    "prob_malicious": "0.99",
+                    **neighbor_fields,
+                    "manual_label_verdict": "",
+                    "recommended_action": "",
+                }
+            ],
+        )
+
+        exit_code = main(
+            [
+                "--review-csv",
+                str(review_csv),
+                "--manifest-json",
+                str(manifest_path),
+                "--output-csv",
+                str(tmp_path / "readiness.csv"),
+                "--output-json",
+                str(tmp_path / "readiness.json"),
+            ]
+        )
+        summary = json.loads((tmp_path / "readiness.json").read_text(encoding="utf-8"))
+
+    assert summary["review_queue_ready"] is True
+    assert summary["verdict_package_ready"] is False
+    assert summary["blocking_issues"] == ["manual_verdict_empty", "recommended_action_empty"]
+    assert exit_code == 0
+
+
+def test_strict_cli_fails_when_manual_fields_are_inconsistent():
+    with _case_dir("manual_readiness_strict_inconsistent_fields") as tmp_path:
+        source_path, sha = _make_source(tmp_path, "sample.exe")
+        cache_path = tmp_path / "cache" / "sample.npz"
+        _write_cache(cache_path, label=0, sha=sha, pe_dim=1, stat_dim=1, light_dim=1)
+        neighbor_samples, neighbor_fields = _make_neighbor_samples(tmp_path)
+        manifest_path = tmp_path / "manifest.json"
+        manifest_path.write_text(
+            json.dumps(
+                {
+                    "max_byte_length": 2,
+                    "pe_feature_dim": 1,
+                    "stat_feature_dim": 1,
+                    "lightweight_feature_dim": 1,
+                    "samples": [
+                        {
+                            "source_path": str(source_path),
+                            "source_sha256": sha,
+                            "cache_path": str(cache_path),
+                            "label": 0,
+                        }
+                    ]
+                    + neighbor_samples,
+                }
+            ),
+            encoding="utf-8",
+        )
+        review_csv = tmp_path / "review.csv"
+        _write_review(
+            review_csv,
+            [
+                {
+                    "review_rank": 1,
+                    "source_path": str(source_path),
+                    "source_sha256": sha,
+                    "label": 0,
+                    "prediction": 1,
+                    "prob_malicious": "0.99",
+                    **neighbor_fields,
+                    "manual_label_verdict": "feature_broken",
+                    "recommended_action": "relabel_train_only",
+                }
+            ],
+        )
+
+        exit_code = main(
+            [
+                "--review-csv",
+                str(review_csv),
+                "--manifest-json",
+                str(manifest_path),
+                "--output-csv",
+                str(tmp_path / "readiness.csv"),
+                "--output-json",
+                str(tmp_path / "readiness.json"),
+                "--strict",
+            ]
+        )
+        summary = json.loads((tmp_path / "readiness.json").read_text(encoding="utf-8"))
+
+    assert summary["review_queue_ready"] is True
+    assert summary["verdict_package_ready"] is False
+    assert summary["blocking_issues"] == ["manual_fields_inconsistent"]
+    assert exit_code == 2
