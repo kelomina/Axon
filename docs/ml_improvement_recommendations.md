@@ -44,6 +44,8 @@ Loop29/Loop30/Loop31 复验说明几条近路暂时不成立：Loop28 + Loop27 �
 
 随后 Loop38 对 Loop28 full-test 残差做了噪声和多模型重合审计，不训练、不调阈值。Loop28 的 `1949` 个 full-test 错误中，`910` 个落入高置信冲突或近阈值可疑桶，`649` 个属于 severe/high confidence conflict。另一方面，`921` 个 Loop28 错误至少被 Loop37、byte-ngram 或 Loop26 blend 中的一个纠正，其中 FP `385`、FN `536`。这说明可学习残差和噪声/边界上限同时存在：有一批错误可以被其它视角修复，但还有大量高置信冲突不是当前候选能解决的。相关文档见 `docs/phase3_loop38_residual_noise_strata.md`。
 
+Loop39 已把这 `649` 个 severe/high confidence conflict 转成手工复核队列：FP `416`、FN `233`；其中 `501` 条没有被任何对比模型修正，`148` 条至少被一个候选模型修正。队列中的人工结论和推荐动作字段全部留空，不做自动改标。队列还显式标出 `2` 个重复 SHA 内容组、`2` 条额外重复行，复核时必须按内容组处理。若人工确认 `feature_broken`、`out_of_scope` 或 `label_wrong`，不能用这些样本“补齐”，只能从同标签候选池重新抽取新样本替换，并保持总量严格 `200000`。相关文档见 `docs/phase3_loop39_conflict_adjudication_queue.md`。
+
 因此，下一阶段 P1 不应继续把主要时间花在“再替换少量 Val 噪声样本”上，而应转为三个方向：
 
 1. **把 Loop28 content PE metadata 正式产品化，但不要继续在当前 v2 上排列组合。** 当前大量白样本在数据集中表现为 SHA 文件名或无扩展名，但实战文件名可被任意改写，所以 filename/extension 只能作为错误分析切片，不能作为生产模型输入。Loop28 已证明 PE 内容侧信号有效；Loop32-35 又证明“直接追加一大包细特征”以及“把这包细特征拆子组”都不够稳。下一步应把 Loop28 的 100 维内容特征并入稳定 schema，同时转向 OOF stacking 或更高质量解析，而不是继续消耗轮次在 v2 group permutation 上。
