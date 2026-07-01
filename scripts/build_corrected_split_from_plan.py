@@ -22,6 +22,8 @@ from typing import Iterable, Optional, Sequence
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 SPLIT_ORDER = {"train": 0, "val": 1, "test": 2}
 OUTPUT_FIELDNAMES = ["source_path", "label", "sample_index", "split"]
+ALLOWED_PLAN_ACTIONS = {"keep_label", "relabel", "exclude_and_replace"}
+BLOCKED_PLAN_ACTIONS = {"needs_manual_target_label", "held_out_test_verdict_only"}
 
 if str(PROJECT_ROOT / "scripts") not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT / "scripts"))
@@ -37,6 +39,10 @@ def resolve_path(path: Path) -> Path:
 def read_csv_rows(path: Path) -> list[dict]:
     with resolve_path(path).open("r", encoding="utf-8-sig", newline="") as handle:
         return list(csv.DictReader(handle))
+
+
+def truthy(value: object) -> bool:
+    return str(value or "").strip().casefold() == "true"
 
 
 def write_split_csv(path: Path, rows: Sequence[dict]) -> None:
@@ -99,6 +105,40 @@ def summarize_split(rows: Sequence[dict]) -> dict:
             for split in ["train", "val", "test"]
         },
     }
+
+
+def validate_plan_rows(plan_rows: Sequence[dict]) -> list[str]:
+    failures = []
+    for index, row in enumerate(plan_rows, start=1):
+        action = str(row.get("plan_action", "")).strip()
+        split = str(row.get("split", "")).strip()
+        replacement_required = truthy(row.get("replacement_required"))
+        usable_for_training = truthy(row.get("usable_for_training_policy"))
+        planned_label = str(row.get("planned_label", "")).strip()
+        replacement_label = str(row.get("replacement_label", "")).strip()
+        row_id = row.get("sample_index") or row.get("source_path") or f"row-{index}"
+
+        if split == "test":
+            failures.append(f"{row_id}: test split plan rows are not accepted by corrected split builder")
+        if action in BLOCKED_PLAN_ACTIONS:
+            failures.append(f"{row_id}: unresolved or held-out plan action {action}")
+        elif action not in ALLOWED_PLAN_ACTIONS:
+            failures.append(f"{row_id}: unsupported plan action {action or '<blank>'}")
+
+        if action == "relabel":
+            if not usable_for_training:
+                failures.append(f"{row_id}: relabel plan is not marked usable for training policy")
+            if planned_label not in {"0", "1"}:
+                failures.append(f"{row_id}: relabel plan is missing an explicit planned_label")
+
+        if action == "exclude_and_replace":
+            if not replacement_required:
+                failures.append(f"{row_id}: exclude_and_replace plan is not marked replacement_required")
+            if replacement_label not in {"0", "1"}:
+                failures.append(f"{row_id}: replacement plan is missing replacement_label")
+        elif replacement_required:
+            failures.append(f"{row_id}: replacement_required is true for non-replacement action {action or '<blank>'}")
+    return failures
 
 
 def _candidate_rows_from_manifest(manifest_json: Path) -> Iterable[dict]:
@@ -215,6 +255,12 @@ def build_corrected_split(
 ) -> tuple[list[dict], dict]:
     original_rows = read_csv_rows(split_csv)
     plan_rows = read_csv_rows(plan_csv)
+    plan_failures = validate_plan_rows(plan_rows)
+    if plan_failures:
+        raise ValueError(
+            "Unsafe manual adjustment plan; fix the plan before building a corrected split: "
+            + json.dumps(plan_failures, ensure_ascii=False)
+        )
     exact_plan_by_key: dict[str, dict] = {}
     loose_plan_by_key: dict[str, dict] = {}
     for row in plan_rows:

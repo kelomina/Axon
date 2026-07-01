@@ -183,6 +183,114 @@ def test_replacement_shortfall_raises_instead_of_emitting_short_split():
             )
 
 
+def test_unresolved_relabel_target_plan_is_rejected_before_building_split():
+    with _case_dir("corrected_split_unresolved_relabel") as tmp_path:
+        split_csv = tmp_path / "split.csv"
+        plan_csv = tmp_path / "plan.csv"
+        candidates_csv = tmp_path / "candidates.csv"
+        _write_csv(
+            split_csv,
+            SPLIT_FIELDS,
+            [{"source_path": "data/a.exe", "label": "0", "sample_index": "0", "split": "train"}],
+        )
+        _write_csv(
+            plan_csv,
+            PLAN_FIELDS,
+            [{
+                "source_path": "data/a.exe",
+                "source_sha256": "",
+                "sample_index": "0",
+                "split": "train",
+                "original_label": "0",
+                "planned_label": "0",
+                "plan_action": "needs_manual_target_label",
+                "replacement_required": "false",
+                "replacement_label": "",
+                "usable_for_training_policy": "false",
+            }],
+        )
+        _write_csv(candidates_csv, CANDIDATE_FIELDS, [])
+
+        with pytest.raises(ValueError, match="Unsafe manual adjustment plan"):
+            build_corrected_split(
+                split_csv=split_csv,
+                plan_csv=plan_csv,
+                candidate_csv=candidates_csv,
+            )
+
+
+def test_test_split_plan_row_is_rejected_before_building_split():
+    with _case_dir("corrected_split_test_plan_rejected") as tmp_path:
+        split_csv = tmp_path / "split.csv"
+        plan_csv = tmp_path / "plan.csv"
+        candidates_csv = tmp_path / "candidates.csv"
+        _write_csv(
+            split_csv,
+            SPLIT_FIELDS,
+            [{"source_path": "data/test.exe", "label": "0", "sample_index": "0", "split": "test"}],
+        )
+        _write_csv(
+            plan_csv,
+            PLAN_FIELDS,
+            [{
+                "source_path": "data/test.exe",
+                "source_sha256": "",
+                "sample_index": "0",
+                "split": "test",
+                "original_label": "0",
+                "planned_label": "1",
+                "plan_action": "held_out_test_verdict_only",
+                "replacement_required": "false",
+                "replacement_label": "",
+                "usable_for_training_policy": "false",
+            }],
+        )
+        _write_csv(candidates_csv, CANDIDATE_FIELDS, [])
+
+        with pytest.raises(ValueError, match="test split plan rows are not accepted"):
+            build_corrected_split(
+                split_csv=split_csv,
+                plan_csv=plan_csv,
+                candidate_csv=candidates_csv,
+            )
+
+
+def test_replacement_required_on_non_replacement_action_is_rejected():
+    with _case_dir("corrected_split_bad_replacement_flag") as tmp_path:
+        split_csv = tmp_path / "split.csv"
+        plan_csv = tmp_path / "plan.csv"
+        candidates_csv = tmp_path / "candidates.csv"
+        _write_csv(
+            split_csv,
+            SPLIT_FIELDS,
+            [{"source_path": "data/a.exe", "label": "0", "sample_index": "0", "split": "train"}],
+        )
+        _write_csv(
+            plan_csv,
+            PLAN_FIELDS,
+            [{
+                "source_path": "data/a.exe",
+                "source_sha256": "",
+                "sample_index": "0",
+                "split": "train",
+                "original_label": "0",
+                "planned_label": "1",
+                "plan_action": "relabel",
+                "replacement_required": "true",
+                "replacement_label": "0",
+                "usable_for_training_policy": "true",
+            }],
+        )
+        _write_csv(candidates_csv, CANDIDATE_FIELDS, [])
+
+        with pytest.raises(ValueError, match="replacement_required is true for non-replacement action"):
+            build_corrected_split(
+                split_csv=split_csv,
+                plan_csv=plan_csv,
+                candidate_csv=candidates_csv,
+            )
+
+
 def test_excluded_sample_cannot_be_selected_as_its_own_replacement_from_candidate_csv():
     with _case_dir("corrected_split_self_replacement") as tmp_path:
         split_csv = tmp_path / "split.csv"
