@@ -100,6 +100,21 @@ Generated outputs:
 - Readiness CSV: `reports/random_20w_split/stage2_blend_p0_p1_model_supported_manual_review_top260_readiness.csv`
 - Readiness JSON: `reports/random_20w_split/stage2_blend_p0_p1_model_supported_manual_review_top260_readiness.json`
 
+First-pass high-similarity FP package:
+
+- CSV: `reports/random_20w_split/stage2_blend_high_similarity_fp_manual_review_top48.csv`
+- JSON: `reports/random_20w_split/stage2_blend_high_similarity_fp_manual_review_top48.json`
+- Readiness CSV: `reports/random_20w_split/stage2_blend_high_similarity_fp_manual_review_top48_readiness.csv`
+- Readiness JSON: `reports/random_20w_split/stage2_blend_high_similarity_fp_manual_review_top48_readiness.json`
+- Rows: `48`
+- Error type: `48 FP`
+- Priority split: `38` P0, `10` P1
+- Duplicate `source_sha256`: `0`
+- Source/cache/PE ready: `48 / 48`
+- Top-5 neighbor manifest/source/cache evidence: `240 / 240`
+- Review-queue ready: `true`
+- Verdict-package ready: `false`, because manual fields are intentionally blank.
+
 Selection:
 
 - Source: P0/P1 rows where neighbors support the model prediction
