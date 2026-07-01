@@ -32,10 +32,14 @@ Loop28 已经压低这些热点，但没有消灭：full-test 剩余错误中 `<
 
 Loop29/Loop30/Loop31 复验说明几条近路暂时不成立：Loop28 + Loop27 的三路浅融合在 Val 上从 `162` errors 降到 `147`，但冻结 Test-10k 为 `112` errors，未超过 Loop28 content-only 的 `111` errors；宽泛二进制字符串/关键词特征在 Val 最好 `167` errors；Authenticode certificate blob 特征在 Val 最好 `168` errors，也弱于 Loop28。因此下一步不应继续堆浅融合、粗粒度字符串关键词或浅证书 blob 指标，而应围绕 Loop28 残差做更有针对性的内容 schema。
 
+2026-07-01 又补充了 Loop32/Loop33。Loop32 先新增 `scripts/analyze_stage2_residual_content.py`，只读取冻结预测和 content sidecar cache 做残差归因，不训练、不扫阈值、不使用 filename/path/extension 作为模型输入。归因显示：Loop28 的 FN 在 signed/security directory、overlay、export、DLL、exception/debug、非 32-bit/large-address-aware 结构上更集中；FP 在 system DLL ratio、import count、section entropy、RW section 和大文件上更集中。随后新增 `182` 维 content PE v2 sidecar，覆盖更细的 import DLL/API、export、resource tree、section/entrypoint 结构。Train/Val v2 cache 覆盖 `40000/40000`，零特征 `0`。但 Val 结果没有通过门槛：Loop32 `content PE v1 + v2` 最好 `170` errors，Loop33 `v2 only` 最好 `192` errors，均弱于 Loop28 的 `162` errors，因此二者都没有进入 Test-10k。结论是：残差信号真实存在，但“宽撒式继续堆 PE 细特征”当前会引入冗余和噪声；下一轮应做更窄的特征组选择、OOF stacking 或更高质量 PE/证书解析，而不是简单增加维度。
+
+同时做了后向兼容复验：新增 v2 代码后，旧 Loop28 冻结模型在锁定 Test-10k 上仍为 F1 `0.9888677164`、`111` errors、FP/FN `61/50`，说明旧模型 replay 没有被新代码破坏。相关文档见 `docs/phase3_loop32_33_residual_and_content_pe_v2.md`。
+
 因此，下一阶段 P1 不应继续把主要时间花在“再替换少量 Val 噪声样本”上，而应转为三个方向：
 
-1. **把 Loop28 content PE metadata 正式产品化并继续扩展内容特征。** 当前大量白样本在数据集中表现为 SHA 文件名或无扩展名，但实战文件名可被任意改写，所以 filename/extension 只能作为错误分析切片，不能作为生产模型输入。Loop28 已证明 PE 内容侧信号有效，下一步应把入口点/子系统、签名/证书、导入表可信度、overlay/packer 风险、section 权限组合、data directory、import/export/resource/TLS/reloc 等特征并入稳定 schema，而不是长期停留在 Stage-2 sidecar。
-2. **补 DLL/sys 恶意召回特征。** DLL 和 sys 的恶意 FN 表明当前 PE/stat/8192 字节头部特征对库文件、驱动类样本仍不够敏感。建议继续细化 exports、subsystem、service/driver hints、section 权限组合、TLS、relocation、import category 和 driver/service 相关 API 特征。
+1. **把 Loop28 content PE metadata 正式产品化，但不要盲目加宽。** 当前大量白样本在数据集中表现为 SHA 文件名或无扩展名，但实战文件名可被任意改写，所以 filename/extension 只能作为错误分析切片，不能作为生产模型输入。Loop28 已证明 PE 内容侧信号有效；Loop32/33 又证明“直接追加一大包细特征”不够稳。下一步应把 Loop28 的 100 维内容特征并入稳定 schema，并用 Val-only 的特征组选择或 OOF stacking 判断哪些 v2 子组真正有用。
+2. **补 DLL/sys 恶意召回特征，但必须窄口径验证。** DLL 和 sys 的恶意 FN 表明当前 PE/stat/8192 字节头部特征对库文件、驱动类样本仍不够敏感。建议继续研究 exports、subsystem、service/driver hints、section 权限组合、TLS、relocation、import category 和 driver/service 相关 API 特征，但每次只引入一个明确子组，先过 Val 的 `162` errors 门槛，再进入 Test-10k。
 3. **从 Stage-2 过渡到真正的 OOF stacking。** 现在 Stage-2 已证明能把 base F1 从约 `0.93` 拉到 `0.984`，但仍是基于同一个 base checkpoint 的二阶段表格模型。下一步应训练多 seed/多视角 base 模型，使用 out-of-fold 预测训练校准器/stacker，避免单模型盲区被 Stage-2 继承。
 
 当前科学判断：`99.9%` 不是短期阈值或小清洗能达到的指标。Loop28 把 full-test F1 推到 `0.98784`，说明内容特征方向正确，但距离 `0.999` 仍有约 `1900` 个错误的缺口。合理阶段目标应先定为 `99.0%+` full-test F1，并把 FP/FN 分业务成本分别设门槛。继续挑战 `99.9%` 可以保留为长期目标，但需要把“数据标签可信度”“PE/DLL/sys 内容覆盖”和“多模型 OOF stacking”作为前置工程。

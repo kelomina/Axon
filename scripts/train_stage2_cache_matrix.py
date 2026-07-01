@@ -191,6 +191,166 @@ CONTENT_PE_FEATURE_NAMES.extend(
     ]
 )
 
+CONTENT_PE_V2_IMPORT_DLLS = [
+    "kernel32.dll",
+    "ntdll.dll",
+    "user32.dll",
+    "advapi32.dll",
+    "shell32.dll",
+    "ole32.dll",
+    "oleaut32.dll",
+    "gdi32.dll",
+    "comctl32.dll",
+    "comdlg32.dll",
+    "shlwapi.dll",
+    "version.dll",
+    "setupapi.dll",
+    "msvcrt.dll",
+    "ucrtbase.dll",
+    "vcruntime140.dll",
+    "ws2_32.dll",
+    "wininet.dll",
+    "winhttp.dll",
+    "urlmon.dll",
+    "dnsapi.dll",
+    "iphlpapi.dll",
+    "netapi32.dll",
+    "crypt32.dll",
+    "bcrypt.dll",
+    "secur32.dll",
+    "psapi.dll",
+    "wtsapi32.dll",
+    "dbghelp.dll",
+    "imagehlp.dll",
+    "mpr.dll",
+    "wintrust.dll",
+]
+
+CONTENT_PE_V2_API_CATEGORIES = {
+    "service": ["openscmanager", "createservice", "startservice", "controlservice", "deleteservice"],
+    "driver": ["ntloaddriver", "zwloaddriver", "deviceiocontrol", "createsymboliclink", "ioctl"],
+    "privilege": ["adjusttokenprivileges", "openprocesstoken", "lookupprivilege", "impersonate"],
+    "antidebug": [
+        "isdebuggerpresent",
+        "checkremotedebugger",
+        "ntqueryinformationprocess",
+        "outputdebugstring",
+    ],
+    "memory": ["virtualalloc", "virtualallocex", "virtualprotect", "virtualprotectex", "heapalloc"],
+    "thread": ["createthread", "createremotethread", "queueuserapc", "rtlcreateuserthread", "setthreadcontext"],
+    "module": ["loadlibrary", "getprocaddress", "ldrloaddll", "freelibrary"],
+    "process_enum": ["createtoolhelp32snapshot", "process32first", "process32next", "enumprocesses"],
+    "persistence": ["regsetvalue", "regcreatekey", "createservice", "schtasks", "startup"],
+    "network_http": ["internetopen", "internetconnect", "httpopenrequest", "httpsendrequest", "winhttp"],
+    "network_socket": ["socket", "connect", "bind", "listen", "accept", "wsastartup"],
+    "file_mutation": ["createfile", "writefile", "deletefile", "movefile", "copyfile", "setfileattributes"],
+    "crypto_cert": ["crypt", "bcrypt", "cert", "winverifytrust"],
+    "resource": ["findresource", "loadresource", "lockresource", "sizeofresource", "beginupdateresource"],
+    "installer": ["msi", "setup", "install", "uninstall"],
+    "com": ["cocreateinstance", "coinitialize", "clsidfromprogid", "regsvr"],
+}
+
+CONTENT_PE_V2_RESOURCE_TYPES = {
+    "cursor": 1,
+    "bitmap": 2,
+    "icon": 3,
+    "menu": 4,
+    "dialog": 5,
+    "string": 6,
+    "rcdata": 10,
+    "group_cursor": 12,
+    "group_icon": 14,
+    "version": 16,
+    "manifest": 24,
+}
+
+CONTENT_PE_V2_EXPORT_PATTERNS = {
+    "com": ["dllgetclassobject", "dllcanunloadnow", "dllregisterserver", "dllunregisterserver"],
+    "control_panel": ["cplapplet"],
+    "service": ["servicemain", "handler", "startservice"],
+    "plugin": ["plugin", "initialize", "init", "register"],
+}
+
+CONTENT_PE_V2_SECTION_NAME_GROUPS = {
+    "code": [".text", "code"],
+    "data": [".data", ".rdata", ".bss"],
+    "resource": [".rsrc"],
+    "import": [".idata"],
+    "export": [".edata"],
+    "reloc": [".reloc"],
+    "tls": [".tls"],
+    "packer": ["upx", "aspack", "themida", "vmprotect", "enigma", "packed", "nspack", "upack"],
+}
+
+CONTENT_PE_V2_FEATURE_NAMES = []
+for dll_name in CONTENT_PE_V2_IMPORT_DLLS:
+    stem = dll_name[:-4].replace(".", "_")
+    CONTENT_PE_V2_FEATURE_NAMES.extend([f"v2_import_dll_{stem}_present", f"v2_import_dll_{stem}_api_ratio"])
+for category_name in CONTENT_PE_V2_API_CATEGORIES:
+    CONTENT_PE_V2_FEATURE_NAMES.extend(
+        [
+            f"v2_api_{category_name}_present",
+            f"v2_api_{category_name}_count_log",
+            f"v2_api_{category_name}_ratio",
+        ]
+    )
+CONTENT_PE_V2_FEATURE_NAMES.extend(
+    [
+        "v2_delay_import_dll_count_log",
+        "v2_delay_import_api_count_log",
+        "v2_delay_import_ratio",
+        "v2_export_ordinal_only_ratio",
+        "v2_export_forwarder_ratio",
+        "v2_export_mean_name_len_norm",
+        "v2_export_max_name_len_norm",
+        "v2_export_ordinal_span_log",
+    ]
+)
+for pattern_name in CONTENT_PE_V2_EXPORT_PATTERNS:
+    CONTENT_PE_V2_FEATURE_NAMES.append(f"v2_export_pattern_{pattern_name}_present")
+CONTENT_PE_V2_FEATURE_NAMES.extend(
+    [
+        "v2_resource_data_entry_count_log",
+        "v2_resource_named_entry_ratio",
+        "v2_resource_language_count_log",
+        "v2_resource_data_size_log",
+        "v2_resource_max_data_size_ratio",
+        "v2_resource_mean_entropy",
+        "v2_resource_max_entropy",
+    ]
+)
+for resource_name in CONTENT_PE_V2_RESOURCE_TYPES:
+    CONTENT_PE_V2_FEATURE_NAMES.extend(
+        [f"v2_resource_type_{resource_name}_present", f"v2_resource_type_{resource_name}_count_log"]
+    )
+CONTENT_PE_V2_FEATURE_NAMES.extend(
+    [
+        "v2_section_exec_count_log",
+        "v2_section_write_count_log",
+        "v2_section_read_count_log",
+        "v2_section_exec_write_count_log",
+        "v2_section_exec_high_entropy_ratio",
+        "v2_section_write_high_entropy_ratio",
+        "v2_section_zero_raw_exec_ratio",
+        "v2_section_zero_raw_write_ratio",
+        "v2_section_max_raw_virtual_delta",
+        "v2_section_mean_raw_virtual_delta",
+        "v2_section_max_virtual_raw_ratio_log",
+        "v2_ep_in_exec_section",
+        "v2_ep_in_write_section",
+        "v2_ep_section_entropy",
+        "v2_ep_section_raw_virtual_delta",
+        "v2_first_section_entropy",
+        "v2_first_section_exec",
+        "v2_first_section_write",
+        "v2_last_section_entropy",
+        "v2_last_section_exec",
+        "v2_last_section_write",
+    ]
+)
+for group_name in CONTENT_PE_V2_SECTION_NAME_GROUPS:
+    CONTENT_PE_V2_FEATURE_NAMES.append(f"v2_section_name_group_{group_name}_ratio")
+
 CONTENT_STRING_PATTERNS = {
     "url": [b"http://", b"https://", b"www.", b"ftp://"],
     "network": [b"socket", b"connect", b"recv", b"send", b"wininet", b"ws2_32", b"internetopen", b"urldownload"],
@@ -617,6 +777,277 @@ def _content_pe_features_from_path(file_path: Path) -> np.ndarray:
         pe.close()
 
 
+def _section_entropy(section) -> float:
+    raw_size = int(getattr(section, "SizeOfRawData", 0) or 0)
+    if raw_size <= 0:
+        return 0.0
+    try:
+        return _entropy_from_bytes(section.get_data()[:4096])
+    except Exception:
+        return 0.0
+
+
+def _iter_import_directory_entries(pe) -> list[tuple[str, object]]:
+    entries: list[tuple[str, object]] = []
+    for attr_name in ("DIRECTORY_ENTRY_IMPORT", "DIRECTORY_ENTRY_DELAY_IMPORT"):
+        for entry in getattr(pe, attr_name, []) or []:
+            entries.append((attr_name, entry))
+    return entries
+
+
+def _content_pe_v2_features_from_path(file_path: Path) -> np.ndarray:
+    features: list[float] = []
+    if not PEFILE_AVAILABLE:
+        return np.zeros(len(CONTENT_PE_V2_FEATURE_NAMES), dtype=np.float32)
+
+    try:
+        file_size = file_path.stat().st_size
+    except OSError:
+        return np.zeros(len(CONTENT_PE_V2_FEATURE_NAMES), dtype=np.float32)
+
+    try:
+        pe = pefile.PE(str(file_path), fast_load=True)
+    except Exception:
+        return np.zeros(len(CONTENT_PE_V2_FEATURE_NAMES), dtype=np.float32)
+
+    try:
+        try:
+            pe.parse_data_directories(
+                directories=[
+                    pefile.DIRECTORY_ENTRY["IMAGE_DIRECTORY_ENTRY_IMPORT"],
+                    pefile.DIRECTORY_ENTRY["IMAGE_DIRECTORY_ENTRY_EXPORT"],
+                    pefile.DIRECTORY_ENTRY["IMAGE_DIRECTORY_ENTRY_RESOURCE"],
+                    pefile.DIRECTORY_ENTRY["IMAGE_DIRECTORY_ENTRY_BASERELOC"],
+                    pefile.DIRECTORY_ENTRY["IMAGE_DIRECTORY_ENTRY_TLS"],
+                    pefile.DIRECTORY_ENTRY["IMAGE_DIRECTORY_ENTRY_DELAY_IMPORT"],
+                ]
+            )
+        except Exception:
+            pass
+
+        import_dlls: list[str] = []
+        import_names: list[str] = []
+        ordinal_imports = 0
+        dll_api_counts = {name: 0 for name in CONTENT_PE_V2_IMPORT_DLLS}
+        delay_import_api_count = 0
+        delay_import_dlls = set()
+        category_counts = {category: 0 for category in CONTENT_PE_V2_API_CATEGORIES}
+
+        for directory_name, entry in _iter_import_directory_entries(pe):
+            dll_name = _safe_lower_bytes(getattr(entry, "dll", None)).split("\\")[-1]
+            if dll_name:
+                import_dlls.append(dll_name)
+                if directory_name == "DIRECTORY_ENTRY_DELAY_IMPORT":
+                    delay_import_dlls.add(dll_name)
+            entry_import_count = 0
+            for imp in getattr(entry, "imports", []) or []:
+                entry_import_count += 1
+                if directory_name == "DIRECTORY_ENTRY_DELAY_IMPORT":
+                    delay_import_api_count += 1
+                if getattr(imp, "name", None):
+                    api_name = _safe_lower_bytes(imp.name)
+                    if api_name:
+                        import_names.append(api_name)
+                        for category, keywords in CONTENT_PE_V2_API_CATEGORIES.items():
+                            if any(keyword in api_name for keyword in keywords):
+                                category_counts[category] += 1
+                else:
+                    ordinal_imports += 1
+            if dll_name in dll_api_counts:
+                dll_api_counts[dll_name] += entry_import_count
+
+        total_imports = len(import_names) + ordinal_imports
+        imported_dll_set = set(import_dlls)
+        for dll_name in CONTENT_PE_V2_IMPORT_DLLS:
+            features.extend(
+                [
+                    1.0 if dll_name in imported_dll_set else 0.0,
+                    _safe_ratio(dll_api_counts[dll_name], total_imports),
+                ]
+            )
+        for category in CONTENT_PE_V2_API_CATEGORIES:
+            count = category_counts[category]
+            features.extend([1.0 if count > 0 else 0.0, math.log1p(count), _safe_ratio(count, total_imports)])
+
+        features.extend(
+            [
+                math.log1p(len(delay_import_dlls)),
+                math.log1p(delay_import_api_count),
+                _safe_ratio(delay_import_api_count, total_imports),
+            ]
+        )
+
+        export_count = 0
+        export_name_count = 0
+        export_forwarder_count = 0
+        export_name_lengths: list[int] = []
+        export_ordinals: list[int] = []
+        export_pattern_hits = {name: 0 for name in CONTENT_PE_V2_EXPORT_PATTERNS}
+        if hasattr(pe, "DIRECTORY_ENTRY_EXPORT"):
+            for symbol in getattr(pe.DIRECTORY_ENTRY_EXPORT, "symbols", []) or []:
+                export_count += 1
+                ordinal = getattr(symbol, "ordinal", None)
+                if ordinal is not None:
+                    export_ordinals.append(int(ordinal))
+                if getattr(symbol, "forwarder", None):
+                    export_forwarder_count += 1
+                export_name = _safe_lower_bytes(getattr(symbol, "name", None))
+                if export_name:
+                    export_name_count += 1
+                    export_name_lengths.append(len(export_name))
+                    for pattern_name, keywords in CONTENT_PE_V2_EXPORT_PATTERNS.items():
+                        if any(keyword in export_name for keyword in keywords):
+                            export_pattern_hits[pattern_name] += 1
+        ordinal_span = (max(export_ordinals) - min(export_ordinals) + 1) if export_ordinals else 0
+        features.extend(
+            [
+                _safe_ratio(export_count - export_name_count, export_count),
+                _safe_ratio(export_forwarder_count, export_count),
+                _safe_ratio(float(np.mean(export_name_lengths)) if export_name_lengths else 0.0, 128.0),
+                _safe_ratio(max(export_name_lengths) if export_name_lengths else 0, 256.0),
+                math.log1p(ordinal_span),
+            ]
+        )
+        for pattern_name in CONTENT_PE_V2_EXPORT_PATTERNS:
+            features.append(1.0 if export_pattern_hits[pattern_name] > 0 else 0.0)
+
+        resource_entries = 0
+        resource_named_entries = 0
+        resource_type_counts = {name: 0 for name in CONTENT_PE_V2_RESOURCE_TYPES}
+        resource_languages = set()
+        resource_sizes: list[int] = []
+        resource_entropies: list[float] = []
+        if hasattr(pe, "DIRECTORY_ENTRY_RESOURCE"):
+            stack = [(entry, 0, getattr(entry, "id", None)) for entry in getattr(pe.DIRECTORY_ENTRY_RESOURCE, "entries", [])]
+            while stack:
+                entry, depth, root_type = stack.pop()
+                resource_entries += 1
+                if getattr(entry, "name", None) is not None:
+                    resource_named_entries += 1
+                if depth == 0:
+                    root_type = getattr(entry, "id", root_type)
+                if depth == 2 and getattr(entry, "id", None) is not None:
+                    resource_languages.add(int(entry.id))
+                for resource_name, resource_id in CONTENT_PE_V2_RESOURCE_TYPES.items():
+                    if root_type == resource_id:
+                        resource_type_counts[resource_name] += 1
+                if hasattr(entry, "data"):
+                    data_struct = getattr(entry.data, "struct", None)
+                    size = int(getattr(data_struct, "Size", 0) or 0)
+                    rva = int(getattr(data_struct, "OffsetToData", 0) or 0)
+                    if size > 0:
+                        resource_sizes.append(size)
+                        if len(resource_entropies) < 64:
+                            try:
+                                offset = pe.get_offset_from_rva(rva)
+                                with file_path.open("rb") as handle:
+                                    handle.seek(offset)
+                                    resource_entropies.append(_entropy_from_bytes(handle.read(min(size, 4096))))
+                            except Exception:
+                                pass
+                if hasattr(entry, "directory"):
+                    for child in getattr(entry.directory, "entries", []) or []:
+                        stack.append((child, depth + 1, root_type))
+
+        resource_total_size = sum(resource_sizes)
+        features.extend(
+            [
+                math.log1p(len(resource_sizes)),
+                _safe_ratio(resource_named_entries, resource_entries),
+                math.log1p(len(resource_languages)),
+                math.log1p(resource_total_size),
+                _safe_ratio(max(resource_sizes) if resource_sizes else 0, file_size),
+                float(np.mean(resource_entropies)) if resource_entropies else 0.0,
+                float(np.max(resource_entropies)) if resource_entropies else 0.0,
+            ]
+        )
+        for resource_name in CONTENT_PE_V2_RESOURCE_TYPES:
+            count = resource_type_counts[resource_name]
+            features.extend([1.0 if count > 0 else 0.0, math.log1p(count)])
+
+        optional = pe.OPTIONAL_HEADER
+        entry_point_rva = int(getattr(optional, "AddressOfEntryPoint", 0) or 0)
+        section_infos = []
+        group_hits = {name: 0 for name in CONTENT_PE_V2_SECTION_NAME_GROUPS}
+        for section in pe.sections:
+            chars = int(getattr(section, "Characteristics", 0) or 0)
+            is_exec = bool(chars & 0x20000000)
+            is_read = bool(chars & 0x40000000)
+            is_write = bool(chars & 0x80000000)
+            raw_size = float(getattr(section, "SizeOfRawData", 0) or 0)
+            virt_size = float(getattr(section, "Misc_VirtualSize", 0) or 0)
+            entropy = _section_entropy(section)
+            virtual_address = int(getattr(section, "VirtualAddress", 0) or 0)
+            virtual_span = max(int(virt_size), int(raw_size), 1)
+            contains_ep = virtual_address <= entry_point_rva < (virtual_address + virtual_span)
+            raw_virtual_delta = abs(raw_size - virt_size) / max(raw_size, virt_size, 1.0)
+            virtual_raw_ratio = virt_size / max(raw_size, 1.0)
+            section_name = _safe_lower_bytes(getattr(section, "Name", b"")).strip("\x00")
+            for group_name, keywords in CONTENT_PE_V2_SECTION_NAME_GROUPS.items():
+                if any(keyword in section_name for keyword in keywords):
+                    group_hits[group_name] += 1
+            section_infos.append(
+                {
+                    "exec": is_exec,
+                    "read": is_read,
+                    "write": is_write,
+                    "zero_raw": raw_size <= 0,
+                    "entropy": entropy,
+                    "contains_ep": contains_ep,
+                    "raw_virtual_delta": raw_virtual_delta,
+                    "virtual_raw_ratio": virtual_raw_ratio,
+                }
+            )
+
+        section_count = max(len(section_infos), 1)
+        exec_sections = [info for info in section_infos if info["exec"]]
+        write_sections = [info for info in section_infos if info["write"]]
+        read_sections = [info for info in section_infos if info["read"]]
+        exec_write_sections = [info for info in section_infos if info["exec"] and info["write"]]
+        ep_section = next((info for info in section_infos if info["contains_ep"]), None)
+        first_section = section_infos[0] if section_infos else None
+        last_section = section_infos[-1] if section_infos else None
+        deltas = [float(info["raw_virtual_delta"]) for info in section_infos]
+        virtual_raw_ratios = [float(info["virtual_raw_ratio"]) for info in section_infos]
+        features.extend(
+            [
+                math.log1p(len(exec_sections)),
+                math.log1p(len(write_sections)),
+                math.log1p(len(read_sections)),
+                math.log1p(len(exec_write_sections)),
+                _safe_ratio(sum(1 for info in exec_sections if info["entropy"] >= 0.80), len(exec_sections)),
+                _safe_ratio(sum(1 for info in write_sections if info["entropy"] >= 0.80), len(write_sections)),
+                _safe_ratio(sum(1 for info in exec_sections if info["zero_raw"]), len(exec_sections)),
+                _safe_ratio(sum(1 for info in write_sections if info["zero_raw"]), len(write_sections)),
+                max(deltas) if deltas else 0.0,
+                float(np.mean(deltas)) if deltas else 0.0,
+                math.log1p(max(virtual_raw_ratios) if virtual_raw_ratios else 0.0),
+                1.0 if ep_section and ep_section["exec"] else 0.0,
+                1.0 if ep_section and ep_section["write"] else 0.0,
+                float(ep_section["entropy"]) if ep_section else 0.0,
+                float(ep_section["raw_virtual_delta"]) if ep_section else 0.0,
+                float(first_section["entropy"]) if first_section else 0.0,
+                1.0 if first_section and first_section["exec"] else 0.0,
+                1.0 if first_section and first_section["write"] else 0.0,
+                float(last_section["entropy"]) if last_section else 0.0,
+                1.0 if last_section and last_section["exec"] else 0.0,
+                1.0 if last_section and last_section["write"] else 0.0,
+            ]
+        )
+        for group_name in CONTENT_PE_V2_SECTION_NAME_GROUPS:
+            features.append(_safe_ratio(group_hits[group_name], section_count))
+
+        if len(features) != len(CONTENT_PE_V2_FEATURE_NAMES):
+            raise ValueError(
+                f"Content PE v2 feature length mismatch: {len(features)} != {len(CONTENT_PE_V2_FEATURE_NAMES)}"
+            )
+        return np.nan_to_num(np.asarray(features, dtype=np.float32), copy=False)
+    except Exception:
+        return np.zeros(len(CONTENT_PE_V2_FEATURE_NAMES), dtype=np.float32)
+    finally:
+        pe.close()
+
+
 def _content_cache_path(row: dict, cache_dir: Optional[str]) -> Optional[Path]:
     if not cache_dir:
         return None
@@ -637,6 +1068,32 @@ def content_pe_features_for_row(row: dict, cache_dir: Optional[str]) -> np.ndarr
 
     source_path = resolve_path(Path(row["source_path"]))
     features = _content_pe_features_from_path(source_path)
+    if cache_path is not None:
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        save_feature_npz_atomic(cache_path, features)
+    return features
+
+
+def _content_pe_v2_cache_path(row: dict, cache_dir: Optional[str]) -> Optional[Path]:
+    if not cache_dir:
+        return None
+    key = (row.get("source_sha256") or "").strip().lower()
+    if not key:
+        source_path = row.get("source_path", "")
+        key = hashlib.sha256(str(resolve_path(Path(source_path))).encode("utf-8", errors="ignore")).hexdigest()
+    return resolve_path(Path(cache_dir)) / f"{key}.npz"
+
+
+def content_pe_v2_features_for_row(row: dict, cache_dir: Optional[str]) -> np.ndarray:
+    cache_path = _content_pe_v2_cache_path(row, cache_dir)
+    if cache_path is not None and cache_path.exists():
+        with np.load(cache_path, allow_pickle=False) as data:
+            features = data["features"].astype(np.float32, copy=False)
+        if features.shape == (len(CONTENT_PE_V2_FEATURE_NAMES),):
+            return features
+
+    source_path = resolve_path(Path(row["source_path"]))
+    features = _content_pe_v2_features_from_path(source_path)
     if cache_path is not None:
         cache_path.parent.mkdir(parents=True, exist_ok=True)
         save_feature_npz_atomic(cache_path, features)
@@ -934,6 +1391,8 @@ class FeatureConfig:
     include_byte_summary: bool
     include_content_pe: bool = False
     content_cache_dir: Optional[str] = None
+    include_content_pe_v2: bool = False
+    content_pe_v2_cache_dir: Optional[str] = None
     include_content_string: bool = False
     content_string_cache_dir: Optional[str] = None
     include_content_cert: bool = False
@@ -990,6 +1449,8 @@ def build_matrix(
             parts.append(_byte_summary_features(byte_seq, feature_config.prefix_len, feature_config.chunk_count))
         if getattr(feature_config, "include_content_pe", False):
             parts.append(content_pe_features_for_row(row, getattr(feature_config, "content_cache_dir", None)))
+        if getattr(feature_config, "include_content_pe_v2", False):
+            parts.append(content_pe_v2_features_for_row(row, getattr(feature_config, "content_pe_v2_cache_dir", None)))
         if getattr(feature_config, "include_content_string", False):
             parts.append(
                 content_string_features_for_row(row, getattr(feature_config, "content_string_cache_dir", None))
@@ -1556,6 +2017,17 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         help="Optional sidecar cache for content-only PE metadata features.",
     )
     parser.add_argument(
+        "--content-pe-v2-features",
+        action="store_true",
+        help="Append expanded content-only PE import/export/resource/section features.",
+    )
+    parser.add_argument(
+        "--content-pe-v2-cache-dir",
+        type=Path,
+        default=None,
+        help="Optional sidecar cache for expanded content-only PE v2 features.",
+    )
+    parser.add_argument(
         "--content-string-features",
         action="store_true",
         help="Append production-stable binary string/keyword features extracted from file content only.",
@@ -1598,6 +2070,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     content_cache_dir = None
     if args.content_pe_features:
         content_cache_dir = resolve_path(args.content_pe_cache_dir or (output_dir / "content_pe_cache_v1"))
+    content_pe_v2_cache_dir = None
+    if args.content_pe_v2_features:
+        content_pe_v2_cache_dir = resolve_path(args.content_pe_v2_cache_dir or (output_dir / "content_pe_v2_cache"))
     content_string_cache_dir = None
     if args.content_string_features:
         content_string_cache_dir = resolve_path(args.content_string_cache_dir or (output_dir / "content_string_cache_v1"))
@@ -1613,6 +2088,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         include_byte_summary=args.feature_set == "extended",
         include_content_pe=bool(args.content_pe_features),
         content_cache_dir=str(content_cache_dir) if content_cache_dir is not None else None,
+        include_content_pe_v2=bool(args.content_pe_v2_features),
+        content_pe_v2_cache_dir=str(content_pe_v2_cache_dir) if content_pe_v2_cache_dir is not None else None,
         include_content_string=bool(args.content_string_features),
         content_string_cache_dir=str(content_string_cache_dir) if content_string_cache_dir is not None else None,
         include_content_cert=bool(args.content_cert_features),
@@ -1722,6 +2199,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "test_predictions": str(resolve_path(args.test_predictions)) if args.test_predictions else None,
         "feature_config": feature_config.__dict__,
         "content_pe_feature_names": CONTENT_PE_FEATURE_NAMES if feature_config.include_content_pe else [],
+        "content_pe_v2_feature_names": (
+            CONTENT_PE_V2_FEATURE_NAMES if getattr(feature_config, "include_content_pe_v2", False) else []
+        ),
         "content_string_feature_names": CONTENT_STRING_FEATURE_NAMES if feature_config.include_content_string else [],
         "content_cert_feature_names": CONTENT_CERT_FEATURE_NAMES if feature_config.include_content_cert else [],
         "records": {"train": train_counts, "val": val_counts},
@@ -1777,6 +2257,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 "selected": selected,
                 "checkpoint_config": checkpoint_config.to_dict(),
                 "content_pe_feature_names": CONTENT_PE_FEATURE_NAMES if feature_config.include_content_pe else [],
+                "content_pe_v2_feature_names": (
+                    CONTENT_PE_V2_FEATURE_NAMES if getattr(feature_config, "include_content_pe_v2", False) else []
+                ),
                 "content_string_feature_names": (
                     CONTENT_STRING_FEATURE_NAMES if feature_config.include_content_string else []
                 ),
