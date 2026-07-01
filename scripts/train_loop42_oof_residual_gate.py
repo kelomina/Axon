@@ -42,6 +42,11 @@ from train_byte_ngram_sgd import (  # noqa: E402
     predict_scores as predict_byte_scores,
     train_candidate as train_byte_candidate,
 )
+from train_loop44_region_byte_ngram import (  # noqa: E402
+    RegionHashConfig,
+    predict_scores as predict_region_scores,
+    train_candidate as train_region_candidate,
+)
 from train_stage2_cache_matrix import (  # noqa: E402
     FeatureConfig,
     assert_stage2_feature_names_safe,
@@ -288,6 +293,81 @@ def oof_byte_ngram_scores(
     return oof, val_scores.astype(np.float32, copy=False), full_model, {"labels": val_labels, **report}
 
 
+def oof_region_ngram_scores(
+    *,
+    train_records: Sequence[dict],
+    train_y: np.ndarray,
+    val_records: Sequence[dict],
+    config: RegionHashConfig,
+    alpha: float,
+    l1_ratio: float,
+    epochs: int,
+    batch_size: int,
+    folds: int,
+    seed: int,
+    allow_missing_source: bool,
+) -> tuple[np.ndarray, np.ndarray, object, dict]:
+    splitter = StratifiedKFold(n_splits=folds, shuffle=True, random_state=seed)
+    train_records_list = list(train_records)
+    oof = np.zeros(train_y.shape[0], dtype=np.float32)
+    fold_reports = []
+    start = time.perf_counter()
+    for fold_index, (fit_idx, holdout_idx) in enumerate(splitter.split(np.zeros_like(train_y), train_y), start=1):
+        fold_train_records = [train_records_list[int(index)] for index in fit_idx]
+        fold_holdout_records = [train_records_list[int(index)] for index in holdout_idx]
+        fold_model = train_region_candidate(
+            fold_train_records,
+            config,
+            alpha=alpha,
+            l1_ratio=l1_ratio,
+            epochs=epochs,
+            batch_size=batch_size,
+            seed=seed + fold_index,
+            allow_missing_source=allow_missing_source,
+        )
+        holdout_labels, holdout_scores = predict_region_scores(
+            fold_model,
+            fold_holdout_records,
+            config,
+            batch_size,
+            allow_missing_source=allow_missing_source,
+        )
+        if not np.array_equal(holdout_labels, train_y[holdout_idx]):
+            raise ValueError(f"Region n-gram fold label alignment failed at fold {fold_index}")
+        oof[holdout_idx] = holdout_scores.astype(np.float32, copy=False)
+        fold_reports.append({"fold": fold_index, "rows": int(holdout_idx.shape[0])})
+        print(f"[region-oof] fold={fold_index}/{folds} rows={holdout_idx.shape[0]}", flush=True)
+
+    full_model = train_region_candidate(
+        train_records_list,
+        config,
+        alpha=alpha,
+        l1_ratio=l1_ratio,
+        epochs=epochs,
+        batch_size=batch_size,
+        seed=seed,
+        allow_missing_source=allow_missing_source,
+    )
+    val_labels, val_scores = predict_region_scores(
+        full_model,
+        val_records,
+        config,
+        batch_size,
+        allow_missing_source=allow_missing_source,
+    )
+    report = {
+        "name": "region_byte_ngram_sgd",
+        "alpha": float(alpha),
+        "l1_ratio": float(l1_ratio),
+        "epochs": int(epochs),
+        "batch_size": int(batch_size),
+        "allow_missing_source": bool(allow_missing_source),
+        "fit_sec": time.perf_counter() - start,
+        "folds": fold_reports,
+    }
+    return oof, val_scores.astype(np.float32, copy=False), full_model, {"labels": val_labels, **report}
+
+
 def prediction_metrics(labels: np.ndarray, predictions: np.ndarray, scores: Optional[np.ndarray] = None) -> dict:
     tn, fp, fn, tp = confusion_matrix(labels, predictions.astype(np.int64), labels=[0, 1]).ravel()
     result = {
@@ -495,6 +575,8 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     parser.add_argument("--train-predictions", type=Path, required=True)
     parser.add_argument("--val-predictions", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
+    parser.add_argument("--max-train-rows", type=int, default=None)
+    parser.add_argument("--max-val-rows", type=int, default=None)
     parser.add_argument("--thresholds", default="0.05:0.95:0.005")
     parser.add_argument("--gate-thresholds", default="0.50:0.95:0.01")
     parser.add_argument("--prefix-len", type=int, default=256)
@@ -529,6 +611,24 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     parser.add_argument("--byte-ngram-batch-size", type=int, default=256)
     parser.add_argument("--byte-ngram-include-byte-hist", action="store_true")
     parser.add_argument("--byte-ngram-include-cache-features", action="store_true")
+    parser.add_argument("--include-region-ngram", action="store_true")
+    parser.add_argument("--region-ngram-n-features", type=int, default=2**21)
+    parser.add_argument("--region-ngram-prefix-len", type=int, default=4096)
+    parser.add_argument("--region-ngram-window", type=int, default=1024)
+    parser.add_argument("--region-ngram-tail-window", type=int, default=1024)
+    parser.add_argument("--region-ngram-min", type=int, default=2)
+    parser.add_argument("--region-ngram-max", type=int, default=5)
+    parser.add_argument("--region-ngram-stride", type=int, default=2)
+    parser.add_argument("--region-ngram-alpha", type=float, default=3.0e-6)
+    parser.add_argument("--region-ngram-l1-ratio", type=float, default=0.0)
+    parser.add_argument("--region-ngram-epochs", type=int, default=2)
+    parser.add_argument("--region-ngram-batch-size", type=int, default=256)
+    parser.add_argument("--region-ngram-include-prefix-features", action="store_true")
+    parser.add_argument("--region-ngram-include-full-ngram-features", action="store_true")
+    parser.add_argument("--region-ngram-include-byte-hist", action="store_true")
+    parser.add_argument("--region-ngram-include-cache-features", action="store_true")
+    parser.add_argument("--region-ngram-no-region-scalar-features", action="store_true")
+    parser.add_argument("--region-ngram-allow-missing-source", action="store_true")
     parser.add_argument("--neutral-weight", type=float, default=0.05)
     parser.add_argument("--folds", type=int, default=5)
     parser.add_argument("--seed", type=int, default=42)
@@ -577,8 +677,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     )
     safe_feature_name_groups = assert_stage2_feature_names_safe(feature_config, checkpoint_config=checkpoint_config)
 
-    train_rows = read_prediction_rows(args.train_predictions)
-    val_rows = read_prediction_rows(args.val_predictions)
+    train_rows = read_prediction_rows(args.train_predictions, args.max_train_rows)
+    val_rows = read_prediction_rows(args.val_predictions, args.max_val_rows)
     train_x, train_y, train_base_exported, train_kept_rows, train_counts = build_matrix(
         train_rows, checkpoint_config, feature_config
     )
@@ -600,7 +700,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     if len(base_specs) != 1:
         raise ValueError(f"Expected exactly one base model candidate, got {[name for name, _ in base_specs]}")
     candidate_specs = filter_model_candidates(model_candidates(int(args.seed)), args.candidate_model_candidates)
-    if not candidate_specs and not args.include_byte_ngram:
+    if not candidate_specs and not args.include_byte_ngram and not args.include_region_ngram:
         raise ValueError("No candidate override models selected")
 
     stage2_specs = base_specs + candidate_specs
@@ -683,6 +783,54 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 "train_oof_scores": byte_oof,
                 "val_scores": byte_val_scores,
                 "model": byte_model,
+            }
+        )
+
+    region_report = None
+    region_model = None
+    if args.include_region_ngram:
+        region_config = RegionHashConfig(
+            n_features=int(args.region_ngram_n_features),
+            prefix_len=int(args.region_ngram_prefix_len),
+            ngram_min=int(args.region_ngram_min),
+            ngram_max=int(args.region_ngram_max),
+            ngram_stride=int(args.region_ngram_stride),
+            include_prefix_features=bool(args.region_ngram_include_prefix_features),
+            include_full_ngram_features=bool(args.region_ngram_include_full_ngram_features),
+            include_region_ngram_features=True,
+            include_region_scalar_features=not bool(args.region_ngram_no_region_scalar_features),
+            include_byte_hist=bool(args.region_ngram_include_byte_hist),
+            include_cache_features=bool(args.region_ngram_include_cache_features),
+            region_window=max(1, int(args.region_ngram_window)),
+            tail_window=max(1, int(args.region_ngram_tail_window)),
+            max_byte_length=checkpoint_config.max_byte_length,
+            pe_feature_dim=checkpoint_config.pe_feature_dim,
+            stat_feature_dim=checkpoint_config.stat_feature_dim,
+            lightweight_feature_dim=checkpoint_config.lightweight_feature_dim,
+        )
+        region_oof, region_val_scores, region_model, region_report = oof_region_ngram_scores(
+            train_records=train_kept_rows,
+            train_y=train_y,
+            val_records=val_kept_rows,
+            config=region_config,
+            alpha=float(args.region_ngram_alpha),
+            l1_ratio=float(args.region_ngram_l1_ratio),
+            epochs=int(args.region_ngram_epochs),
+            batch_size=int(args.region_ngram_batch_size),
+            folds=folds,
+            seed=int(args.seed),
+            allow_missing_source=bool(args.region_ngram_allow_missing_source),
+        )
+        if not np.array_equal(region_report.pop("labels"), val_y):
+            raise ValueError("Region n-gram validation labels are not aligned with Stage-2 validation rows")
+        region_report["hash_config"] = region_config.__dict__
+        candidate_score_sets.append(
+            {
+                "name": "region_byte_ngram_sgd",
+                "kind": "region_byte_ngram",
+                "train_oof_scores": region_oof,
+                "val_scores": region_val_scores,
+                "model": region_model,
             }
         )
 
@@ -856,6 +1004,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                     name: model for (name, _prototype), model in zip(stage2_specs, fitted_stage2_models)
                 },
                 "byte_ngram_model": byte_model,
+                "region_ngram_model": region_model,
                 "identity_feature_policy": (
                     "source_path/source_sha256/cache_path/sample_index/split/filename/extension/directory "
                     "are audit or alignment fields only and are forbidden as model features"
@@ -863,6 +1012,14 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             },
             handle,
         )
+
+    val_kept_count = int(val_counts.get("kept", 0)) if isinstance(val_counts, dict) else int(len(val_y))
+    if val_kept_count < 20000:
+        test_gate_decision = "smoke_only_not_eligible_for_test10k"
+    elif int(selected["val_gate_best"]["errors"]) <= LOOP42_TEST10K_ERROR_GATE:
+        test_gate_decision = "eligible_for_test10k"
+    else:
+        test_gate_decision = "reject_val_margin_too_small"
 
     report = {
         "schema": "axon_loop42_oof_residual_gate_v1",
@@ -897,6 +1054,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         },
         "stage2_reports": stage2_reports,
         "byte_ngram_report": byte_report,
+        "region_ngram_report": region_report,
         "candidates": sorted(
             candidate_reports,
             key=lambda row: (
@@ -909,11 +1067,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "model_path": str(selected_model_path),
         "val_predictions_csv": str(val_predictions_path),
         "test_ran": False,
-        "test_gate_decision": (
-            "eligible_for_test10k"
-            if int(selected["val_gate_best"]["errors"]) <= LOOP42_TEST10K_ERROR_GATE
-            else "reject_val_margin_too_small"
-        ),
+        "test_gate_decision": test_gate_decision,
         "test10k_error_gate": LOOP42_TEST10K_ERROR_GATE,
     }
     report_path = output_dir / "loop42_oof_residual_gate_report.json"

@@ -2081,6 +2081,8 @@ def model_candidates(seed: int) -> list[tuple[str, object]]:
 
 
 def filter_model_candidates(candidates: list[tuple[str, object]], names: str) -> list[tuple[str, object]]:
+    if names.strip() == "__none__":
+        return []
     selected_names = [name.strip() for name in names.split(",") if name.strip()]
     if not selected_names:
         return candidates

@@ -1,11 +1,15 @@
 import numpy as np
+import pytest
 
 from scripts.train_loop42_oof_residual_gate import (
+    RegionHashConfig,
     build_gate_score_features,
     gate_training_targets,
+    oof_region_ngram_scores,
     override_predictions,
     prediction_metrics,
 )
+from scripts.train_stage2_cache_matrix import filter_model_candidates
 
 
 def test_build_gate_score_features_is_score_only_and_stable():
@@ -82,3 +86,75 @@ def test_prediction_metrics_counts_errors():
     assert metrics["false_positive"] == 1
     assert metrics["false_negative"] == 1
     assert metrics["errors"] == 2
+
+
+def test_filter_model_candidates_accepts_explicit_none_sentinel():
+    candidates = [("first", object()), ("second", object())]
+
+    assert filter_model_candidates(candidates, "__none__") == []
+    assert filter_model_candidates(candidates, "") == candidates
+
+
+def test_oof_region_ngram_scores_aligns_fold_and_val_labels(monkeypatch: pytest.MonkeyPatch):
+    train_records = [
+        {"label": 0, "score": 0.1},
+        {"label": 1, "score": 0.9},
+        {"label": 0, "score": 0.2},
+        {"label": 1, "score": 0.8},
+    ]
+    val_records = [
+        {"label": 0, "score": 0.3},
+        {"label": 1, "score": 0.7},
+    ]
+    config = RegionHashConfig(
+        n_features=32,
+        prefix_len=8,
+        ngram_min=2,
+        ngram_max=2,
+        ngram_stride=1,
+        include_prefix_features=False,
+        include_full_ngram_features=False,
+        include_region_ngram_features=True,
+        include_region_scalar_features=True,
+        include_byte_hist=False,
+        include_cache_features=False,
+        region_window=8,
+        tail_window=8,
+        max_byte_length=8,
+        pe_feature_dim=2,
+        stat_feature_dim=2,
+        lightweight_feature_dim=2,
+    )
+
+    def fake_train_candidate(records, _config, **_kwargs):
+        return {"rows": len(records)}
+
+    def fake_predict_scores(_model, records, _config, _batch_size, *, allow_missing_source):
+        assert allow_missing_source is True
+        labels = np.asarray([record["label"] for record in records], dtype=np.int64)
+        scores = np.asarray([record["score"] for record in records], dtype=np.float32)
+        return labels, scores
+
+    monkeypatch.setattr("scripts.train_loop42_oof_residual_gate.train_region_candidate", fake_train_candidate)
+    monkeypatch.setattr("scripts.train_loop42_oof_residual_gate.predict_region_scores", fake_predict_scores)
+
+    oof, val_scores, model, report = oof_region_ngram_scores(
+        train_records=train_records,
+        train_y=np.asarray([0, 1, 0, 1], dtype=np.int64),
+        val_records=val_records,
+        config=config,
+        alpha=1e-5,
+        l1_ratio=0.0,
+        epochs=1,
+        batch_size=2,
+        folds=2,
+        seed=42,
+        allow_missing_source=True,
+    )
+
+    np.testing.assert_allclose(oof, [0.1, 0.9, 0.2, 0.8])
+    np.testing.assert_allclose(val_scores, [0.3, 0.7])
+    assert model == {"rows": 4}
+    assert report["name"] == "region_byte_ngram_sgd"
+    assert report["labels"].tolist() == [0, 1]
+    assert len(report["folds"]) == 2

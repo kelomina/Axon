@@ -58,6 +58,8 @@ Loop43 继续验证内容侧更窄交叉特征，而不是再宽泛堆 v2。它�
 
 Loop44 已验证 regionized byte n-gram。它不再只看缓存前缀，而是从 PE 内容中定位 head/tail、entrypoint、resource/import/export/security directory、first exec section、last section、max-entropy section 和排除证书 blob 后的 overlay payload，再对这些区域做带 region salt 的 hashed n-gram。路径、文件名、扩展名、目录、hash、sample index、split 和行顺序仍只用于打开文件、对齐和审计，不作为模型特征。完整 `20000 train / 20000 val` Val-only 结果显示：standalone Val `596` errors、F1 `0.97031`，比 Loop41 stronger prefix byte n-gram 的 `944` errors 明显更强；但和 Loop28 做 Val-only 融合时最佳仍只有 `161` errors，和 Loop28 在同一扫描里的 `161` errors 持平，未形成 margin。因此 Loop44 拒绝 Test-10k。结论是：语义区域字节确有互补信息，但浅 SGD 弱模型不足以修复 Loop28；若复用这条信号，应优先做严格 OOF residual gate 或更高质量 parser 特征，而不是直接扩大 hash 空间。相关文档见 `docs/phase3_loop44_region_byte_ngram_valonly.md`。
 
+Loop45 已把 Loop44 的 regionized byte n-gram 放进严格 OOF residual gate：base 与 region candidate 的 train 分数都使用 5 折 OOF，gate 只在 train OOF 上学习“candidate 何时能纠正 base”，Val 只选择 gate 模型和阈值。完整 `20000 train / 20000 val`、cache miss `0`。最佳 `region_byte_ngram_sgd + gate_logreg_balanced_c0.25` 的 Val 为 F1 `0.9905113863`、`190` errors、FP/FN `107/83`，比 gate 内部 base 少 `3` 个错误，但仍比 Loop28 锁定参考多 `28` 个错误；train OOF 中 beneficial overrides 只有 `92`，harmful overrides 有 `676`，说明这条弱模型信号不够干净。Loop45 因此拒绝 Test-10k，立即的 region n-gram OOF gate 分支也应暂停。相关文档见 `docs/phase3_loop45_oof_region_gate.md`。
+
 因此，下一阶段 P1 不应继续把主要时间花在“再替换少量 Val 噪声样本”上，而应转为三个方向：
 
 1. **把 Loop28 content PE metadata 正式产品化，但不要继续在当前 v2 上排列组合。** 当前大量白样本在数据集中表现为 SHA 文件名或无扩展名，但实战文件名可被任意改写，所以 filename/extension 只能作为错误分析切片，不能作为生产模型输入。Loop28 已证明 PE 内容侧信号有效；Loop32-35 又证明“直接追加一大包细特征”以及“把这包细特征拆子组”都不够稳。下一步应把 Loop28 的 100 维内容特征并入稳定 schema，同时转向 OOF stacking 或更高质量解析，而不是继续消耗轮次在 v2 group permutation 上。
