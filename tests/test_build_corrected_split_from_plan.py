@@ -181,3 +181,43 @@ def test_replacement_shortfall_raises_instead_of_emitting_short_split():
                 plan_csv=plan_csv,
                 candidate_csv=candidates_csv,
             )
+
+
+def test_excluded_sample_cannot_be_selected_as_its_own_replacement_from_candidate_csv():
+    with _case_dir("corrected_split_self_replacement") as tmp_path:
+        split_csv = tmp_path / "split.csv"
+        plan_csv = tmp_path / "plan.csv"
+        candidates_csv = tmp_path / "candidates.csv"
+        _write_csv(
+            split_csv,
+            SPLIT_FIELDS,
+            [{"source_path": "data/bad.exe", "label": "1", "sample_index": "0", "split": "val"}],
+        )
+        _write_csv(
+            plan_csv,
+            PLAN_FIELDS,
+            [{
+                "source_path": "data/bad.exe",
+                "source_sha256": "",
+                "sample_index": "0",
+                "split": "val",
+                "original_label": "1",
+                "planned_label": "1",
+                "plan_action": "exclude_and_replace",
+                "replacement_required": "true",
+                "replacement_label": "1",
+                "usable_for_training_policy": "false",
+            }],
+        )
+        _write_csv(
+            candidates_csv,
+            CANDIDATE_FIELDS,
+            [{"source_path": "data/bad.exe", "label": "1", "source_sha256": ""}],
+        )
+
+        with pytest.raises(ValueError, match="Not enough unused same-label replacement candidates"):
+            build_corrected_split(
+                split_csv=split_csv,
+                plan_csv=plan_csv,
+                candidate_csv=candidates_csv,
+            )

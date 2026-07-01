@@ -49,6 +49,7 @@ Use `recommended_action` for the operational recommendation:
 - Test-split verdicts are held out of training policy by default.
 - `out_of_scope` and `feature_broken` rows become `exclude_and_replace`.
 - Excluded rows require fresh replacement sampling from valid unused candidates with the same intended label. They are not used to fill their own slots.
+- The corrected split builder also rejects candidate rows that match an excluded sample, so a manually edited candidate CSV cannot accidentally put the bad file back into the 20w split.
 
 ## Interpretation
 
@@ -63,7 +64,7 @@ If `replacement_required > 0`, the next data step is to regenerate a corrected s
 
 ## Build a Corrected Split
 
-If replacements are required, first build an unused raw-PE candidate pool:
+If replacements are required, first build an unused raw-PE candidate pool. The pool must contain valid fresh files, not the excluded files being replaced:
 
 ```powershell
 .\vnev\Scripts\python.exe scripts\build_replacement_candidate_pool.py `

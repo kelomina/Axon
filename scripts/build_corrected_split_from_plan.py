@@ -132,14 +132,19 @@ def choose_replacements(
     *,
     candidate_rows: Sequence[dict],
     used_keys: set[str],
+    forbidden_replacement_keys: set[str],
     replacement_requests: Sequence[dict],
     seed: int,
 ) -> tuple[list[dict], dict]:
     rng = random.Random(seed)
     by_label: dict[str, list[dict]] = {"0": [], "1": []}
     seen_candidate_keys: set[str] = set()
+    self_replacement_candidates_skipped = 0
     for row in candidate_rows:
         keys = key_set(row)
+        if keys & forbidden_replacement_keys:
+            self_replacement_candidates_skipped += 1
+            continue
         if keys & used_keys or keys & seen_candidate_keys:
             continue
         label = str(row.get("label", ""))
@@ -170,6 +175,8 @@ def choose_replacements(
         used_keys.update(key_set(candidate))
     summary = {
         "candidate_available_before": available_before,
+        "forbidden_replacement_key_count": len(forbidden_replacement_keys),
+        "self_replacement_candidates_skipped": self_replacement_candidates_skipped,
         "replacement_requests": len(replacement_requests),
         "selected_replacements": len(selected),
         "shortfall": dict(sorted(shortfall.items())),
@@ -227,9 +234,11 @@ def build_corrected_split(
             used_keys.update(key_set(kept))
 
     replacement_requests = []
+    forbidden_replacement_keys: set[str] = set()
     for row in plan_rows:
         if str(row.get("replacement_required", "")).casefold() == "true":
             replacement_requests.append(row)
+            forbidden_replacement_keys.update(key_set(row))
 
     candidate_rows = load_candidate_rows(
         candidate_csv=candidate_csv,
@@ -240,6 +249,7 @@ def build_corrected_split(
     replacements, replacement_summary = choose_replacements(
         candidate_rows=candidate_rows,
         used_keys=used_keys,
+        forbidden_replacement_keys=forbidden_replacement_keys,
         replacement_requests=replacement_requests,
         seed=seed,
     )
@@ -279,6 +289,7 @@ def build_corrected_split(
         "notes": [
             "The original split is not modified.",
             "Excluded rows are replaced with unused same-label candidates.",
+            "Replacement candidates that match an excluded row are skipped, even if they appear in the candidate source.",
             "The script refuses to emit a split with fewer rows than the original.",
         ],
     }
