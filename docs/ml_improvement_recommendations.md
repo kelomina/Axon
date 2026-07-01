@@ -4,7 +4,7 @@
 
 ## 2026-07-01 补充：20w 严格漏斗实验后的最新判断
 
-在 20 万完整 split 上，当前最强可复现实验是 Loop26 的 Stage-2 extended/kNN 0.5/0.5 blend。它严格保持 `20000 train / 20000 val / 160000 test`，每个 split 内黑白样本平衡不变，fixed-v2 uncompressed cache 覆盖 `200000/200000`。Val 只用于选模型、blend 权重和阈值；Test-10k 只做确认；full-test 只做一次冻结评估。
+在 20 万完整 split 上，当前最强可复现实验是 Loop28 的 Stage-2 content PE metadata 模型。它严格保持 `20000 train / 20000 val / 160000 test`，每个 split 内黑白样本平衡不变，fixed-v2 uncompressed cache 覆盖 `200000/200000`。Val 只用于选模型和阈值；Test-10k 只做确认；full-test 只做一次冻结评估。Loop28 新增的 100 维 PE metadata 只来自文件内容和 PE 结构，不包含 filename、extension、目录名或路径文本。
 
 最新结果如下：
 
@@ -13,10 +13,11 @@
 | Loop24 blend | 0.98820 | 0.98423 | 0.98323 | 2685 | 1379 / 1306 |
 | Loop26 blend | 0.98886 | 0.98558 | 0.98397 | 2571 | 1493 / 1078 |
 | Loop27 blend | 0.98891 | 未进入 | 未进入 | 未进入 | 未进入 |
+| Loop28 content PE | 0.99190 | 0.98887 | 0.98784 | 1949 | 1087 / 862 |
 
-Loop26 是有效改进：full-test 错误从 `2685` 降到 `2571`，少了 `114` 个错误。Loop27 只替换了 2 个高置信 Val 噪声样本，Val 只少 1 个错误，F1 提升约 `0.005` 个百分点，未达到“明显提升”门槛，因此没有进入 Test-10k。这说明“继续靠保守 Val 噪声替换”已经进入低收益区。
+Loop26 是有效改进：full-test 错误从 `2685` 降到 `2571`，少了 `114` 个错误。Loop27 只替换了 2 个高置信 Val 噪声样本，Val 只少 1 个错误，F1 提升约 `0.005` 个百分点，未达到“明显提升”门槛，因此没有进入 Test-10k。Loop28 证明“补内容侧 PE metadata”是当前最有效方向：full-test 错误从 Loop26 的 `2571` 降到 `1949`，少了 `622` 个错误；Test-10k 也从 Loop26 blend 的 `144` errors 降到 `111` errors。Loop28 同时复验了 content PE + OOF kNN，但 Val 最优为 `165` errors，低于 content-only 的 `162` errors，因此不采用 kNN 叠加。
 
-要达到 `F1 >= 99.9%`，16 万 full-test 上大致只能容忍百级错误；当前仍有 `2571` 个错误，量级差距很大。这个差距不能靠阈值微调解决，因为 Loop26 full-test 已经有 AUC `0.99841`，但高置信 FP/FN 仍然很多：full-test 噪声/困难样本审计中 suspected/hard count 为 `1160`，其中 `severe_fp >= 0.99` 有 `204`，`severe_fn <= 0.01` 有 `88`。换句话说，模型不是“分数刻度差一点”，而是在一批文件上真的看错了。
+要达到 `F1 >= 99.9%`，16 万 full-test 上大致只能容忍百级错误；当前 Loop28 仍有 `1949` 个错误，量级差距仍然很大。这个差距不能靠阈值微调解决，因为 Loop28 full-test AUC 已达 `0.99898`，但 FP/FN 仍然都有明显存量。换句话说，模型不是“分数刻度差一点”，而是在一批文件上真的看错了。
 
 错误集中形态也很清楚：
 
@@ -27,13 +28,15 @@ Loop26 是有效改进：full-test 错误从 `2685` 降到 `2571`，少了 `114`
 | 恶意 DLL | `.dll` 错误 `306`，其中 FN `305` |
 | 月份热点 | `2026-03`、`2020-11`、`2021-09`、`2026-02` 等恶意 FN 热点明显 |
 
+Loop28 已经压低这些热点，但没有消灭：full-test 剩余错误中 `<none>` 仍有 `887` 个错误（FP `849`），`.exe` 有 `831` 个错误（FN `594`），`.dll` 有 `218` 个错误（FN `217`）。这些切片只能用于错误归因，不能作为生产模型输入。
+
 因此，下一阶段 P1 不应继续把主要时间花在“再替换少量 Val 噪声样本”上，而应转为三个方向：
 
-1. **补白样本内容侧可信度特征，不把命名作为模型依据。** 当前大量白样本在数据集中表现为 SHA 文件名或无扩展名，但实战文件名可被任意改写，所以 filename/extension 只能作为错误分析切片，不能作为生产模型输入。建议改补 PE 内容侧信号：入口点/子系统、签名/证书、导入表可信度、overlay/packer 风险分层、section 权限组合等，并单独建立 high-value benign holdout。
-2. **补 DLL/sys 恶意召回特征。** DLL 和 sys 的恶意 FN 表明当前 PE/stat/8192 字节头部特征对库文件、驱动类样本不够敏感。建议为 DLL/sys 增加 subsystem、exports、service/driver、section 权限组合、TLS、relocation、import category 更细粒度特征。
+1. **把 Loop28 content PE metadata 正式产品化并继续扩展内容特征。** 当前大量白样本在数据集中表现为 SHA 文件名或无扩展名，但实战文件名可被任意改写，所以 filename/extension 只能作为错误分析切片，不能作为生产模型输入。Loop28 已证明 PE 内容侧信号有效，下一步应把入口点/子系统、签名/证书、导入表可信度、overlay/packer 风险、section 权限组合、data directory、import/export/resource/TLS/reloc 等特征并入稳定 schema，而不是长期停留在 Stage-2 sidecar。
+2. **补 DLL/sys 恶意召回特征。** DLL 和 sys 的恶意 FN 表明当前 PE/stat/8192 字节头部特征对库文件、驱动类样本仍不够敏感。建议继续细化 exports、subsystem、service/driver hints、section 权限组合、TLS、relocation、import category 和 driver/service 相关 API 特征。
 3. **从 Stage-2 过渡到真正的 OOF stacking。** 现在 Stage-2 已证明能把 base F1 从约 `0.93` 拉到 `0.984`，但仍是基于同一个 base checkpoint 的二阶段表格模型。下一步应训练多 seed/多视角 base 模型，使用 out-of-fold 预测训练校准器/stacker，避免单模型盲区被 Stage-2 继承。
 
-当前科学判断：`99.9%` 不是短期阈值或小清洗能达到的指标。若不引入更强内容特征、更严格噪声治理和多模型 OOF stacking，合理目标应先降为 `98.5%-99.0%` full-test F1，并把 FP/FN 分业务成本分别设门槛。继续挑战 `99.9%` 可以保留为长期目标，但需要把“数据标签可信度”和“PE/DLL/sys 内容覆盖”作为前置工程。
+当前科学判断：`99.9%` 不是短期阈值或小清洗能达到的指标。Loop28 把 full-test F1 推到 `0.98784`，说明内容特征方向正确，但距离 `0.999` 仍有约 `1900` 个错误的缺口。合理阶段目标应先定为 `99.0%+` full-test F1，并把 FP/FN 分业务成本分别设门槛。继续挑战 `99.9%` 可以保留为长期目标，但需要把“数据标签可信度”“PE/DLL/sys 内容覆盖”和“多模型 OOF stacking”作为前置工程。
 
 ## 先给结论
 
