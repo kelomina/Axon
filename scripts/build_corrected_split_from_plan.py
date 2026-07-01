@@ -4,7 +4,8 @@
 This script is deliberately non-destructive. It reads an existing split and a
 review-derived plan, applies safe train/val label fixes, and replaces excluded
 rows with fresh same-label candidates that were not already present in the
-split. It refuses to emit a short split.
+split. It refuses to emit a short split. Test replacements are rejected by
+default and require an explicit data-hygiene override.
 """
 
 from __future__ import annotations
@@ -107,7 +108,7 @@ def summarize_split(rows: Sequence[dict]) -> dict:
     }
 
 
-def validate_plan_rows(plan_rows: Sequence[dict]) -> list[str]:
+def validate_plan_rows(plan_rows: Sequence[dict], *, allow_test_replacements: bool = False) -> list[str]:
     failures = []
     for index, row in enumerate(plan_rows, start=1):
         action = str(row.get("plan_action", "")).strip()
@@ -119,7 +120,12 @@ def validate_plan_rows(plan_rows: Sequence[dict]) -> list[str]:
         row_id = row.get("sample_index") or row.get("source_path") or f"row-{index}"
 
         if split == "test":
-            failures.append(f"{row_id}: test split plan rows are not accepted by corrected split builder")
+            if not allow_test_replacements:
+                failures.append(f"{row_id}: test split plan rows are not accepted by corrected split builder")
+            elif action != "exclude_and_replace":
+                failures.append(f"{row_id}: test split plan rows may only be exclude_and_replace")
+            elif usable_for_training:
+                failures.append(f"{row_id}: test replacement plan must not be marked usable for training policy")
         if action in BLOCKED_PLAN_ACTIONS:
             failures.append(f"{row_id}: unresolved or held-out plan action {action}")
         elif action not in ALLOWED_PLAN_ACTIONS:
@@ -252,10 +258,11 @@ def build_corrected_split(
     data_dir: Optional[Path] = None,
     seed: int = 42,
     max_file_size: int = 1 * 1024 * 1024 * 1024,
+    allow_test_replacements: bool = False,
 ) -> tuple[list[dict], dict]:
     original_rows = read_csv_rows(split_csv)
     plan_rows = read_csv_rows(plan_csv)
-    plan_failures = validate_plan_rows(plan_rows)
+    plan_failures = validate_plan_rows(plan_rows, allow_test_replacements=allow_test_replacements)
     if plan_failures:
         raise ValueError(
             "Unsafe manual adjustment plan; fix the plan before building a corrected split: "
@@ -345,6 +352,7 @@ def build_corrected_split(
         "split_csv": str(resolve_path(split_csv)),
         "plan_csv": str(resolve_path(plan_csv)),
         "seed": int(seed),
+        "allow_test_replacements": bool(allow_test_replacements),
         "original_summary": summarize_split(original_rows),
         "corrected_summary": summarize_split(corrected_rows),
         "plan_rows": len(plan_rows),
@@ -373,6 +381,11 @@ def build_parser() -> argparse.ArgumentParser:
     source_group.add_argument("--data-dir", type=Path)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--max-file-size", type=int, default=1 * 1024 * 1024 * 1024)
+    parser.add_argument(
+        "--allow-test-replacements",
+        action="store_true",
+        help="Allow explicit exclude-and-replace rows in the test split for data hygiene only.",
+    )
     return parser
 
 
@@ -386,6 +399,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         data_dir=args.data_dir,
         seed=args.seed,
         max_file_size=args.max_file_size,
+        allow_test_replacements=bool(args.allow_test_replacements),
     )
     write_split_csv(args.output_csv, rows)
     output_json = resolve_path(args.output_json)

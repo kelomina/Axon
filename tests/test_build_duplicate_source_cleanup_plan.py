@@ -127,6 +127,71 @@ def test_cross_label_duplicate_goes_to_review_only():
     assert all("requires human label adjudication" in row["review_reason"] for row in review_rows)
 
 
+def test_cross_label_duplicate_can_replace_all_with_explicit_policy():
+    with _case_dir("duplicate_cleanup_cross_label_replace_all") as tmp_path:
+        duplicate_csv = tmp_path / "duplicates.csv"
+        plan_csv = tmp_path / "plan.csv"
+        review_csv = tmp_path / "review.csv"
+        output_json = tmp_path / "summary.json"
+        _write_duplicate_rows(
+            duplicate_csv,
+            [
+                _dup_row("6", "data/white.exe", "0", "11", "val", cross_label="true"),
+                _dup_row("6", "data/black.exe", "1", "12", "test", cross_label="true"),
+            ],
+        )
+
+        summary = build_duplicate_cleanup_plan(
+            duplicate_csv=duplicate_csv,
+            output_plan_csv=plan_csv,
+            output_review_csv=review_csv,
+            output_json=output_json,
+            freeze_test=False,
+            cross_label_policy="replace_all",
+        )
+        plan_rows = list(csv.DictReader(plan_csv.open("r", encoding="utf-8-sig", newline="")))
+        review_rows = list(csv.DictReader(review_csv.open("r", encoding="utf-8-sig", newline="")))
+
+    assert summary["auto_plan_rows"] == 2
+    assert summary["manual_review_rows"] == 0
+    assert summary["group_action_counts"] == {"auto_replace_cross_label_all": 1}
+    assert {row["source_path"] for row in plan_rows} == {"data/white.exe", "data/black.exe"}
+    assert {row["replacement_label"] for row in plan_rows} == {"0", "1"}
+    assert all(row["plan_action"] == "exclude_and_replace" for row in plan_rows)
+    assert review_rows == []
+
+
+def test_cross_label_replace_all_respects_frozen_test_by_default():
+    with _case_dir("duplicate_cleanup_cross_label_frozen_test") as tmp_path:
+        duplicate_csv = tmp_path / "duplicates.csv"
+        plan_csv = tmp_path / "plan.csv"
+        review_csv = tmp_path / "review.csv"
+        output_json = tmp_path / "summary.json"
+        _write_duplicate_rows(
+            duplicate_csv,
+            [
+                _dup_row("7", "data/white.exe", "0", "11", "val", cross_label="true"),
+                _dup_row("7", "data/black.exe", "1", "12", "test", cross_label="true"),
+            ],
+        )
+
+        summary = build_duplicate_cleanup_plan(
+            duplicate_csv=duplicate_csv,
+            output_plan_csv=plan_csv,
+            output_review_csv=review_csv,
+            output_json=output_json,
+            cross_label_policy="replace_all",
+        )
+        plan_rows = list(csv.DictReader(plan_csv.open("r", encoding="utf-8-sig", newline="")))
+        review_rows = list(csv.DictReader(review_csv.open("r", encoding="utf-8-sig", newline="")))
+
+    assert summary["auto_plan_rows"] == 0
+    assert summary["manual_review_rows"] == 2
+    assert summary["group_action_counts"] == {"manual_review_required_frozen_test": 1}
+    assert plan_rows == []
+    assert all("frozen test split" in row["review_reason"] for row in review_rows)
+
+
 def test_keep_policy_can_prefer_train_for_same_label_duplicates():
     with _case_dir("duplicate_cleanup_prefer_train") as tmp_path:
         duplicate_csv = tmp_path / "duplicates.csv"

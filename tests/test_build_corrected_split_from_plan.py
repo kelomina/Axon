@@ -255,6 +255,57 @@ def test_test_split_plan_row_is_rejected_before_building_split():
             )
 
 
+def test_test_split_replacement_requires_explicit_override():
+    with _case_dir("corrected_split_test_replacement_allowed") as tmp_path:
+        split_csv = tmp_path / "split.csv"
+        plan_csv = tmp_path / "plan.csv"
+        candidates_csv = tmp_path / "candidates.csv"
+        _write_csv(
+            split_csv,
+            SPLIT_FIELDS,
+            [{"source_path": "data/test-bad.exe", "label": "0", "sample_index": "0", "split": "test"}],
+        )
+        _write_csv(
+            plan_csv,
+            PLAN_FIELDS,
+            [{
+                "source_path": "data/test-bad.exe",
+                "source_sha256": "",
+                "sample_index": "0",
+                "split": "test",
+                "original_label": "0",
+                "planned_label": "0",
+                "plan_action": "exclude_and_replace",
+                "replacement_required": "true",
+                "replacement_label": "0",
+                "usable_for_training_policy": "false",
+            }],
+        )
+        _write_csv(candidates_csv, CANDIDATE_FIELDS, [{"source_path": "data/test-fresh.exe", "label": "0", "source_sha256": ""}])
+
+        with pytest.raises(ValueError, match="test split plan rows are not accepted"):
+            build_corrected_split(
+                split_csv=split_csv,
+                plan_csv=plan_csv,
+                candidate_csv=candidates_csv,
+            )
+
+        rows, summary = build_corrected_split(
+            split_csv=split_csv,
+            plan_csv=plan_csv,
+            candidate_csv=candidates_csv,
+            allow_test_replacements=True,
+        )
+
+    assert len(rows) == 1
+    assert rows[0]["source_path"] == "data/test-fresh.exe"
+    assert rows[0]["label"] == "0"
+    assert rows[0]["split"] == "test"
+    assert summary["allow_test_replacements"] is True
+    assert summary["excluded_rows"] == 1
+    assert summary["replacement_summary"]["selected_replacements"] == 1
+
+
 def test_replacement_required_on_non_replacement_action_is_rejected():
     with _case_dir("corrected_split_bad_replacement_flag") as tmp_path:
         split_csv = tmp_path / "split.csv"

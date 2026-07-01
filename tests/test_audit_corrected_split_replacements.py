@@ -347,3 +347,56 @@ def test_replacement_audit_uses_exact_plan_row_for_duplicate_sha_cleanup():
     assert payload["excluded_rows_present_after_correction"] == 0
     assert payload["planned_excluded_rows_removed"] == 1
     assert payload["fresh_replacement_rows"] == 1
+
+
+def test_replacement_audit_allows_test_replacement_only_with_override():
+    with _case_dir("replacement_audit_test_override") as tmp_path:
+        original_csv = tmp_path / "original.csv"
+        corrected_csv = tmp_path / "corrected.csv"
+        plan_csv = tmp_path / "plan.csv"
+        _write_csv(
+            original_csv,
+            SPLIT_FIELDS,
+            [{"source_path": "data/test-bad.exe", "label": "0", "sample_index": "0", "split": "test"}],
+        )
+        _write_csv(
+            corrected_csv,
+            SPLIT_FIELDS,
+            [{"source_path": "data/test-fresh.exe", "label": "0", "sample_index": "0", "split": "test"}],
+        )
+        _write_csv(
+            plan_csv,
+            PLAN_FIELDS,
+            [{
+                "source_path": "data/test-bad.exe",
+                "source_sha256": "",
+                "sample_index": "0",
+                "split": "test",
+                "original_label": "0",
+                "planned_label": "0",
+                "plan_action": "exclude_and_replace",
+                "replacement_required": "true",
+                "replacement_label": "0",
+                "usable_for_training_policy": "false",
+            }],
+        )
+
+        blocked = audit_corrected_split_replacements(
+            original_split_csv=original_csv,
+            corrected_split_csv=corrected_csv,
+            plan_csv=plan_csv,
+            enforce_shape=False,
+        )
+        allowed = audit_corrected_split_replacements(
+            original_split_csv=original_csv,
+            corrected_split_csv=corrected_csv,
+            plan_csv=plan_csv,
+            enforce_shape=False,
+            allow_test_replacements=True,
+        )
+
+    assert blocked["replacement_integrity_ok"] is False
+    assert "test split replacement requests are not allowed: 1" in blocked["integrity_failures"]
+    assert allowed["replacement_integrity_ok"] is True
+    assert allowed["allow_test_replacements"] is True
+    assert allowed["test_replacement_requests"] == 1

@@ -202,6 +202,7 @@ def audit_corrected_split_replacements(
     detail_output_csv: Optional[Path] = None,
     enforce_shape: bool = True,
     enforce_label_balance: bool = False,
+    allow_test_replacements: bool = False,
 ) -> dict:
     original_rows = read_csv_rows(original_split_csv)
     corrected_rows = read_csv_rows(corrected_split_csv)
@@ -356,7 +357,7 @@ def audit_corrected_split_replacements(
     duplicate_key_row_delta = corrected_duplicate_rows - original_duplicate_rows
     if duplicate_key_row_delta > 0:
         failures.append(f"corrected split introduced duplicate source keys: +{duplicate_key_row_delta}")
-    if test_replacement_requests:
+    if test_replacement_requests and not allow_test_replacements:
         failures.append(f"test split replacement requests are not allowed: {test_replacement_requests}")
     if test_relabel_requests:
         failures.append(f"test split relabel requests are not allowed: {test_relabel_requests}")
@@ -391,6 +392,7 @@ def audit_corrected_split_replacements(
         "row_count_ok": row_count_ok,
         "shape_enforced": bool(enforce_shape),
         "label_balance_enforced": bool(enforce_label_balance),
+        "allow_test_replacements": bool(allow_test_replacements),
         "original_duplicate_key_rows": original_duplicate_rows,
         "corrected_duplicate_key_rows": corrected_duplicate_rows,
         "duplicate_key_row_delta": duplicate_key_row_delta,
@@ -430,6 +432,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--detail-output-csv", type=Path, default=None)
     parser.add_argument("--no-enforce-shape", action="store_true")
     parser.add_argument("--enforce-label-balance", action="store_true")
+    parser.add_argument(
+        "--allow-test-replacements",
+        action="store_true",
+        help="Allow explicit test split replacement requests for data-hygiene audits.",
+    )
     parser.add_argument("--strict", action="store_true", help="Exit non-zero unless replacement integrity is clean.")
     return parser
 
@@ -443,6 +450,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         detail_output_csv=args.detail_output_csv,
         enforce_shape=not bool(args.no_enforce_shape),
         enforce_label_balance=bool(args.enforce_label_balance),
+        allow_test_replacements=bool(args.allow_test_replacements),
     )
     output_json = resolve_path(args.output_json)
     output_json.parent.mkdir(parents=True, exist_ok=True)

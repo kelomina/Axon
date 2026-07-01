@@ -155,7 +155,10 @@ def build_duplicate_cleanup_plan(
     output_json: Path,
     keep_policy: str = "protect_test_then_val",
     freeze_test: bool = True,
+    cross_label_policy: str = "manual_review",
 ) -> dict:
+    if cross_label_policy not in {"manual_review", "replace_all"}:
+        raise ValueError(f"Unsupported cross-label policy: {cross_label_policy}")
     detail_rows = read_csv_rows(duplicate_csv)
     groups = group_detail_rows(detail_rows)
     plan_rows: list[dict] = []
@@ -170,10 +173,25 @@ def build_duplicate_cleanup_plan(
         cross_label = any(normalize_bool(row.get("cross_label")) for row in rows)
         group_id = str(rows[0].get("duplicate_group_id", ""))
         if cross_label:
-            group_actions["manual_review_required"] += 1
-            reason = "cross-label duplicate source identity requires human label adjudication"
+            if cross_label_policy == "manual_review":
+                group_actions["manual_review_required"] += 1
+                reason = "cross-label duplicate source identity requires human label adjudication"
+                for row in rows:
+                    review_rows.append(queue_row(row, reason=reason))
+                continue
+            if freeze_test and any(str(row.get("split", "")).strip().casefold() == "test" for row in rows):
+                group_actions["manual_review_required_frozen_test"] += 1
+                reason = "cross-label duplicate source identity touches frozen test split; review in next data version"
+                for row in rows:
+                    review_rows.append(queue_row(row, reason=reason))
+                continue
+            group_actions["auto_replace_cross_label_all"] += 1
             for row in rows:
-                review_rows.append(queue_row(row, reason=reason))
+                reason = f"cross-label duplicate source identity group {group_id}; replace all conflicting rows"
+                planned = plan_row(row, reason=reason)
+                plan_rows.append(planned)
+                plan_split_counts[str(row.get("split", ""))] += 1
+                plan_label_counts[str(row.get("label", ""))] += 1
             continue
 
         canonical = choose_canonical_row(rows, keep_policy)
@@ -202,6 +220,7 @@ def build_duplicate_cleanup_plan(
         "schema": "axon_duplicate_source_cleanup_plan_v1",
         "duplicate_csv": str(resolve_path(duplicate_csv)),
         "keep_policy": keep_policy,
+        "cross_label_policy": cross_label_policy,
         "duplicate_groups": len(groups),
         "freeze_test": bool(freeze_test),
         "detail_rows": len(detail_rows),
@@ -218,6 +237,7 @@ def build_duplicate_cleanup_plan(
         "notes": [
             "Same-label duplicate groups are converted to exclude-and-replace plan rows.",
             "Cross-label duplicate groups are sent to manual review and are not auto-replaced.",
+            "With cross_label_policy=replace_all, every row in a cross-label duplicate group is replaced same-label.",
             "When freeze_test is true, duplicate groups that require test replacement are sent to review.",
             "The plan is non-destructive; use build_corrected_split_from_plan.py to materialize a corrected split.",
             "Fresh replacement and exact 20w shape must be verified by downstream audits.",
@@ -245,6 +265,12 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Allow automatic duplicate cleanup plan rows for test split. Default freezes test and queues those groups for review.",
     )
+    parser.add_argument(
+        "--cross-label-policy",
+        choices=["manual_review", "replace_all"],
+        default="manual_review",
+        help="How to handle duplicate source identities that appear under both labels.",
+    )
     return parser
 
 
@@ -257,6 +283,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         output_json=args.output_json,
         keep_policy=args.keep_policy,
         freeze_test=not bool(args.allow_test_replacements),
+        cross_label_policy=args.cross_label_policy,
     )
     print(json.dumps(summary, indent=2, ensure_ascii=False))
     return 0
