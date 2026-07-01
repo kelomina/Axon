@@ -191,9 +191,12 @@ Full-test concentration:
 | data dir `待拉黑` | `1078` FN |
 | month hotspots | `2026-03`, `2020-11`, `2021-09`, `2026-02` |
 
-Interpretation: residual error is not mainly threshold calibration. The model
-still has hard blind spots around extensionless benign files and malicious
-DLL/sys/exe families.
+Interpretation: residual error is not mainly threshold calibration. Extension
+is useful as an error-analysis slice, but file names and extensions must not be
+treated as production-stable model inputs because deployment names can be
+arbitrary. The model still has hard content-level blind spots around benign PE
+files that appear as extensionless in this dataset and malicious DLL/sys/exe
+families.
 
 ## Loop27 Follow-Up
 
@@ -251,8 +254,8 @@ error scale needed for `F1 >= 99.9%` on 160k balanced test rows.
 Next work should shift from small Val-noise replacement to feature and model
 coverage:
 
-1. Add explicit extensionless/SHA-name benign features and high-value benign
-   holdouts.
+1. Add content-derived benign trust features and high-value benign holdouts;
+   do not feed filename/extension as a production model feature.
 2. Add DLL/sys-focused PE features: exports, subsystem, service/driver hints,
    section permission combinations, TLS, import category granularity.
 3. Move Stage-2 from one checkpoint to OOF stacking across multiple base
