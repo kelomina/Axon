@@ -112,6 +112,36 @@ def test_feature_broken_row_requires_replacement_instead_of_self_fill():
     assert summary["replacement_counts_by_original_label"] == {"1": 1}
 
 
+def test_exclude_verdict_takes_priority_over_conflicting_relabel_action():
+    with _case_dir("manual_verdict_conflicting_replace") as tmp_path:
+        split_csv = tmp_path / "split.csv"
+        review_csv = tmp_path / "review.csv"
+        _write_csv(
+            split_csv,
+            ["source_path", "label", "sample_index", "split"],
+            [{"source_path": "data/bad.exe", "label": "0", "sample_index": "8", "split": "train"}],
+        )
+        _write_csv(
+            review_csv,
+            ["source_path", "source_sha256", "label", "manual_label_verdict", "recommended_action"],
+            [{
+                "source_path": "data/bad.exe",
+                "source_sha256": "",
+                "label": "0",
+                "manual_label_verdict": "feature_broken",
+                "recommended_action": "relabel_train_only",
+            }],
+        )
+
+        rows, summary = build_plan(review_csv=review_csv, split_csv=split_csv)
+
+    assert rows[0]["plan_action"] == "exclude_and_replace"
+    assert rows[0]["replacement_required"] == "true"
+    assert rows[0]["replacement_label"] == "0"
+    assert rows[0]["planned_label"] == 0
+    assert summary["replacement_required"] == 1
+
+
 def test_test_split_verdict_is_withheld_by_default():
     with _case_dir("manual_verdict_test") as tmp_path:
         split_csv = tmp_path / "split.csv"

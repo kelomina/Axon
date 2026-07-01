@@ -413,3 +413,67 @@ def test_manual_review_readiness_rejects_unknown_manual_field_values():
     assert summary["manual_label_verdict_invalid_count"] == 1
     assert summary["recommended_action_invalid_count"] == 1
     assert summary["blocking_issues"] == ["manual_verdict_invalid", "recommended_action_invalid"]
+
+
+def test_manual_review_readiness_rejects_inconsistent_manual_field_pair():
+    with _case_dir("manual_readiness_inconsistent_manual_fields") as tmp_path:
+        source_path, sha = _make_source(tmp_path, "sample.exe")
+        cache_path = tmp_path / "cache" / "sample.npz"
+        _write_cache(cache_path, label=0, sha=sha)
+        neighbor_samples, neighbor_fields = _make_neighbor_samples(tmp_path)
+        manifest_path = tmp_path / "manifest.json"
+        manifest_path.write_text(
+            json.dumps(
+                {
+                    "max_byte_length": 2,
+                    "pe_feature_dim": 2,
+                    "stat_feature_dim": 1,
+                    "lightweight_feature_dim": 3,
+                    "samples": [
+                        {
+                            "source_path": str(source_path),
+                            "source_sha256": sha,
+                            "cache_path": str(cache_path),
+                            "label": 0,
+                        }
+                    ]
+                    + neighbor_samples,
+                }
+            ),
+            encoding="utf-8",
+        )
+        review_csv = tmp_path / "review.csv"
+        _write_review(
+            review_csv,
+            [
+                {
+                    "review_rank": 1,
+                    "source_path": str(source_path),
+                    "source_sha256": sha,
+                    "label": 0,
+                    "prediction": 1,
+                    "prob_malicious": "0.99",
+                    **neighbor_fields,
+                    "manual_label_verdict": "feature_broken",
+                    "recommended_action": "relabel_train_only",
+                }
+            ],
+        )
+
+        summary = audit_manual_review_package(
+            review_csv=review_csv,
+            manifest_json=manifest_path,
+            output_csv=tmp_path / "readiness.csv",
+            output_json=tmp_path / "readiness.json",
+        )
+        rows = list(csv.DictReader((tmp_path / "readiness.csv").open("r", encoding="utf-8-sig", newline="")))
+
+    assert summary["review_queue_ready"] is True
+    assert summary["verdict_package_ready"] is False
+    assert summary["manual_label_verdict_invalid_count"] == 0
+    assert summary["recommended_action_invalid_count"] == 0
+    assert summary["manual_fields_inconsistent_count"] == 1
+    assert summary["blocking_issues"] == ["manual_fields_inconsistent"]
+    assert rows[0]["manual_verdict_category"] == "exclude"
+    assert rows[0]["recommended_action_category"] == "relabel"
+    assert rows[0]["manual_fields_consistent"] == "False"

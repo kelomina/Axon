@@ -46,6 +46,46 @@ VALID_MANUAL_VERDICTS = KEEP_VERDICTS | RELABEL_VERDICTS | EXCLUDE_VERDICTS | UN
 VALID_RECOMMENDED_ACTIONS = KEEP_ACTIONS | RELABEL_ACTIONS | EXCLUDE_ACTIONS
 
 
+def manual_verdict_category(verdict: str) -> str:
+    if verdict in KEEP_VERDICTS:
+        return "keep"
+    if verdict in RELABEL_VERDICTS:
+        return "relabel"
+    if verdict in EXCLUDE_VERDICTS:
+        return "exclude"
+    if verdict in UNCERTAIN_VERDICTS:
+        return "uncertain"
+    return "invalid"
+
+
+def recommended_action_category(action: str) -> str:
+    if action in RELABEL_ACTIONS:
+        return "relabel"
+    if action in EXCLUDE_ACTIONS:
+        return "exclude"
+    if action in {"needs_more_evidence", "model_blindspot"}:
+        return "uncertain"
+    if action in KEEP_ACTIONS:
+        return "keep"
+    return "invalid"
+
+
+def manual_fields_consistent(verdict: str, action: str) -> bool:
+    verdict_category = manual_verdict_category(verdict)
+    action_category = recommended_action_category(action)
+    if verdict_category == "invalid" or action_category == "invalid":
+        return False
+    if verdict_category == "exclude":
+        return action_category == "exclude"
+    if verdict_category == "relabel":
+        return action_category == "relabel"
+    if verdict_category == "keep":
+        return action_category == "keep"
+    if verdict_category == "uncertain":
+        return action_category in {"keep", "uncertain"}
+    return False
+
+
 def resolve_path(path: Path) -> Path:
     return path if path.is_absolute() else PROJECT_ROOT / path
 
@@ -332,13 +372,19 @@ def _is_blank(value: object) -> bool:
 def audit_manual_fields(row: dict) -> dict:
     verdict = normalize_text(row.get("manual_label_verdict"))
     action = normalize_text(row.get("recommended_action"))
+    verdict_valid = verdict in VALID_MANUAL_VERDICTS
+    action_valid = action in VALID_RECOMMENDED_ACTIONS
+    fields_consistent = not (verdict_valid and action_valid) or manual_fields_consistent(verdict, action)
     return {
         "manual_label_verdict_normalized": verdict,
         "recommended_action_normalized": action,
         "manual_label_verdict_blank": verdict == "",
         "recommended_action_blank": action == "",
-        "manual_label_verdict_valid": verdict in VALID_MANUAL_VERDICTS,
-        "recommended_action_valid": action in VALID_RECOMMENDED_ACTIONS,
+        "manual_label_verdict_valid": verdict_valid,
+        "recommended_action_valid": action_valid,
+        "manual_verdict_category": manual_verdict_category(verdict),
+        "recommended_action_category": recommended_action_category(action),
+        "manual_fields_consistent": fields_consistent,
     }
 
 
@@ -483,6 +529,9 @@ def audit_manual_review_package(
         "recommended_action_blank",
         "manual_label_verdict_valid",
         "recommended_action_valid",
+        "manual_verdict_category",
+        "recommended_action_category",
+        "manual_fields_consistent",
         "manual_label_verdict",
         "manual_verdict_note",
         "recommended_action",
@@ -499,12 +548,14 @@ def audit_manual_review_package(
     action_blank_count = sum(1 for row in output_rows if row["recommended_action_blank"])
     verdict_invalid_count = sum(1 for row in output_rows if not row["manual_label_verdict_valid"])
     action_invalid_count = sum(1 for row in output_rows if not row["recommended_action_valid"])
+    manual_inconsistent_count = sum(1 for row in output_rows if not row["manual_fields_consistent"])
     verdict_package_ready = (
         readiness_counter["not_ready"] == 0
         and verdict_blank_count == 0
         and action_blank_count == 0
         and verdict_invalid_count == 0
         and action_invalid_count == 0
+        and manual_inconsistent_count == 0
     )
     reason_counter: Counter[str] = Counter()
     for row in output_rows:
@@ -527,6 +578,7 @@ def audit_manual_review_package(
         "recommended_action_blank_count": action_blank_count,
         "manual_label_verdict_invalid_count": verdict_invalid_count,
         "recommended_action_invalid_count": action_invalid_count,
+        "manual_fields_inconsistent_count": manual_inconsistent_count,
         "blocking_issues": [
             issue
             for issue, present in [
@@ -535,6 +587,7 @@ def audit_manual_review_package(
                 ("recommended_action_empty", action_blank_count > 0),
                 ("manual_verdict_invalid", verdict_invalid_count > 0),
                 ("recommended_action_invalid", action_invalid_count > 0),
+                ("manual_fields_inconsistent", manual_inconsistent_count > 0),
             ]
             if present
         ],
@@ -562,6 +615,12 @@ def audit_manual_review_package(
         ),
         "recommended_action_counts": dict(
             sorted(Counter(str(row["recommended_action_normalized"]) for row in output_rows).items())
+        ),
+        "manual_verdict_category_counts": dict(
+            sorted(Counter(str(row["manual_verdict_category"]) for row in output_rows).items())
+        ),
+        "recommended_action_category_counts": dict(
+            sorted(Counter(str(row["recommended_action_category"]) for row in output_rows).items())
         ),
         "duplicate_source_sha256_count": sum(
             1

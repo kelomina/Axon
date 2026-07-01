@@ -32,6 +32,8 @@ Use `recommended_action` for the operational recommendation:
 - `needs_more_evidence`
 - `model_blindspot`
 
+The verdict and action must describe the same operational class. For example, `label_wrong` pairs with `relabel_train_only`, while `feature_broken` and `out_of_scope` pair with `replace_sample` or `quarantine_source_group`. A row such as `feature_broken + relabel_train_only` is rejected as inconsistent, because a broken sample must be replaced rather than relabeled.
+
 ## Run
 
 ```powershell

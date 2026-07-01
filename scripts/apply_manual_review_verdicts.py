@@ -104,12 +104,12 @@ def classify_manual_row(row: dict) -> tuple[str, str]:
     action = normalize_text(row.get("recommended_action"))
     if verdict in UNCERTAIN_VERDICTS and action in KEEP_ACTIONS:
         return "ignore", "no_manual_decision"
+    if verdict in EXCLUDE_VERDICTS or action in EXCLUDE_ACTIONS:
+        return "exclude_and_replace", "manual_exclude_or_replace"
     if verdict in KEEP_VERDICTS and action not in EXCLUDE_ACTIONS and action not in RELABEL_ACTIONS:
         return "keep_label", "manual_label_kept"
     if verdict in RELABEL_VERDICTS or action in RELABEL_ACTIONS:
         return "relabel", "manual_label_wrong"
-    if verdict in EXCLUDE_VERDICTS or action in EXCLUDE_ACTIONS:
-        return "exclude_and_replace", "manual_exclude_or_replace"
     if verdict in UNCERTAIN_VERDICTS or action in {"needs_more_evidence", "model_blindspot"}:
         return "ignore", "manual_uncertain"
     return "ignored_unknown_verdict", f"unknown verdict/action: {verdict}/{action}"
