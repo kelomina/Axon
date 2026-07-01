@@ -39,6 +39,7 @@ ERROR_COLUMNS = [
 ]
 
 PROBABILITY_COLUMNS = [
+    "blend_prob_malicious",
     "prob_malicious",
     "stage2_prob_malicious",
     "calibrator_prob_malicious",
