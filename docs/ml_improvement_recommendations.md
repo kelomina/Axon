@@ -52,6 +52,8 @@ Loop40 为 Loop39 队列补了只读 replacement preflight。真实队列复验�
 
 Loop41 继续做了不触碰 Test 的 stronger byte n-gram Val-only 复验。更大 hash 空间、更密 stride、更多 epoch 和多 alpha 后，byte n-gram 独立 Val 错误从 Loop37 的 `1250` 降到 `944`，说明这条内容弱模型确实能变强；但和 Loop28 做细粒度 Val-only 融合时最好仍是 `159` errors，只比 Loop28 的 `161/162` errors 少 `2-3` 个，margin 太薄。基于 Loop37 已经证明小样本改善会在 full-test 反转，本轮不进入 Test-10k。相关文档见 `docs/phase3_loop41_stronger_byte_ngram_valonly.md`。
 
+Loop42 按 Loop38 的建议实现了严格 OOF residual gate：base/candidate 在 train 内产生 OOF 分数，gate 只用 train OOF 信号训练，Val 只选 gate model 和阈值，Test-10k/full-test 都没有使用。最佳结果是 `extra_trees_300_leaf1 + gate_logreg_balanced_c0.25`，Val `160` errors、FP/FN `98/62`，比 Loop42 内部 base 的 `180` errors 少 `20`，说明受控覆盖方向确有信号；但相比官方 Loop28 锁定 Val `162` errors 只少 `2` 个，未达到浅融合/覆盖类候选进入 Test-10k 的 `<=152` errors 门槛，因此拒绝 Test-10k。相关文档见 `docs/phase3_loop42_oof_residual_gate.md`。
+
 因此，下一阶段 P1 不应继续把主要时间花在“再替换少量 Val 噪声样本”上，而应转为三个方向：
 
 1. **把 Loop28 content PE metadata 正式产品化，但不要继续在当前 v2 上排列组合。** 当前大量白样本在数据集中表现为 SHA 文件名或无扩展名，但实战文件名可被任意改写，所以 filename/extension 只能作为错误分析切片，不能作为生产模型输入。Loop28 已证明 PE 内容侧信号有效；Loop32-35 又证明“直接追加一大包细特征”以及“把这包细特征拆子组”都不够稳。下一步应把 Loop28 的 100 维内容特征并入稳定 schema，同时转向 OOF stacking 或更高质量解析，而不是继续消耗轮次在 v2 group permutation 上。
