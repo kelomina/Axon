@@ -106,6 +106,9 @@ First-pass high-similarity FP package:
 - JSON: `reports/random_20w_split/stage2_blend_high_similarity_fp_manual_review_top48.json`
 - Readiness CSV: `reports/random_20w_split/stage2_blend_high_similarity_fp_manual_review_top48_readiness.csv`
 - Readiness JSON: `reports/random_20w_split/stage2_blend_high_similarity_fp_manual_review_top48_readiness.json`
+- Human guide CSV: `reports/random_20w_split/stage2_blend_high_similarity_fp_manual_review_top48_guide.csv`
+- Human guide JSON: `reports/random_20w_split/stage2_blend_high_similarity_fp_manual_review_top48_guide.json`
+- Human guide MD: `reports/random_20w_split/stage2_blend_high_similarity_fp_manual_review_top48_guide.md`
 - Rows: `48`
 - Error type: `48 FP`
 - Priority split: `38` P0, `10` P1
@@ -114,6 +117,7 @@ First-pass high-similarity FP package:
 - Top-5 neighbor manifest/source/cache evidence: `240 / 240`
 - Review-queue ready: `true`
 - Verdict-package ready: `false`, because manual fields are intentionally blank.
+- The guide is read-only evidence for adjudication. It does not fill `manual_label_verdict` or `recommended_action`.
 
 Selection:
 
