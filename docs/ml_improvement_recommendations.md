@@ -36,9 +36,11 @@ Loop29/Loop30/Loop31 复验说明几条近路暂时不成立：Loop28 + Loop27 �
 
 同时做了后向兼容复验：新增 v2 代码后，旧 Loop28 冻结模型在锁定 Test-10k 上仍为 F1 `0.9888677164`、`111` errors、FP/FN `61/50`，说明旧模型 replay 没有被新代码破坏。相关文档见 `docs/phase3_loop32_33_residual_and_content_pe_v2.md`。
 
+随后 Loop34/Loop35 对 v2 做了子组选择，新增 `--content-pe-v2-groups`，分别测试 `import_dll`、`api`、`imports`、`export`、`resource`、`section` 以及若干组合。第一轮 9 个组合全部使用完整 `20000 train / 20000 val`，但只限制候选模型范围；最好的 `imports`、`export`、`export,section` 都是 `164` Val errors。第二轮对这三个近门槛组合跑完整默认候选矩阵和全部现有 noise modes，最佳仍然停在 `164` errors，未打过 Loop28 的 `162`。因此 Loop34/35 也没有进入 Test-10k。这个结果进一步收窄结论：不是 v2 太宽才失败，当前 v2 子组本身也没有形成可验证收益。相关文档见 `docs/phase3_loop34_35_content_pe_v2_group_selection.md`。
+
 因此，下一阶段 P1 不应继续把主要时间花在“再替换少量 Val 噪声样本”上，而应转为三个方向：
 
-1. **把 Loop28 content PE metadata 正式产品化，但不要盲目加宽。** 当前大量白样本在数据集中表现为 SHA 文件名或无扩展名，但实战文件名可被任意改写，所以 filename/extension 只能作为错误分析切片，不能作为生产模型输入。Loop28 已证明 PE 内容侧信号有效；Loop32/33 又证明“直接追加一大包细特征”不够稳。下一步应把 Loop28 的 100 维内容特征并入稳定 schema，并用 Val-only 的特征组选择或 OOF stacking 判断哪些 v2 子组真正有用。
+1. **把 Loop28 content PE metadata 正式产品化，但不要继续在当前 v2 上排列组合。** 当前大量白样本在数据集中表现为 SHA 文件名或无扩展名，但实战文件名可被任意改写，所以 filename/extension 只能作为错误分析切片，不能作为生产模型输入。Loop28 已证明 PE 内容侧信号有效；Loop32-35 又证明“直接追加一大包细特征”以及“把这包细特征拆子组”都不够稳。下一步应把 Loop28 的 100 维内容特征并入稳定 schema，同时转向 OOF stacking 或更高质量解析，而不是继续消耗轮次在 v2 group permutation 上。
 2. **补 DLL/sys 恶意召回特征，但必须窄口径验证。** DLL 和 sys 的恶意 FN 表明当前 PE/stat/8192 字节头部特征对库文件、驱动类样本仍不够敏感。建议继续研究 exports、subsystem、service/driver hints、section 权限组合、TLS、relocation、import category 和 driver/service 相关 API 特征，但每次只引入一个明确子组，先过 Val 的 `162` errors 门槛，再进入 Test-10k。
 3. **从 Stage-2 过渡到真正的 OOF stacking。** 现在 Stage-2 已证明能把 base F1 从约 `0.93` 拉到 `0.984`，但仍是基于同一个 base checkpoint 的二阶段表格模型。下一步应训练多 seed/多视角 base 模型，使用 out-of-fold 预测训练校准器/stacker，避免单模型盲区被 Stage-2 继承。
 

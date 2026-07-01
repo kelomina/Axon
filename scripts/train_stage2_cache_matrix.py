@@ -351,6 +351,88 @@ CONTENT_PE_V2_FEATURE_NAMES.extend(
 for group_name in CONTENT_PE_V2_SECTION_NAME_GROUPS:
     CONTENT_PE_V2_FEATURE_NAMES.append(f"v2_section_name_group_{group_name}_ratio")
 
+
+def _content_pe_v2_group_map() -> dict[str, tuple[int, ...]]:
+    groups: dict[str, list[int]] = {
+        "import_dll": [],
+        "api": [],
+        "delay_import": [],
+        "export": [],
+        "resource": [],
+        "section": [],
+    }
+    for index, name in enumerate(CONTENT_PE_V2_FEATURE_NAMES):
+        if name.startswith("v2_import_dll_"):
+            groups["import_dll"].append(index)
+        elif name.startswith("v2_api_"):
+            groups["api"].append(index)
+        elif name.startswith("v2_delay_import_"):
+            groups["delay_import"].append(index)
+        elif name.startswith("v2_export_"):
+            groups["export"].append(index)
+        elif name.startswith("v2_resource_"):
+            groups["resource"].append(index)
+        elif (
+            name.startswith("v2_section_")
+            or name.startswith("v2_ep_")
+            or name.startswith("v2_first_section_")
+            or name.startswith("v2_last_section_")
+        ):
+            groups["section"].append(index)
+        else:
+            raise ValueError(f"Unassigned content PE v2 feature: {name}")
+
+    result = {name: tuple(indexes) for name, indexes in groups.items()}
+    result["imports"] = tuple(sorted(set(result["import_dll"]) | set(result["api"]) | set(result["delay_import"])))
+    result["all"] = tuple(range(len(CONTENT_PE_V2_FEATURE_NAMES)))
+    return result
+
+
+CONTENT_PE_V2_GROUPS = _content_pe_v2_group_map()
+
+
+def parse_content_pe_v2_groups(text: str | Sequence[str] | None) -> tuple[str, ...]:
+    if text is None:
+        return ("all",)
+    if isinstance(text, str):
+        raw_values = [item.strip().lower() for item in text.split(",") if item.strip()]
+    else:
+        raw_values = [str(item).strip().lower() for item in text if str(item).strip()]
+    if not raw_values:
+        return ("all",)
+    aliases = {
+        "dll": "import_dll",
+        "import": "imports",
+        "imports": "imports",
+        "apis": "api",
+        "sections": "section",
+        "resources": "resource",
+        "exports": "export",
+        "delay": "delay_import",
+    }
+    values = tuple(aliases.get(item, item) for item in raw_values)
+    unknown = sorted(set(values) - set(CONTENT_PE_V2_GROUPS))
+    if unknown:
+        available = ", ".join(sorted(CONTENT_PE_V2_GROUPS))
+        raise ValueError(f"Unknown content PE v2 group(s): {unknown}. Available: {available}")
+    if "all" in values:
+        return ("all",)
+    return tuple(dict.fromkeys(values))
+
+
+def content_pe_v2_group_indices(groups: str | Sequence[str] | None) -> tuple[int, ...]:
+    selected_groups = parse_content_pe_v2_groups(groups)
+    if selected_groups == ("all",):
+        return CONTENT_PE_V2_GROUPS["all"]
+    selected: set[int] = set()
+    for group in selected_groups:
+        selected.update(CONTENT_PE_V2_GROUPS[group])
+    return tuple(sorted(selected))
+
+
+def content_pe_v2_selected_feature_names(groups: str | Sequence[str] | None) -> list[str]:
+    return [CONTENT_PE_V2_FEATURE_NAMES[index] for index in content_pe_v2_group_indices(groups)]
+
 CONTENT_STRING_PATTERNS = {
     "url": [b"http://", b"https://", b"www.", b"ftp://"],
     "network": [b"socket", b"connect", b"recv", b"send", b"wininet", b"ws2_32", b"internetopen", b"urldownload"],
@@ -1393,6 +1475,7 @@ class FeatureConfig:
     content_cache_dir: Optional[str] = None
     include_content_pe_v2: bool = False
     content_pe_v2_cache_dir: Optional[str] = None
+    content_pe_v2_groups: tuple[str, ...] = ("all",)
     include_content_string: bool = False
     content_string_cache_dir: Optional[str] = None
     include_content_cert: bool = False
@@ -1409,6 +1492,12 @@ def build_matrix(
     base_probs = []
     kept_rows = []
     skipped_missing_cache = 0
+    content_pe_v2_indices = None
+    if getattr(feature_config, "include_content_pe_v2", False):
+        content_pe_v2_indices = np.asarray(
+            content_pe_v2_group_indices(getattr(feature_config, "content_pe_v2_groups", ("all",))),
+            dtype=np.int64,
+        )
     for row in rows:
         cache_path = Path(row["cache_path"])
         if not cache_path.exists():
@@ -1450,7 +1539,8 @@ def build_matrix(
         if getattr(feature_config, "include_content_pe", False):
             parts.append(content_pe_features_for_row(row, getattr(feature_config, "content_cache_dir", None)))
         if getattr(feature_config, "include_content_pe_v2", False):
-            parts.append(content_pe_v2_features_for_row(row, getattr(feature_config, "content_pe_v2_cache_dir", None)))
+            v2_features = content_pe_v2_features_for_row(row, getattr(feature_config, "content_pe_v2_cache_dir", None))
+            parts.append(v2_features[content_pe_v2_indices])
         if getattr(feature_config, "include_content_string", False):
             parts.append(
                 content_string_features_for_row(row, getattr(feature_config, "content_string_cache_dir", None))
@@ -2028,6 +2118,14 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         help="Optional sidecar cache for expanded content-only PE v2 features.",
     )
     parser.add_argument(
+        "--content-pe-v2-groups",
+        default="all",
+        help=(
+            "Comma-separated content PE v2 feature groups. "
+            "Available: all, import_dll, api, delay_import, imports, export, resource, section."
+        ),
+    )
+    parser.add_argument(
         "--content-string-features",
         action="store_true",
         help="Append production-stable binary string/keyword features extracted from file content only.",
@@ -2073,6 +2171,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     content_pe_v2_cache_dir = None
     if args.content_pe_v2_features:
         content_pe_v2_cache_dir = resolve_path(args.content_pe_v2_cache_dir or (output_dir / "content_pe_v2_cache"))
+    content_pe_v2_groups = parse_content_pe_v2_groups(args.content_pe_v2_groups)
     content_string_cache_dir = None
     if args.content_string_features:
         content_string_cache_dir = resolve_path(args.content_string_cache_dir or (output_dir / "content_string_cache_v1"))
@@ -2090,6 +2189,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         content_cache_dir=str(content_cache_dir) if content_cache_dir is not None else None,
         include_content_pe_v2=bool(args.content_pe_v2_features),
         content_pe_v2_cache_dir=str(content_pe_v2_cache_dir) if content_pe_v2_cache_dir is not None else None,
+        content_pe_v2_groups=content_pe_v2_groups,
         include_content_string=bool(args.content_string_features),
         content_string_cache_dir=str(content_string_cache_dir) if content_string_cache_dir is not None else None,
         include_content_cert=bool(args.content_cert_features),
@@ -2200,8 +2300,13 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "feature_config": feature_config.__dict__,
         "content_pe_feature_names": CONTENT_PE_FEATURE_NAMES if feature_config.include_content_pe else [],
         "content_pe_v2_feature_names": (
-            CONTENT_PE_V2_FEATURE_NAMES if getattr(feature_config, "include_content_pe_v2", False) else []
+            content_pe_v2_selected_feature_names(getattr(feature_config, "content_pe_v2_groups", ("all",)))
+            if getattr(feature_config, "include_content_pe_v2", False)
+            else []
         ),
+        "content_pe_v2_group_feature_counts": {
+            group: len(indexes) for group, indexes in sorted(CONTENT_PE_V2_GROUPS.items())
+        },
         "content_string_feature_names": CONTENT_STRING_FEATURE_NAMES if feature_config.include_content_string else [],
         "content_cert_feature_names": CONTENT_CERT_FEATURE_NAMES if feature_config.include_content_cert else [],
         "records": {"train": train_counts, "val": val_counts},
@@ -2258,7 +2363,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 "checkpoint_config": checkpoint_config.to_dict(),
                 "content_pe_feature_names": CONTENT_PE_FEATURE_NAMES if feature_config.include_content_pe else [],
                 "content_pe_v2_feature_names": (
-                    CONTENT_PE_V2_FEATURE_NAMES if getattr(feature_config, "include_content_pe_v2", False) else []
+                    content_pe_v2_selected_feature_names(getattr(feature_config, "content_pe_v2_groups", ("all",)))
+                    if getattr(feature_config, "include_content_pe_v2", False)
+                    else []
                 ),
                 "content_string_feature_names": (
                     CONTENT_STRING_FEATURE_NAMES if feature_config.include_content_string else []
