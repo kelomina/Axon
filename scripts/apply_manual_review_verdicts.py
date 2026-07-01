@@ -180,6 +180,8 @@ def build_plan(
     unknown_rows = 0
     duplicate_review_keys: Counter[str] = Counter()
     seen_review_keys: set[str] = set()
+    review_split_counts: Counter[str] = Counter()
+    review_label_split_counts: Counter[str] = Counter()
 
     for review_row in review_rows:
         key = source_key(review_row)
@@ -188,13 +190,6 @@ def build_plan(
             continue
         seen_review_keys.add(key)
 
-        action, reason = classify_manual_row(review_row)
-        if action == "ignore":
-            ignored_rows += 1
-            continue
-        if action == "ignored_unknown_verdict":
-            unknown_rows += 1
-            continue
         split_row = None
         for lookup_key in source_keys(review_row):
             split_row = split_index.get(lookup_key)
@@ -202,6 +197,17 @@ def build_plan(
                 break
         if split_row is None:
             missing_split_rows += 1
+            continue
+        split_name = str(split_row.get("split", ""))
+        review_split_counts[split_name] += 1
+        review_label_split_counts[f"{split_name}:{split_row.get('label', '')}"] += 1
+
+        action, reason = classify_manual_row(review_row)
+        if action == "ignore":
+            ignored_rows += 1
+            continue
+        if action == "ignored_unknown_verdict":
+            unknown_rows += 1
             continue
         planned_rows.append(_plan_row(review_row, split_row, action, reason, allow_test_actions))
 
@@ -221,6 +227,9 @@ def build_plan(
         "unknown_verdict_rows": unknown_rows,
         "missing_split_rows": missing_split_rows,
         "duplicate_review_rows": int(sum(count - 1 for count in duplicate_review_keys.values() if count > 1)),
+        "review_split_counts": dict(sorted(review_split_counts.items())),
+        "review_label_split_counts": dict(sorted(review_label_split_counts.items())),
+        "review_rows_in_test_split": int(review_split_counts.get("test", 0)),
         "action_counts": dict(sorted(action_counts.items())),
         "split_action_counts": dict(sorted(split_action_counts.items())),
         "replacement_required": int(sum(row["replacement_required"] == "true" for row in planned_rows)),

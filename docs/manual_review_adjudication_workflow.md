@@ -58,9 +58,12 @@ The verdict and action must describe the same operational class. For example, `l
 The JSON summary reports:
 
 - `planned_rows`: rows with an actionable manual decision
+- `review_split_counts` and `review_rows_in_test_split`: where the reviewed rows live in the frozen 20w split
 - `replacement_required`: rows that must be excluded and replaced
 - `replacement_counts_by_original_label`: how many same-label replacement candidates are needed
 - `training_policy_rows`: rows that are eligible to affect train/val policy
+
+If `review_rows_in_test_split > 0`, treat those verdicts as held-out evidence by default. They can support noise adjudication and target-feasibility analysis, but they must not directly tune thresholds, blend weights, or train/val policy unless a separate business decision explicitly rebuilds the dataset and restarts Val-first selection.
 
 If `replacement_required > 0`, the next data step is to regenerate a corrected split from a candidate pool that has enough unused valid PE files. Do not reduce the 20w total and do not claim the bad rows as replacements.
 

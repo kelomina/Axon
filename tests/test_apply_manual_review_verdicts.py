@@ -49,6 +49,8 @@ def test_empty_manual_verdicts_create_no_actions():
     assert rows == []
     assert summary["planned_rows"] == 0
     assert summary["ignored_rows"] == 1
+    assert summary["review_split_counts"] == {"train": 1}
+    assert summary["review_rows_in_test_split"] == 0
 
 
 def test_relabel_verdict_flips_train_label_without_replacement():
@@ -169,6 +171,40 @@ def test_test_split_verdict_is_withheld_by_default():
     assert rows[0]["planned_label"] == 0
     assert rows[0]["usable_for_training_policy"] == "false"
     assert summary["training_policy_rows"] == 0
+    assert summary["review_split_counts"] == {"test": 1}
+    assert summary["review_label_split_counts"] == {"test:0": 1}
+    assert summary["review_rows_in_test_split"] == 1
+
+
+def test_blank_test_split_review_is_reported_even_without_action():
+    with _case_dir("manual_verdict_blank_test") as tmp_path:
+        split_csv = tmp_path / "split.csv"
+        review_csv = tmp_path / "review.csv"
+        _write_csv(
+            split_csv,
+            ["source_path", "label", "sample_index", "split"],
+            [{"source_path": "data/test.exe", "label": "1", "sample_index": "10", "split": "test"}],
+        )
+        _write_csv(
+            review_csv,
+            ["source_path", "source_sha256", "label", "manual_label_verdict", "recommended_action"],
+            [{
+                "source_path": "data/test.exe",
+                "source_sha256": "",
+                "label": "1",
+                "manual_label_verdict": "",
+                "recommended_action": "",
+            }],
+        )
+
+        rows, summary = build_plan(review_csv=review_csv, split_csv=split_csv)
+
+    assert rows == []
+    assert summary["ignored_rows"] == 1
+    assert summary["training_policy_rows"] == 0
+    assert summary["review_split_counts"] == {"test": 1}
+    assert summary["review_label_split_counts"] == {"test:1": 1}
+    assert summary["review_rows_in_test_split"] == 1
 
 
 def test_review_sha_can_match_split_path_filename():

@@ -118,6 +118,9 @@ First-pass high-similarity FP package:
 - Review-queue ready: `true`
 - Verdict-package ready: `false`, because manual fields are intentionally blank.
 - The guide is read-only evidence for adjudication. It does not fill `manual_label_verdict` or `recommended_action`.
+- Dry adjustment plan: `reports/random_20w_split/stage2_blend_high_similarity_fp_manual_review_top48_adjustment_plan.json`
+- Split placement: `48 / 48` reviewed rows are in the frozen `test` split, label `0`; `training_policy_rows=0`.
+- Protocol consequence: these rows are held-out evidence by default. They must not directly tune thresholds, blend weights, or train/val policy.
 
 Selection:
 
