@@ -20,6 +20,16 @@ for item in (PROJECT_ROOT, SCRIPTS_DIR):
     if str(item) not in sys.path:
         sys.path.insert(0, str(item))
 
+from apply_manual_review_verdicts import (  # noqa: E402
+    EXCLUDE_ACTIONS,
+    EXCLUDE_VERDICTS,
+    KEEP_ACTIONS,
+    KEEP_VERDICTS,
+    RELABEL_ACTIONS,
+    RELABEL_VERDICTS,
+    UNCERTAIN_VERDICTS,
+    normalize_text,
+)
 from audit_pe_metadata_queue import parse_pe  # noqa: E402
 
 
@@ -32,6 +42,8 @@ REQUIRED_NPZ_FIELDS = [
     "source_sha256",
 ]
 EXPECTED_NEIGHBOR_COUNT = 5
+VALID_MANUAL_VERDICTS = KEEP_VERDICTS | RELABEL_VERDICTS | EXCLUDE_VERDICTS | UNCERTAIN_VERDICTS
+VALID_RECOMMENDED_ACTIONS = KEEP_ACTIONS | RELABEL_ACTIONS | EXCLUDE_ACTIONS
 
 
 def resolve_path(path: Path) -> Path:
@@ -317,6 +329,19 @@ def _is_blank(value: object) -> bool:
     return str(value or "").strip() == ""
 
 
+def audit_manual_fields(row: dict) -> dict:
+    verdict = normalize_text(row.get("manual_label_verdict"))
+    action = normalize_text(row.get("recommended_action"))
+    return {
+        "manual_label_verdict_normalized": verdict,
+        "recommended_action_normalized": action,
+        "manual_label_verdict_blank": verdict == "",
+        "recommended_action_blank": action == "",
+        "manual_label_verdict_valid": verdict in VALID_MANUAL_VERDICTS,
+        "recommended_action_valid": action in VALID_RECOMMENDED_ACTIONS,
+    }
+
+
 def audit_manual_review_package(
     *,
     review_csv: Path,
@@ -367,6 +392,7 @@ def audit_manual_review_package(
 
         pe_metadata = parse_pe(source_path)
         neighbor_evidence = audit_neighbor_evidence(row, by_source, by_sha, manifest_dir)
+        manual_fields = audit_manual_fields(row)
         out = {
             **row,
             "source_exists": source_exists,
@@ -388,6 +414,7 @@ def audit_manual_review_package(
             "max_section_entropy": pe_metadata["max_section_entropy"],
             "overlay_size": pe_metadata["overlay_size"],
             **neighbor_evidence,
+            **manual_fields,
         }
         reasons = readiness_reasons(out, require_pe=require_pe)
         out["manual_review_ready"] = not reasons
@@ -450,6 +477,12 @@ def audit_manual_review_package(
         "top5_neighbor_cache_exists_count",
         "top5_neighbor_evidence_ok",
         "top5_neighbor_lengths",
+        "manual_label_verdict_normalized",
+        "recommended_action_normalized",
+        "manual_label_verdict_blank",
+        "recommended_action_blank",
+        "manual_label_verdict_valid",
+        "recommended_action_valid",
         "manual_label_verdict",
         "manual_verdict_note",
         "recommended_action",
@@ -462,12 +495,16 @@ def audit_manual_review_package(
         writer.writerows(output_rows)
 
     readiness_counter = Counter("ready" if row["manual_review_ready"] else "not_ready" for row in output_rows)
-    verdict_blank_count = sum(1 for row in output_rows if _is_blank(row.get("manual_label_verdict")))
-    action_blank_count = sum(1 for row in output_rows if _is_blank(row.get("recommended_action")))
+    verdict_blank_count = sum(1 for row in output_rows if row["manual_label_verdict_blank"])
+    action_blank_count = sum(1 for row in output_rows if row["recommended_action_blank"])
+    verdict_invalid_count = sum(1 for row in output_rows if not row["manual_label_verdict_valid"])
+    action_invalid_count = sum(1 for row in output_rows if not row["recommended_action_valid"])
     verdict_package_ready = (
         readiness_counter["not_ready"] == 0
         and verdict_blank_count == 0
         and action_blank_count == 0
+        and verdict_invalid_count == 0
+        and action_invalid_count == 0
     )
     reason_counter: Counter[str] = Counter()
     for row in output_rows:
@@ -488,12 +525,16 @@ def audit_manual_review_package(
         "manual_review_ready": readiness_counter["not_ready"] == 0,
         "manual_label_verdict_blank_count": verdict_blank_count,
         "recommended_action_blank_count": action_blank_count,
+        "manual_label_verdict_invalid_count": verdict_invalid_count,
+        "recommended_action_invalid_count": action_invalid_count,
         "blocking_issues": [
             issue
             for issue, present in [
                 ("review_queue_not_ready", readiness_counter["not_ready"] > 0),
                 ("manual_verdict_empty", verdict_blank_count > 0),
                 ("recommended_action_empty", action_blank_count > 0),
+                ("manual_verdict_invalid", verdict_invalid_count > 0),
+                ("recommended_action_invalid", action_invalid_count > 0),
             ]
             if present
         ],
@@ -516,6 +557,12 @@ def audit_manual_review_package(
         "top5_neighbor_cache_exists_total": sum(int(row["top5_neighbor_cache_exists_count"]) for row in output_rows),
         "parse_error_counts": dict(sorted(Counter(str(row["parse_error"]) for row in output_rows).items())),
         "readiness_reason_counts": dict(sorted(reason_counter.items())),
+        "manual_label_verdict_counts": dict(
+            sorted(Counter(str(row["manual_label_verdict_normalized"]) for row in output_rows).items())
+        ),
+        "recommended_action_counts": dict(
+            sorted(Counter(str(row["recommended_action_normalized"]) for row in output_rows).items())
+        ),
         "duplicate_source_sha256_count": sum(
             1
             for _sha, count in Counter(str(row.get("source_sha256", "")).casefold() for row in output_rows).items()

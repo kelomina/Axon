@@ -163,7 +163,7 @@ def test_manual_review_readiness_reports_ready_row():
                     "score_column": "blend_prob_malicious",
                     **neighbor_fields,
                     "manual_label_verdict": "label_correct",
-                    "recommended_action": "keep",
+                    "recommended_action": "keep_label",
                 }
             ],
         )
@@ -181,6 +181,8 @@ def test_manual_review_readiness_reports_ready_row():
     assert summary["review_queue_ready"] is True
     assert summary["verdict_package_ready"] is True
     assert summary["manual_review_ready"] is True
+    assert summary["manual_label_verdict_invalid_count"] == 0
+    assert summary["recommended_action_invalid_count"] == 0
     assert summary["top5_neighbor_evidence_ok_count"] == 1
     assert rows[0]["manual_review_ready"] == "True"
     assert rows[0]["readiness_reasons"] == ""
@@ -291,6 +293,8 @@ def test_manual_review_readiness_distinguishes_blank_verdict_package():
     assert summary["verdict_package_ready"] is False
     assert summary["manual_label_verdict_blank_count"] == 1
     assert summary["recommended_action_blank_count"] == 1
+    assert summary["manual_label_verdict_invalid_count"] == 0
+    assert summary["recommended_action_invalid_count"] == 0
     assert summary["blocking_issues"] == ["manual_verdict_empty", "recommended_action_empty"]
 
 
@@ -350,3 +354,62 @@ def test_manual_review_readiness_flags_incomplete_neighbor_evidence():
     assert summary["review_queue_ready"] is False
     assert summary["top5_neighbor_evidence_ok_count"] == 0
     assert summary["readiness_reason_counts"]["top5_neighbor_evidence_incomplete"] == 1
+
+
+def test_manual_review_readiness_rejects_unknown_manual_field_values():
+    with _case_dir("manual_readiness_bad_manual_fields") as tmp_path:
+        source_path, sha = _make_source(tmp_path, "sample.exe")
+        cache_path = tmp_path / "cache" / "sample.npz"
+        _write_cache(cache_path, label=0, sha=sha)
+        neighbor_samples, neighbor_fields = _make_neighbor_samples(tmp_path)
+        manifest_path = tmp_path / "manifest.json"
+        manifest_path.write_text(
+            json.dumps(
+                {
+                    "max_byte_length": 2,
+                    "pe_feature_dim": 2,
+                    "stat_feature_dim": 1,
+                    "lightweight_feature_dim": 3,
+                    "samples": [
+                        {
+                            "source_path": str(source_path),
+                            "source_sha256": sha,
+                            "cache_path": str(cache_path),
+                            "label": 0,
+                        }
+                    ]
+                    + neighbor_samples,
+                }
+            ),
+            encoding="utf-8",
+        )
+        review_csv = tmp_path / "review.csv"
+        _write_review(
+            review_csv,
+            [
+                {
+                    "review_rank": 1,
+                    "source_path": str(source_path),
+                    "source_sha256": sha,
+                    "label": 0,
+                    "prediction": 1,
+                    "prob_malicious": "0.99",
+                    **neighbor_fields,
+                    "manual_label_verdict": "definitely_bad",
+                    "recommended_action": "magic_action",
+                }
+            ],
+        )
+
+        summary = audit_manual_review_package(
+            review_csv=review_csv,
+            manifest_json=manifest_path,
+            output_csv=tmp_path / "readiness.csv",
+            output_json=tmp_path / "readiness.json",
+        )
+
+    assert summary["review_queue_ready"] is True
+    assert summary["verdict_package_ready"] is False
+    assert summary["manual_label_verdict_invalid_count"] == 1
+    assert summary["recommended_action_invalid_count"] == 1
+    assert summary["blocking_issues"] == ["manual_verdict_invalid", "recommended_action_invalid"]

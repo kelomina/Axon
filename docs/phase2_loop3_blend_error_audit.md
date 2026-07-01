@@ -121,6 +121,23 @@ Readiness audit:
 - Top-5 neighbor manifest/source/cache evidence: `1300 / 1300`
 - Review-queue ready: `true`
 - Verdict-package ready: `false`, because `manual_label_verdict` and `recommended_action` are intentionally blank until human/business adjudication.
+- Manual field validity: `260 / 260` rows are currently blank but not invalid.
+
+Accepted `manual_label_verdict` values:
+
+- Keep current label: `label_correct`
+- Wrong label: `label_wrong`
+- Exclude/replace: `out_of_scope`, `feature_broken`
+- Defer: `uncertain`
+
+Accepted `recommended_action` values:
+
+- Keep current label: `keep_label`
+- Relabel train/val only: `relabel_train_only`
+- Replace invalid sample: `replace_sample`
+- Quarantine broader source group: `quarantine_source_group`
+- Defer: `needs_more_evidence`
+- Mark model blind spot without changing data: `model_blindspot`
 
 This package is only an adjudication queue. It must not be used to tune thresholds, blend weights, or model hyperparameters directly. If a reviewed file is confirmed invalid or mislabeled, the corrected split must replace the bad file with a fresh valid candidate of the intended class and then re-audit cache coverage back to exactly `200000` rows.
 
