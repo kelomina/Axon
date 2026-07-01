@@ -191,6 +191,48 @@ CONTENT_PE_FEATURE_NAMES.extend(
     ]
 )
 
+CONTENT_STRING_PATTERNS = {
+    "url": [b"http://", b"https://", b"www.", b"ftp://"],
+    "network": [b"socket", b"connect", b"recv", b"send", b"wininet", b"ws2_32", b"internetopen", b"urldownload"],
+    "script_exec": [b"powershell", b"cmd.exe", b"wscript", b"cscript", b"mshta", b"rundll32", b"regsvr32"],
+    "persistence": [b"currentversion\\run", b"runonce", b"\\services\\", b"startup", b"schtasks", b"autostart"],
+    "injection": [b"createremotethread", b"virtualalloc", b"virtualprotect", b"writeprocessmemory", b"queueuserapc"],
+    "credential": [b"password", b"credential", b"token", b"cookie", b"browser", b"wallet"],
+    "crypto": [b"cryptencrypt", b"cryptdecrypt", b"bcrypt", b"advapi32", b"base64", b"aes", b"rsa"],
+    "evasion": [b"isdebuggerpresent", b"checkremotedebugger", b"ntqueryinformationprocess", b"sleep", b"sandbox"],
+    "vm": [b"vmware", b"virtualbox", b"vbox", b"qemu", b"wine_get_unix_file_name"],
+    "packer": [b"upx", b"themida", b"vmprotect", b"aspack", b"enigma", b"packed"],
+    "file_ops": [b"createfile", b"writefile", b"deletefile", b"copyfile", b"movefile", b"findfirstfile"],
+    "registry": [b"regopenkey", b"regsetvalue", b"regcreatekey", b"regdeletekey", b"regqueryvalue"],
+    "benign_vendor": [b"microsoft", b"windows", b"google", b"adobe", b"intel", b"nvidia", b"mozilla", b"oracle"],
+    "version_resource": [b"companyname", b"productname", b"filedescription", b"originalfilename", b"copyright"],
+}
+
+CONTENT_STRING_FEATURE_NAMES = [
+    "string_sample_log_size",
+    "string_ascii_printable_ratio",
+    "string_null_ratio",
+    "string_high_byte_ratio",
+    "string_ascii_run_count_log",
+    "string_ascii_run_density",
+    "string_ascii_run_mean_len_norm",
+    "string_ascii_run_max_len_norm",
+    "string_utf16_ascii_run_count_log",
+    "string_utf16_ascii_run_density",
+    "string_url_regex_count_log",
+    "string_ipv4_regex_count_log",
+    "string_registry_path_count_log",
+    "string_windows_path_count_log",
+    "string_entropy",
+]
+for category_name in CONTENT_STRING_PATTERNS:
+    CONTENT_STRING_FEATURE_NAMES.extend(
+        [
+            f"string_{category_name}_count_log",
+            f"string_{category_name}_present",
+        ]
+    )
+
 
 def resolve_path(path: Path) -> Path:
     return path if path.is_absolute() else PROJECT_ROOT / path
@@ -554,6 +596,133 @@ def save_feature_npz_atomic(cache_path: Path, features: np.ndarray) -> None:
     temp_path.replace(cache_path)
 
 
+def _read_binary_sample(file_path: Path, *, head_bytes: int = 2 * 1024 * 1024, tail_bytes: int = 512 * 1024) -> bytes:
+    try:
+        file_size = file_path.stat().st_size
+        with file_path.open("rb") as handle:
+            head = handle.read(head_bytes)
+            if file_size > head_bytes + tail_bytes:
+                handle.seek(max(file_size - tail_bytes, 0))
+                tail = handle.read(tail_bytes)
+                return head + tail
+            return head
+    except OSError:
+        return b""
+
+
+def _count_regex(data: bytes, pattern: bytes) -> int:
+    import re
+
+    return len(re.findall(pattern, data))
+
+
+def _ascii_run_lengths(data: bytes, *, min_len: int = 4) -> list[int]:
+    lengths = []
+    current = 0
+    for value in data:
+        if 32 <= value <= 126:
+            current += 1
+        else:
+            if current >= min_len:
+                lengths.append(current)
+            current = 0
+    if current >= min_len:
+        lengths.append(current)
+    return lengths
+
+
+def _utf16_ascii_run_lengths(data: bytes, *, min_len: int = 4) -> list[int]:
+    lengths = []
+    current = 0
+    index = 0
+    limit = len(data) - 1
+    while index < limit:
+        if 32 <= data[index] <= 126 and data[index + 1] == 0:
+            current += 1
+            index += 2
+        else:
+            if current >= min_len:
+                lengths.append(current)
+            current = 0
+            index += 1
+    if current >= min_len:
+        lengths.append(current)
+    return lengths
+
+
+def _content_string_features_from_path(file_path: Path) -> np.ndarray:
+    data = _read_binary_sample(file_path)
+    length = len(data)
+    if length == 0:
+        return np.zeros(len(CONTENT_STRING_FEATURE_NAMES), dtype=np.float32)
+
+    lowered = data.lower()
+    byte_values = np.frombuffer(data, dtype=np.uint8)
+    ascii_printable = int(np.count_nonzero((byte_values >= 32) & (byte_values <= 126)))
+    null_count = int(np.count_nonzero(byte_values == 0))
+    high_byte_count = int(np.count_nonzero(byte_values >= 128))
+    ascii_runs = _ascii_run_lengths(data)
+    utf16_runs = _utf16_ascii_run_lengths(data)
+    ascii_count = len(ascii_runs)
+    utf16_count = len(utf16_runs)
+    mean_ascii = float(np.mean(ascii_runs)) if ascii_runs else 0.0
+    max_ascii = float(np.max(ascii_runs)) if ascii_runs else 0.0
+
+    features = [
+        math.log1p(length),
+        _safe_ratio(ascii_printable, length),
+        _safe_ratio(null_count, length),
+        _safe_ratio(high_byte_count, length),
+        math.log1p(ascii_count),
+        _safe_ratio(ascii_count, length / 1024.0),
+        min(mean_ascii, 512.0) / 512.0,
+        min(max_ascii, 4096.0) / 4096.0,
+        math.log1p(utf16_count),
+        _safe_ratio(utf16_count, length / 1024.0),
+        math.log1p(_count_regex(lowered, rb"https?://[^\s\x00\"']+")),
+        math.log1p(_count_regex(lowered, rb"\b(?:\d{1,3}\.){3}\d{1,3}\b")),
+        math.log1p(lowered.count(b"\\software\\") + lowered.count(b"\\registry\\") + lowered.count(b"hkey_")),
+        math.log1p(lowered.count(b"c:\\") + lowered.count(b"\\windows\\") + lowered.count(b"\\system32\\")),
+        _entropy_from_counts(np.bincount(byte_values, minlength=256)),
+    ]
+
+    for patterns in CONTENT_STRING_PATTERNS.values():
+        count = sum(lowered.count(pattern.lower()) for pattern in patterns)
+        features.extend([math.log1p(count), 1.0 if count > 0 else 0.0])
+
+    if len(features) != len(CONTENT_STRING_FEATURE_NAMES):
+        raise ValueError(
+            f"Content string feature length mismatch: {len(features)} != {len(CONTENT_STRING_FEATURE_NAMES)}"
+        )
+    return np.nan_to_num(np.asarray(features, dtype=np.float32), copy=False)
+
+
+def _string_cache_path(row: dict, cache_dir: Optional[str]) -> Optional[Path]:
+    if not cache_dir:
+        return None
+    key = (row.get("source_sha256") or "").strip().lower()
+    if not key:
+        source_path = row.get("source_path", "")
+        key = hashlib.sha256(str(resolve_path(Path(source_path))).encode("utf-8", errors="ignore")).hexdigest()
+    return resolve_path(Path(cache_dir)) / f"{key}.npz"
+
+
+def content_string_features_for_row(row: dict, cache_dir: Optional[str]) -> np.ndarray:
+    cache_path = _string_cache_path(row, cache_dir)
+    if cache_path is not None and cache_path.exists():
+        with np.load(cache_path, allow_pickle=False) as data:
+            features = data["features"].astype(np.float32, copy=False)
+        if features.shape == (len(CONTENT_STRING_FEATURE_NAMES),):
+            return features
+
+    source_path = resolve_path(Path(row["source_path"]))
+    features = _content_string_features_from_path(source_path)
+    if cache_path is not None:
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        save_feature_npz_atomic(cache_path, features)
+    return features
+
+
 def _byte_summary_features(byte_seq: np.ndarray, prefix_len: int, chunk_count: int) -> np.ndarray:
     byte_values = byte_seq.astype(np.uint8, copy=False)
     counts = np.bincount(byte_values, minlength=256).astype(np.float32)
@@ -604,6 +773,8 @@ class FeatureConfig:
     include_byte_summary: bool
     include_content_pe: bool = False
     content_cache_dir: Optional[str] = None
+    include_content_string: bool = False
+    content_string_cache_dir: Optional[str] = None
 
 
 def build_matrix(
@@ -656,6 +827,10 @@ def build_matrix(
             parts.append(_byte_summary_features(byte_seq, feature_config.prefix_len, feature_config.chunk_count))
         if getattr(feature_config, "include_content_pe", False):
             parts.append(content_pe_features_for_row(row, getattr(feature_config, "content_cache_dir", None)))
+        if getattr(feature_config, "include_content_string", False):
+            parts.append(
+                content_string_features_for_row(row, getattr(feature_config, "content_string_cache_dir", None))
+            )
         features.append(np.concatenate(parts).astype(np.float32, copy=False))
         labels.append(label)
         base_probs.append(prob)
@@ -1215,6 +1390,17 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         default=None,
         help="Optional sidecar cache for content-only PE metadata features.",
     )
+    parser.add_argument(
+        "--content-string-features",
+        action="store_true",
+        help="Append production-stable binary string/keyword features extracted from file content only.",
+    )
+    parser.add_argument(
+        "--content-string-cache-dir",
+        type=Path,
+        default=None,
+        help="Optional sidecar cache for content-only string features.",
+    )
     parser.add_argument("--noise-modes", default="none,soft_conflict_downweight,trim_extreme_conflict")
     parser.add_argument("--test-val-f1-gate", type=float, default=0.980)
     parser.add_argument("--knn-features", action="store_true", help="Append train-only kNN label-support features.")
@@ -1236,6 +1422,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     content_cache_dir = None
     if args.content_pe_features:
         content_cache_dir = resolve_path(args.content_pe_cache_dir or (output_dir / "content_pe_cache_v1"))
+    content_string_cache_dir = None
+    if args.content_string_features:
+        content_string_cache_dir = resolve_path(args.content_string_cache_dir or (output_dir / "content_string_cache_v1"))
     feature_config = FeatureConfig(
         prefix_len=max(0, int(args.prefix_len)),
         chunk_count=max(1, int(args.chunk_count)),
@@ -1245,6 +1434,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         include_byte_summary=args.feature_set == "extended",
         include_content_pe=bool(args.content_pe_features),
         content_cache_dir=str(content_cache_dir) if content_cache_dir is not None else None,
+        include_content_string=bool(args.content_string_features),
+        content_string_cache_dir=str(content_string_cache_dir) if content_string_cache_dir is not None else None,
     )
 
     train_rows = read_prediction_rows(args.train_predictions, args.max_train_rows)
@@ -1350,6 +1541,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "test_predictions": str(resolve_path(args.test_predictions)) if args.test_predictions else None,
         "feature_config": feature_config.__dict__,
         "content_pe_feature_names": CONTENT_PE_FEATURE_NAMES if feature_config.include_content_pe else [],
+        "content_string_feature_names": CONTENT_STRING_FEATURE_NAMES if feature_config.include_content_string else [],
         "records": {"train": train_counts, "val": val_counts},
         "base_feature_dim": base_feature_dim,
         "feature_dim": int(train_x.shape[1]),
@@ -1403,6 +1595,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 "selected": selected,
                 "checkpoint_config": checkpoint_config.to_dict(),
                 "content_pe_feature_names": CONTENT_PE_FEATURE_NAMES if feature_config.include_content_pe else [],
+                "content_string_feature_names": (
+                    CONTENT_STRING_FEATURE_NAMES if feature_config.include_content_string else []
+                ),
                 "knn": {
                     "enabled": bool(args.knn_features),
                     "top_ks": knn_config["top_ks"],

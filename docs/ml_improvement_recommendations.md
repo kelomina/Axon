@@ -30,6 +30,8 @@ Loop26 是有效改进：full-test 错误从 `2685` 降到 `2571`，少了 `114`
 
 Loop28 已经压低这些热点，但没有消灭：full-test 剩余错误中 `<none>` 仍有 `887` 个错误（FP `849`），`.exe` 有 `831` 个错误（FN `594`），`.dll` 有 `218` 个错误（FN `217`）。这些切片只能用于错误归因，不能作为生产模型输入。
 
+Loop29/Loop30 复验说明两条近路暂时不成立：Loop28 + Loop27 的三路浅融合在 Val 上从 `162` errors 降到 `147`，但冻结 Test-10k 为 `112` errors，未超过 Loop28 content-only 的 `111` errors；宽泛二进制字符串/关键词特征在 Val 最好 `167` errors，也弱于 Loop28。因此下一步不应继续堆浅融合或粗粒度字符串关键词，而应围绕 Loop28 残差做更有针对性的内容 schema。
+
 因此，下一阶段 P1 不应继续把主要时间花在“再替换少量 Val 噪声样本”上，而应转为三个方向：
 
 1. **把 Loop28 content PE metadata 正式产品化并继续扩展内容特征。** 当前大量白样本在数据集中表现为 SHA 文件名或无扩展名，但实战文件名可被任意改写，所以 filename/extension 只能作为错误分析切片，不能作为生产模型输入。Loop28 已证明 PE 内容侧信号有效，下一步应把入口点/子系统、签名/证书、导入表可信度、overlay/packer 风险、section 权限组合、data directory、import/export/resource/TLS/reloc 等特征并入稳定 schema，而不是长期停留在 Stage-2 sidecar。
