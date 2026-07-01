@@ -52,6 +52,9 @@ clear corrected label. Without that explicit target, the row becomes
 ## Safety Rules
 
 - The script does not edit the original split, raw data, or feature cache.
+- Filename, path, extension, directory, source hash, sample id, split, and row
+  order are audit/join fields only. They can help locate the reviewed file, but
+  they must not become model features or relabel evidence.
 - Empty or uncertain review rows produce no action.
 - Test-split verdicts are held out of training policy by default.
 - `label_wrong` rows without an explicit corrected label produce

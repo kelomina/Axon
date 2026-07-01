@@ -6,6 +6,8 @@
 
 在 20 万完整 split 上，当前最强可复现实验是 Loop28 的 Stage-2 content PE metadata 模型。它严格保持 `20000 train / 20000 val / 160000 test`，每个 split 内黑白样本平衡不变，fixed-v2 uncompressed cache 覆盖 `200000/200000`。Val 只用于选模型和阈值；Test-10k 只做确认；full-test 只做一次冻结评估。Loop28 新增的 100 维 PE metadata 只来自文件内容和 PE 结构，不包含 filename、extension、目录名或路径文本。
 
+补充硬规则：文件名、路径、扩展名、目录名、`source_sha256`、`sample_index`、`split` 和行顺序只能用于装载、对齐、审计、去重、人工复核或生成一次性的标签清单，不能作为模型特征或调参依据。原因很简单：实战文件名和训练集命名通常完全不同，而且攻击者可以随时改名。训练集目录最多表示“人工把这批样本放在哪个标签桶里”，不是“这个文件因为叫某个名字所以恶意/良性”的证据。本轮已新增 `scripts/identity_feature_guard.py`，并接入 Stage-2 cache matrix 与 OOF stacker，后续训练矩阵若出现路径/命名/扩展名/hash/split/row-id 派生特征会直接失败。
+
 最新结果如下：
 
 | 方案 | Val F1 | Test-10k F1 | Full-test F1 | Full-test errors | FP / FN |
@@ -28,7 +30,7 @@ Loop26 是有效改进：full-test 错误从 `2685` 降到 `2571`，少了 `114`
 | 恶意 DLL | `.dll` 错误 `306`，其中 FN `305` |
 | 月份热点 | `2026-03`、`2020-11`、`2021-09`、`2026-02` 等恶意 FN 热点明显 |
 
-Loop28 已经压低这些热点，但没有消灭：full-test 剩余错误中 `<none>` 仍有 `887` 个错误（FP `849`），`.exe` 有 `831` 个错误（FN `594`），`.dll` 有 `218` 个错误（FN `217`）。这些切片只能用于错误归因，不能作为生产模型输入。
+Loop28 已经压低这些热点，但没有消灭：full-test 剩余错误中 `<none>` 仍有 `887` 个错误（FP `849`），`.exe` 有 `831` 个错误（FN `594`），`.dll` 有 `218` 个错误（FN `217`）。这些切片只能用于错误归因和采样审计，不能作为生产模型输入，也不能拿来做阈值或融合权重的捷径。
 
 Loop29/Loop30/Loop31 复验说明几条近路暂时不成立：Loop28 + Loop27 的三路浅融合在 Val 上从 `162` errors 降到 `147`，但冻结 Test-10k 为 `112` errors，未超过 Loop28 content-only 的 `111` errors；宽泛二进制字符串/关键词特征在 Val 最好 `167` errors；Authenticode certificate blob 特征在 Val 最好 `168` errors，也弱于 Loop28。因此下一步不应继续堆浅融合、粗粒度字符串关键词或浅证书 blob 指标，而应围绕 Loop28 残差做更有针对性的内容 schema。
 
@@ -45,6 +47,8 @@ Loop29/Loop30/Loop31 复验说明几条近路暂时不成立：Loop28 + Loop27 �
 随后 Loop38 对 Loop28 full-test 残差做了噪声和多模型重合审计，不训练、不调阈值。Loop28 的 `1949` 个 full-test 错误中，`910` 个落入高置信冲突或近阈值可疑桶，`649` 个属于 severe/high confidence conflict。另一方面，`921` 个 Loop28 错误至少被 Loop37、byte-ngram 或 Loop26 blend 中的一个纠正，其中 FP `385`、FN `536`。这说明可学习残差和噪声/边界上限同时存在：有一批错误可以被其它视角修复，但还有大量高置信冲突不是当前候选能解决的。相关文档见 `docs/phase3_loop38_residual_noise_strata.md`。
 
 Loop39 已把这 `649` 个 severe/high confidence conflict 转成手工复核队列：FP `416`、FN `233`；其中 `501` 条没有被任何对比模型修正，`148` 条至少被一个候选模型修正。队列中的人工结论和推荐动作字段全部留空，不做自动改标。队列还显式标出 `2` 个重复 SHA 内容组、`2` 条额外重复行，复核时必须按内容组处理。若人工确认 `feature_broken`、`out_of_scope` 或 `label_wrong`，不能用这些样本“补齐”，只能从同标签候选池重新抽取新样本替换，并保持总量严格 `200000`。相关文档见 `docs/phase3_loop39_conflict_adjudication_queue.md`。
+
+Loop40 为 Loop39 队列补了只读 replacement preflight。真实队列复验显示当前 split 仍严格满足 `200000 = 20000/20000/160000` 和各 split 黑白平衡，但 `649/649` 条 manual verdict/action 仍为空，因此 `preflight_status=blocked_no_verdicts`、`preflight_ok=false`。这正是期望行为：没有人工证据时不能重抽、不能替换、不能构建 corrected split；一旦人工确认坏样本，必须先用 fresh same-label candidate pool 通过预检，再进入 corrected split 和 cache readiness。相关文档见 `docs/phase3_loop40_loop39_replacement_preflight.md`。
 
 因此，下一阶段 P1 不应继续把主要时间花在“再替换少量 Val 噪声样本”上，而应转为三个方向：
 

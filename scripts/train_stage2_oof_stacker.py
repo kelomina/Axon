@@ -37,6 +37,7 @@ from train_stage2_cache_matrix import (  # noqa: E402
     clean_slice_metrics,
     content_pe_v2_selected_feature_names,
     filter_model_candidates,
+    assert_stage2_feature_names_safe,
     metrics_at_threshold,
     model_candidates,
     parse_content_pe_v2_groups,
@@ -272,6 +273,18 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     stack_train, stack_feature_names = build_stack_features(oof_scores)
     stack_val, _ = build_stack_features(val_base_scores)
+    safe_feature_name_groups = assert_stage2_feature_names_safe(
+        feature_config,
+        checkpoint_config=checkpoint_config,
+    )
+    if args.drop_base_prob_features:
+        safe_feature_name_groups = dict(safe_feature_name_groups)
+        safe_feature_name_groups["base_probability_features"] = []
+    assert_stage2_feature_names_safe(
+        feature_config,
+        stack_feature_names,
+        checkpoint_config,
+    )
     meta_results = []
     fitted_meta = []
     for meta_name, meta_model in meta_model_candidates(int(args.seed)):
@@ -315,6 +328,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "drop_base_prob_features": bool(args.drop_base_prob_features),
         "dropped_feature_count": int(dropped_feature_count),
         "checkpoint_config": checkpoint_config.to_dict(),
+        "identity_feature_policy": (
+            "source_path/source_sha256/cache_path/sample_index/split/filename/extension/directory are identity "
+            "or audit fields only and are forbidden as model features"
+        ),
+        "feature_name_groups": safe_feature_name_groups,
         "base_specs": [
             {"name": report["name"], "base_model": report["base_model"], "noise_mode": report["noise_mode"]}
             for report in base_reports
@@ -341,6 +359,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "train_predictions": str(resolve_path(args.train_predictions)),
         "val_predictions": str(resolve_path(args.val_predictions)),
         "feature_config": feature_config.__dict__,
+        "identity_feature_policy": payload["identity_feature_policy"],
+        "feature_name_groups": safe_feature_name_groups,
         "drop_base_prob_features": bool(args.drop_base_prob_features),
         "dropped_feature_count": int(dropped_feature_count),
         "records": {"train": train_counts, "val": val_counts},

@@ -46,6 +46,7 @@ if str(SRC_DIR) not in sys.path:
 from config import AxonExperimentConfig  # noqa: E402
 from dataset import _load_cached_feature_npz  # noqa: E402
 from security import load_safe_checkpoint  # noqa: E402
+from identity_feature_guard import assert_no_identity_feature_names  # noqa: E402
 
 
 SYSTEM_DLLS = {
@@ -523,6 +524,81 @@ CONTENT_CERT_FEATURE_NAMES = [
     "cert_timestamp_text_present",
     "cert_counter_signature_text_present",
 ]
+
+
+def stage2_feature_name_groups(
+    feature_config: "FeatureConfig",
+    knn_feature_names: Sequence[str] = (),
+    checkpoint_config: Optional[AxonExperimentConfig] = None,
+) -> dict[str, list[str]]:
+    config = checkpoint_config or AxonExperimentConfig()
+    names: dict[str, list[str]] = {
+        "base_probability_features": [
+            "base_prob_malicious",
+            "base_prob_malicious_squared",
+            "base_prob_distance_to_0_5",
+            "base_prob_log_malicious",
+            "base_prob_log_benign",
+            "base_prob_logit",
+        ],
+        "stat_features": (
+            [f"stat_{index}" for index in range(config.stat_feature_dim)]
+            if feature_config.include_stat
+            else []
+        ),
+        "pe_features": (
+            [f"pe_{index}" for index in range(config.pe_feature_dim)]
+            if feature_config.include_pe
+            else []
+        ),
+        "lightweight_features": (
+            [f"lightweight_{index}" for index in range(config.lightweight_feature_dim)]
+            if feature_config.include_lightweight
+            else []
+        ),
+        "byte_summary_features": [],
+        "content_pe_feature_names": CONTENT_PE_FEATURE_NAMES if feature_config.include_content_pe else [],
+        "content_pe_v2_feature_names": (
+            content_pe_v2_selected_feature_names(getattr(feature_config, "content_pe_v2_groups", ("all",)))
+            if getattr(feature_config, "include_content_pe_v2", False)
+            else []
+        ),
+        "content_string_feature_names": CONTENT_STRING_FEATURE_NAMES if feature_config.include_content_string else [],
+        "content_cert_feature_names": CONTENT_CERT_FEATURE_NAMES if feature_config.include_content_cert else [],
+        "knn_feature_names": list(knn_feature_names),
+    }
+    if feature_config.include_byte_summary:
+        names["byte_summary_features"] = (
+            [f"byte_hist_{index}" for index in range(256)]
+            + [f"byte_log_hist_{index}" for index in range(256)]
+            + [f"byte_prefix_{index}" for index in range(max(0, int(feature_config.prefix_len)))]
+            + [
+                f"byte_chunk_{chunk}_{stat_name}"
+                for chunk in range(max(1, int(feature_config.chunk_count)))
+                for stat_name in ("mean", "std", "entropy", "nonzero_ratio", "max_byte_ratio")
+            ]
+            + [
+                "byte_entropy",
+                "byte_nonzero_ratio",
+                "byte_mean",
+                "byte_std",
+                "byte_max_frequency_ratio",
+            ]
+        )
+    return names
+
+
+def assert_stage2_feature_names_safe(
+    feature_config: "FeatureConfig",
+    knn_feature_names: Sequence[str] = (),
+    checkpoint_config: Optional[AxonExperimentConfig] = None,
+) -> dict[str, list[str]]:
+    groups = stage2_feature_name_groups(feature_config, knn_feature_names, checkpoint_config)
+    for group_name, feature_names in groups.items():
+        assert_no_identity_feature_names(feature_names, context=f"Stage-2 {group_name}")
+    return groups
+
+
 for name in CERT_OID_PATTERNS:
     CONTENT_CERT_FEATURE_NAMES.append(f"cert_oid_{name}_present")
 for name in CERT_VENDOR_PATTERNS:
@@ -2239,6 +2315,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         train_x = np.hstack([train_x, train_knn]).astype(np.float32, copy=False)
         knn_config["oof"] = oof_info
         print(f"[knn] augmented train={train_x.shape} val={val_x.shape}", flush=True)
+    safe_feature_name_groups = assert_stage2_feature_names_safe(
+        feature_config,
+        knn_config["feature_names"],
+        checkpoint_config,
+    )
 
     thresholds = parse_thresholds(args.thresholds)
     baseline_val_best = select_best_threshold(val_base, val_y, thresholds)
@@ -2298,6 +2379,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "val_predictions": str(resolve_path(args.val_predictions)),
         "test_predictions": str(resolve_path(args.test_predictions)) if args.test_predictions else None,
         "feature_config": feature_config.__dict__,
+        "identity_feature_policy": (
+            "source_path/source_sha256/cache_path/sample_index/split/filename/extension/directory are identity "
+            "or audit fields only and are forbidden as model features"
+        ),
+        "feature_name_groups": safe_feature_name_groups,
         "content_pe_feature_names": CONTENT_PE_FEATURE_NAMES if feature_config.include_content_pe else [],
         "content_pe_v2_feature_names": (
             content_pe_v2_selected_feature_names(getattr(feature_config, "content_pe_v2_groups", ("all",)))
@@ -2361,6 +2447,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 "threshold": selected_threshold,
                 "selected": selected,
                 "checkpoint_config": checkpoint_config.to_dict(),
+                "identity_feature_policy": report["identity_feature_policy"],
+                "feature_name_groups": safe_feature_name_groups,
                 "content_pe_feature_names": CONTENT_PE_FEATURE_NAMES if feature_config.include_content_pe else [],
                 "content_pe_v2_feature_names": (
                     content_pe_v2_selected_feature_names(getattr(feature_config, "content_pe_v2_groups", ("all",)))
