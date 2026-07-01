@@ -62,3 +62,29 @@ def test_evaluate_prediction_blend_applies_frozen_weights_and_threshold():
     assert report["normalized_weights"]["second"] == pytest.approx(2 / 3)
     assert report["metrics"]["errors"] == 0
     assert rows[1]["prediction"] == 1
+
+
+def test_evaluate_prediction_blend_rejects_misaligned_rows():
+    with _case_dir("prediction_blend_alignment") as tmp_path:
+        first = tmp_path / "first.csv"
+        second = tmp_path / "second.csv"
+        _write_predictions(first, [0.2, 0.9])
+        _write_predictions(second, [0.2, 0.9])
+        rows = list(csv.DictReader(second.open("r", encoding="utf-8-sig", newline="")))
+        rows[0]["source_sha256"] = "different-sha"
+        with second.open("w", encoding="utf-8-sig", newline="") as handle:
+            writer = csv.DictWriter(
+                handle,
+                fieldnames=["source_path", "source_sha256", "label", "split", "sample_index", "score"],
+            )
+            writer.writeheader()
+            writer.writerows(rows)
+
+        with pytest.raises(ValueError, match="not aligned"):
+            evaluate_blend(
+                [
+                    ("first", first, "score", 1.0),
+                    ("second", second, "score", 1.0),
+                ],
+                threshold=0.5,
+            )

@@ -75,6 +75,39 @@ def evaluate_blend(
         raise ValueError("No common rows across prediction inputs")
 
     labels = np.asarray([loaded[0][1][key]["label"] for key in ordered_keys], dtype=np.int64)
+    alignment_mismatches = []
+    reference_rows = loaded[0][1]
+    for key in ordered_keys:
+        reference = reference_rows[key]
+        for name, rows, _weight in loaded[1:]:
+            row = rows[key]
+            mismatch_fields = []
+            if int(row["label"]) != int(reference["label"]):
+                mismatch_fields.append("label")
+            if row.get("source_sha256") and reference.get("source_sha256"):
+                if row["source_sha256"].strip().lower() != reference["source_sha256"].strip().lower():
+                    mismatch_fields.append("source_sha256")
+            elif row.get("source_path") and reference.get("source_path"):
+                if row["source_path"] != reference["source_path"]:
+                    mismatch_fields.append("source_path")
+            if mismatch_fields:
+                alignment_mismatches.append(
+                    {
+                        "key": key,
+                        "model": name,
+                        "fields": mismatch_fields,
+                    }
+                )
+                if len(alignment_mismatches) >= 10:
+                    break
+        if len(alignment_mismatches) >= 10:
+            break
+    if alignment_mismatches:
+        raise ValueError(
+            "Prediction inputs are not aligned on the requested key. "
+            f"First mismatches: {alignment_mismatches}"
+        )
+
     weights = np.asarray([weight for _name, _rows, weight in loaded], dtype=np.float32)
     weights = weights / weights.sum()
     stacked = np.vstack([
@@ -105,6 +138,11 @@ def evaluate_blend(
         "schema": "axon_prediction_blend_eval_v1",
         "rows": len(ordered_keys),
         "key_column": key_column,
+        "alignment_audit": {
+            "checked": True,
+            "audit_only_fields": ["label", "source_sha256", "source_path"],
+            "mismatches": 0,
+        },
         "inputs": [
             {"name": name, "path": str(resolve_path(path)), "score_column": score_column, "weight": float(weight)}
             for name, path, score_column, weight in predictions
