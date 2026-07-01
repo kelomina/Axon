@@ -233,6 +233,59 @@ for category_name in CONTENT_STRING_PATTERNS:
         ]
     )
 
+CERT_VENDOR_PATTERNS = {
+    "microsoft": [b"microsoft", b"windows"],
+    "digicert": [b"digicert"],
+    "sectigo": [b"sectigo", b"comodo"],
+    "globalsign": [b"globalsign"],
+    "verisign": [b"verisign", b"symantec", b"thawte"],
+    "entrust": [b"entrust"],
+    "ssl_com": [b"ssl.com"],
+    "google": [b"google"],
+    "adobe": [b"adobe"],
+    "intel": [b"intel"],
+    "nvidia": [b"nvidia"],
+    "oracle": [b"oracle"],
+    "mozilla": [b"mozilla"],
+    "kaspersky": [b"kaspersky"],
+    "avast": [b"avast", b"avg technologies"],
+}
+
+CERT_OID_PATTERNS = {
+    "pkcs7_signed_data": b"\x06\t*\x86H\x86\xf7\r\x01\x07\x02",
+    "code_signing": b"\x06\x08+\x06\x01\x05\x05\x07\x03\x03",
+    "timestamping": b"\x06\x08+\x06\x01\x05\x05\x07\x03\x08",
+    "sha1": b"\x06\x05+\x0e\x03\x02\x1a",
+    "sha256": b"\x06\t`\x86H\x01e\x03\x04\x02\x01",
+    "sha384": b"\x06\t`\x86H\x01e\x03\x04\x02\x02",
+    "rsa": b"\x06\t*\x86H\x86\xf7\r\x01\x01\x01",
+    "ecdsa_sha256": b"\x06\x08*\x86H\xce=\x04\x03\x02",
+}
+
+CONTENT_CERT_FEATURE_NAMES = [
+    "cert_present",
+    "cert_log_size",
+    "cert_size_ratio",
+    "cert_win_length_ratio",
+    "cert_revision",
+    "cert_type",
+    "cert_entropy",
+    "cert_ascii_printable_ratio",
+    "cert_null_ratio",
+    "cert_high_byte_ratio",
+    "cert_ascii_run_count_log",
+    "cert_ascii_run_mean_len_norm",
+    "cert_ascii_run_max_len_norm",
+    "cert_utf16_run_count_log",
+    "cert_sequence_marker_count_log",
+    "cert_timestamp_text_present",
+    "cert_counter_signature_text_present",
+]
+for name in CERT_OID_PATTERNS:
+    CONTENT_CERT_FEATURE_NAMES.append(f"cert_oid_{name}_present")
+for name in CERT_VENDOR_PATTERNS:
+    CONTENT_CERT_FEATURE_NAMES.extend([f"cert_vendor_{name}_present", f"cert_vendor_{name}_count_log"])
+
 
 def resolve_path(path: Path) -> Path:
     return path if path.is_absolute() else PROJECT_ROOT / path
@@ -723,6 +776,114 @@ def content_string_features_for_row(row: dict, cache_dir: Optional[str]) -> np.n
     return features
 
 
+def _read_certificate_blob(file_path: Path) -> tuple[bytes, int, int, int]:
+    if not PEFILE_AVAILABLE:
+        return b"", 0, 0, 0
+    try:
+        pe = pefile.PE(str(file_path), fast_load=True)
+    except Exception:
+        return b"", 0, 0, 0
+    try:
+        directory = _data_directory(pe, DATA_DIRECTORY_INDEXES["security"])
+        offset = int(getattr(directory, "VirtualAddress", 0) if directory is not None else 0)
+        size = int(getattr(directory, "Size", 0) if directory is not None else 0)
+        if offset <= 0 or size <= 0:
+            return b"", 0, 0, 0
+        with file_path.open("rb") as handle:
+            handle.seek(offset)
+            blob = handle.read(min(size, 4 * 1024 * 1024))
+        revision = int.from_bytes(blob[4:6], "little", signed=False) if len(blob) >= 6 else 0
+        cert_type = int.from_bytes(blob[6:8], "little", signed=False) if len(blob) >= 8 else 0
+        return blob, size, revision, cert_type
+    except Exception:
+        return b"", 0, 0, 0
+    finally:
+        pe.close()
+
+
+def _content_cert_features_from_path(file_path: Path) -> np.ndarray:
+    try:
+        file_size = file_path.stat().st_size
+    except OSError:
+        file_size = 0
+    blob, declared_size, revision, cert_type = _read_certificate_blob(file_path)
+    length = len(blob)
+    if length == 0:
+        return np.zeros(len(CONTENT_CERT_FEATURE_NAMES), dtype=np.float32)
+
+    byte_values = np.frombuffer(blob, dtype=np.uint8)
+    ascii_printable = int(np.count_nonzero((byte_values >= 32) & (byte_values <= 126)))
+    null_count = int(np.count_nonzero(byte_values == 0))
+    high_byte_count = int(np.count_nonzero(byte_values >= 128))
+    ascii_runs = _ascii_run_lengths(blob)
+    utf16_runs = _utf16_ascii_run_lengths(blob)
+    mean_ascii = float(np.mean(ascii_runs)) if ascii_runs else 0.0
+    max_ascii = float(np.max(ascii_runs)) if ascii_runs else 0.0
+    lowered = blob.lower()
+    try:
+        utf16_text = blob.decode("utf-16le", errors="ignore").lower().encode("utf-8", errors="ignore")
+    except Exception:
+        utf16_text = b""
+    searchable = lowered + b"\n" + utf16_text
+
+    features = [
+        1.0,
+        math.log1p(declared_size or length),
+        _safe_ratio(declared_size or length, file_size),
+        _safe_ratio(int.from_bytes(blob[:4], "little", signed=False) if len(blob) >= 4 else 0, declared_size or length),
+        float(revision) / 65535.0,
+        float(cert_type) / 65535.0,
+        _entropy_from_counts(np.bincount(byte_values, minlength=256)),
+        _safe_ratio(ascii_printable, length),
+        _safe_ratio(null_count, length),
+        _safe_ratio(high_byte_count, length),
+        math.log1p(len(ascii_runs)),
+        min(mean_ascii, 512.0) / 512.0,
+        min(max_ascii, 4096.0) / 4096.0,
+        math.log1p(len(utf16_runs)),
+        math.log1p(blob.count(b"\x30\x82")),
+        1.0 if b"timestamp" in searchable or b"time stamp" in searchable else 0.0,
+        1.0 if b"countersign" in searchable or b"counter sign" in searchable else 0.0,
+    ]
+
+    for pattern in CERT_OID_PATTERNS.values():
+        features.append(1.0 if pattern in blob else 0.0)
+
+    for patterns in CERT_VENDOR_PATTERNS.values():
+        count = sum(searchable.count(pattern.lower()) for pattern in patterns)
+        features.extend([1.0 if count > 0 else 0.0, math.log1p(count)])
+
+    if len(features) != len(CONTENT_CERT_FEATURE_NAMES):
+        raise ValueError(f"Content cert feature length mismatch: {len(features)} != {len(CONTENT_CERT_FEATURE_NAMES)}")
+    return np.nan_to_num(np.asarray(features, dtype=np.float32), copy=False)
+
+
+def _cert_cache_path(row: dict, cache_dir: Optional[str]) -> Optional[Path]:
+    if not cache_dir:
+        return None
+    key = (row.get("source_sha256") or "").strip().lower()
+    if not key:
+        source_path = row.get("source_path", "")
+        key = hashlib.sha256(str(resolve_path(Path(source_path))).encode("utf-8", errors="ignore")).hexdigest()
+    return resolve_path(Path(cache_dir)) / f"{key}.npz"
+
+
+def content_cert_features_for_row(row: dict, cache_dir: Optional[str]) -> np.ndarray:
+    cache_path = _cert_cache_path(row, cache_dir)
+    if cache_path is not None and cache_path.exists():
+        with np.load(cache_path, allow_pickle=False) as data:
+            features = data["features"].astype(np.float32, copy=False)
+        if features.shape == (len(CONTENT_CERT_FEATURE_NAMES),):
+            return features
+
+    source_path = resolve_path(Path(row["source_path"]))
+    features = _content_cert_features_from_path(source_path)
+    if cache_path is not None:
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        save_feature_npz_atomic(cache_path, features)
+    return features
+
+
 def _byte_summary_features(byte_seq: np.ndarray, prefix_len: int, chunk_count: int) -> np.ndarray:
     byte_values = byte_seq.astype(np.uint8, copy=False)
     counts = np.bincount(byte_values, minlength=256).astype(np.float32)
@@ -775,6 +936,8 @@ class FeatureConfig:
     content_cache_dir: Optional[str] = None
     include_content_string: bool = False
     content_string_cache_dir: Optional[str] = None
+    include_content_cert: bool = False
+    content_cert_cache_dir: Optional[str] = None
 
 
 def build_matrix(
@@ -831,6 +994,8 @@ def build_matrix(
             parts.append(
                 content_string_features_for_row(row, getattr(feature_config, "content_string_cache_dir", None))
             )
+        if getattr(feature_config, "include_content_cert", False):
+            parts.append(content_cert_features_for_row(row, getattr(feature_config, "content_cert_cache_dir", None)))
         features.append(np.concatenate(parts).astype(np.float32, copy=False))
         labels.append(label)
         base_probs.append(prob)
@@ -1401,6 +1566,17 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         default=None,
         help="Optional sidecar cache for content-only string features.",
     )
+    parser.add_argument(
+        "--content-cert-features",
+        action="store_true",
+        help="Append production-stable Authenticode certificate blob features extracted from file content only.",
+    )
+    parser.add_argument(
+        "--content-cert-cache-dir",
+        type=Path,
+        default=None,
+        help="Optional sidecar cache for content-only certificate features.",
+    )
     parser.add_argument("--noise-modes", default="none,soft_conflict_downweight,trim_extreme_conflict")
     parser.add_argument("--test-val-f1-gate", type=float, default=0.980)
     parser.add_argument("--knn-features", action="store_true", help="Append train-only kNN label-support features.")
@@ -1425,6 +1601,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     content_string_cache_dir = None
     if args.content_string_features:
         content_string_cache_dir = resolve_path(args.content_string_cache_dir or (output_dir / "content_string_cache_v1"))
+    content_cert_cache_dir = None
+    if args.content_cert_features:
+        content_cert_cache_dir = resolve_path(args.content_cert_cache_dir or (output_dir / "content_cert_cache_v1"))
     feature_config = FeatureConfig(
         prefix_len=max(0, int(args.prefix_len)),
         chunk_count=max(1, int(args.chunk_count)),
@@ -1436,6 +1615,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         content_cache_dir=str(content_cache_dir) if content_cache_dir is not None else None,
         include_content_string=bool(args.content_string_features),
         content_string_cache_dir=str(content_string_cache_dir) if content_string_cache_dir is not None else None,
+        include_content_cert=bool(args.content_cert_features),
+        content_cert_cache_dir=str(content_cert_cache_dir) if content_cert_cache_dir is not None else None,
     )
 
     train_rows = read_prediction_rows(args.train_predictions, args.max_train_rows)
@@ -1542,6 +1723,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "feature_config": feature_config.__dict__,
         "content_pe_feature_names": CONTENT_PE_FEATURE_NAMES if feature_config.include_content_pe else [],
         "content_string_feature_names": CONTENT_STRING_FEATURE_NAMES if feature_config.include_content_string else [],
+        "content_cert_feature_names": CONTENT_CERT_FEATURE_NAMES if feature_config.include_content_cert else [],
         "records": {"train": train_counts, "val": val_counts},
         "base_feature_dim": base_feature_dim,
         "feature_dim": int(train_x.shape[1]),
@@ -1598,6 +1780,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 "content_string_feature_names": (
                     CONTENT_STRING_FEATURE_NAMES if feature_config.include_content_string else []
                 ),
+                "content_cert_feature_names": CONTENT_CERT_FEATURE_NAMES if feature_config.include_content_cert else [],
                 "knn": {
                     "enabled": bool(args.knn_features),
                     "top_ks": knn_config["top_ks"],
