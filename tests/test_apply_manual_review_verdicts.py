@@ -234,3 +234,86 @@ def test_review_sha_can_match_split_path_filename():
     assert rows[0]["sample_index"] == "11"
     assert rows[0]["plan_action"] == "relabel"
     assert summary["missing_split_rows"] == 0
+
+
+def test_explicit_sha_match_wins_over_path_stem_sha_collision():
+    sample_sha = "b" * 64
+    with _case_dir("manual_verdict_sha_collision") as tmp_path:
+        split_csv = tmp_path / "split.csv"
+        review_csv = tmp_path / "review.csv"
+        _write_csv(
+            split_csv,
+            ["source_path", "source_sha256", "label", "sample_index", "split"],
+            [
+                {
+                    "source_path": f"data/path_alias/{sample_sha}.exe",
+                    "source_sha256": "",
+                    "label": "0",
+                    "sample_index": "21",
+                    "split": "train",
+                },
+                {
+                    "source_path": "data/real_sha/real.exe",
+                    "source_sha256": sample_sha,
+                    "label": "1",
+                    "sample_index": "22",
+                    "split": "val",
+                },
+            ],
+        )
+        _write_csv(
+            review_csv,
+            ["source_path", "source_sha256", "label", "manual_label_verdict", "recommended_action"],
+            [{
+                "source_path": "",
+                "source_sha256": sample_sha,
+                "label": "1",
+                "manual_label_verdict": "",
+                "recommended_action": "",
+            }],
+        )
+
+        rows, summary = build_plan(review_csv=review_csv, split_csv=split_csv)
+
+    assert rows == []
+    assert summary["ignored_rows"] == 1
+    assert summary["missing_split_rows"] == 0
+    assert summary["review_split_counts"] == {"val": 1}
+    assert summary["review_label_split_counts"] == {"val:1": 1}
+
+
+def test_path_stem_sha_alias_is_ignored_when_split_row_has_explicit_sha():
+    alias_sha = "c" * 64
+    real_sha = "d" * 64
+    with _case_dir("manual_verdict_stem_ignored_with_real_sha") as tmp_path:
+        split_csv = tmp_path / "split.csv"
+        review_csv = tmp_path / "review.csv"
+        _write_csv(
+            split_csv,
+            ["source_path", "source_sha256", "label", "sample_index", "split"],
+            [{
+                "source_path": f"data/has_real_sha/{alias_sha}.exe",
+                "source_sha256": real_sha,
+                "label": "0",
+                "sample_index": "31",
+                "split": "train",
+            }],
+        )
+        _write_csv(
+            review_csv,
+            ["source_path", "source_sha256", "label", "manual_label_verdict", "recommended_action"],
+            [{
+                "source_path": "",
+                "source_sha256": alias_sha,
+                "label": "0",
+                "manual_label_verdict": "",
+                "recommended_action": "",
+            }],
+        )
+
+        rows, summary = build_plan(review_csv=review_csv, split_csv=split_csv)
+
+    assert rows == []
+    assert summary["ignored_rows"] == 0
+    assert summary["missing_split_rows"] == 1
+    assert summary["review_split_counts"] == {}

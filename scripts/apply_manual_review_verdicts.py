@@ -37,6 +37,21 @@ def normalize_text(value: object) -> str:
     return str(value or "").strip().casefold()
 
 
+def normalize_source_path(value: object) -> str:
+    return str(value or "").strip().casefold()
+
+
+def source_path_stem_sha(row: dict) -> str:
+    source_path = str(row.get("source_path") or "").strip()
+    if not source_path:
+        return ""
+    name = Path(source_path).name.casefold()
+    stem = Path(name).stem if "." in name else name
+    if len(stem) == 64 and all(char in "0123456789abcdef" for char in stem):
+        return stem
+    return ""
+
+
 def read_csv_rows(path: Path) -> list[dict]:
     with resolve_path(path).open("r", encoding="utf-8-sig", newline="") as handle:
         return list(csv.DictReader(handle))
@@ -55,7 +70,7 @@ def source_key(row: dict) -> str:
     sha = normalize_text(row.get("source_sha256"))
     if sha:
         return f"sha:{sha}"
-    source_path = normalize_text(row.get("source_path"))
+    source_path = normalize_source_path(row.get("source_path"))
     return f"path:{source_path}"
 
 
@@ -65,12 +80,11 @@ def source_keys(row: dict) -> list[str]:
     if sha:
         keys.append(f"sha:{sha}")
 
-    source_path = str(row.get("source_path") or "").strip()
+    source_path = normalize_source_path(row.get("source_path"))
     if source_path:
-        keys.append(f"path:{source_path.casefold()}")
-        name = Path(source_path).name.casefold()
-        stem = Path(name).stem if "." in name else name
-        if len(stem) == 64 and all(char in "0123456789abcdef" for char in stem):
+        keys.append(f"path:{source_path}")
+        stem = source_path_stem_sha(row)
+        if stem:
             keys.append(f"sha:{stem}")
 
     deduped = []
@@ -82,12 +96,23 @@ def source_keys(row: dict) -> list[str]:
     return deduped
 
 
-def load_split_index(split_csv: Path) -> tuple[dict[str, dict], dict]:
+def load_split_index(split_csv: Path) -> tuple[dict[str, dict[str, dict]], dict]:
     rows = read_csv_rows(split_csv)
-    by_path: dict[str, dict] = {}
+    split_index: dict[str, dict[str, dict]] = {
+        "by_sha": {},
+        "by_path": {},
+        "by_path_stem_sha": {},
+    }
     for row in rows:
-        for key in source_keys(row):
-            by_path.setdefault(key, row)
+        sha = normalize_text(row.get("source_sha256"))
+        source_path = normalize_source_path(row.get("source_path"))
+        stem_sha = source_path_stem_sha(row)
+        if sha:
+            split_index["by_sha"].setdefault(sha, row)
+        if source_path:
+            split_index["by_path"].setdefault(source_path, row)
+        if stem_sha and not sha:
+            split_index["by_path_stem_sha"].setdefault(stem_sha, row)
     summary = {
         "rows": len(rows),
         "split_counts": dict(sorted(Counter(row.get("split", "") for row in rows).items())),
@@ -96,7 +121,28 @@ def load_split_index(split_csv: Path) -> tuple[dict[str, dict], dict]:
             for split in ["train", "val", "test"]
         },
     }
-    return by_path, summary
+    return split_index, summary
+
+
+def find_split_row(review_row: dict, split_index: dict[str, dict[str, dict]]) -> Optional[dict]:
+    sha = normalize_text(review_row.get("source_sha256"))
+    source_path = normalize_source_path(review_row.get("source_path"))
+    stem_sha = source_path_stem_sha(review_row)
+
+    if sha:
+        split_row = split_index["by_sha"].get(sha)
+        if split_row is not None:
+            return split_row
+    if source_path:
+        split_row = split_index["by_path"].get(source_path)
+        if split_row is not None:
+            return split_row
+    for fallback_sha in [sha, stem_sha]:
+        if fallback_sha:
+            split_row = split_index["by_path_stem_sha"].get(fallback_sha)
+            if split_row is not None:
+                return split_row
+    return None
 
 
 def classify_manual_row(row: dict) -> tuple[str, str]:
@@ -190,11 +236,7 @@ def build_plan(
             continue
         seen_review_keys.add(key)
 
-        split_row = None
-        for lookup_key in source_keys(review_row):
-            split_row = split_index.get(lookup_key)
-            if split_row is not None:
-                break
+        split_row = find_split_row(review_row, split_index)
         if split_row is None:
             missing_split_rows += 1
             continue
