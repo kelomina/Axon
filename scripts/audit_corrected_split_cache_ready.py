@@ -87,14 +87,21 @@ def write_missing_rows(path: Path, rows: Sequence[dict]) -> None:
         writer.writerows(rows)
 
 
-def validate_split_shape(rows: Sequence[dict]) -> list[str]:
+def validate_split_shape(
+    rows: Sequence[dict],
+    *,
+    expected_total: int = EXPECTED_TOTAL,
+    expected_split_counts: Optional[dict[str, int]] = None,
+    expected_label_split_counts: Optional[dict[str, dict[str, int]]] = None,
+) -> list[str]:
     summary = split_summary(rows)
+    split_targets = EXPECTED_SPLIT_COUNTS if expected_split_counts is None else expected_split_counts
     failures = []
-    if summary["rows"] != EXPECTED_TOTAL:
-        failures.append(f"expected {EXPECTED_TOTAL} rows, got {summary['rows']}")
-    if summary["split_counts"] != EXPECTED_SPLIT_COUNTS:
+    if summary["rows"] != expected_total:
+        failures.append(f"expected {expected_total} rows, got {summary['rows']}")
+    if summary["split_counts"] != split_targets:
         failures.append(f"split_counts mismatch: {summary['split_counts']}")
-    if summary["label_split_counts"] != EXPECTED_LABEL_SPLIT_COUNTS:
+    if expected_label_split_counts is not None and summary["label_split_counts"] != expected_label_split_counts:
         failures.append(f"label_split_counts mismatch: {summary['label_split_counts']}")
     return failures
 
@@ -105,6 +112,7 @@ def audit_corrected_split_cache_ready(
     manifest_json: Path,
     missing_cache_output: Optional[Path] = None,
     enforce_shape: bool = True,
+    enforce_label_balance: bool = False,
 ) -> dict:
     rows = read_csv_rows(split_csv)
     manifest_lookup = load_manifest_lookup(manifest_json)
@@ -142,7 +150,25 @@ def audit_corrected_split_cache_ready(
         write_missing_rows(missing_cache_output, missing_rows)
 
     covered = len(rows) - len(missing_rows)
-    shape_failures = validate_split_shape(rows) if enforce_shape else []
+    shape_failures = (
+        validate_split_shape(
+            rows,
+            expected_total=EXPECTED_TOTAL,
+            expected_split_counts=EXPECTED_SPLIT_COUNTS,
+            expected_label_split_counts=EXPECTED_LABEL_SPLIT_COUNTS if enforce_label_balance else None,
+        )
+        if enforce_shape
+        else []
+    )
+    label_balance_drift = []
+    if not enforce_label_balance:
+        actual_label_split_counts = split_summary(rows)["label_split_counts"]
+        if actual_label_split_counts != EXPECTED_LABEL_SPLIT_COUNTS:
+            label_balance_drift = [
+                f"{split}:{actual_label_split_counts.get(split, {})}"
+                for split in ["train", "val", "test"]
+                if actual_label_split_counts.get(split, {}) != EXPECTED_LABEL_SPLIT_COUNTS.get(split, {})
+            ]
     payload = {
         "schema": "axon_corrected_split_cache_ready_v1",
         "split_csv": str(resolve_path(split_csv)),
@@ -160,11 +186,14 @@ def audit_corrected_split_cache_ready(
         "missing_split_counts": dict(sorted(missing_split_counts.items())),
         "missing_reason_counts": dict(sorted(missing_reason_counts.items())),
         "missing_cache_output": str(resolve_path(missing_cache_output)) if missing_cache_output is not None else None,
+        "label_balance_enforced": bool(enforce_label_balance),
+        "label_balance_drift": label_balance_drift,
         "shape_failures": shape_failures,
         "cache_ready": not shape_failures and not missing_rows,
         "notes": [
             "cache_ready=true is required before training from a corrected split.",
             "Missing rows should be passed to the cache recovery/extraction flow before rerunning training.",
+            "Label balance is reported separately unless --enforce-label-balance is set.",
         ],
     }
     return payload
@@ -177,6 +206,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--output-json", type=Path, required=True)
     parser.add_argument("--missing-cache-output", type=Path, default=None)
     parser.add_argument("--no-enforce-shape", action="store_true")
+    parser.add_argument(
+        "--enforce-label-balance",
+        action="store_true",
+        help="Also require the corrected split to preserve the original per-split class balance.",
+    )
     parser.add_argument("--strict", action="store_true", help="Exit non-zero unless shape and cache coverage are complete.")
     return parser
 
@@ -188,6 +222,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         manifest_json=args.manifest_json,
         missing_cache_output=args.missing_cache_output,
         enforce_shape=not bool(args.no_enforce_shape),
+        enforce_label_balance=bool(args.enforce_label_balance),
     )
     output_json = resolve_path(args.output_json)
     output_json.parent.mkdir(parents=True, exist_ok=True)

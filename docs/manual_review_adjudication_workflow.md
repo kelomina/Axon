@@ -112,6 +112,8 @@ This gate checks both requirements:
 - the corrected split is still exactly `200000 = 20000 train + 20000 val + 160000 test`
 - every row has a cache entry and the cache file exists
 
+By default, label-count drift after manual relabeling is reported in `label_balance_drift` but does not block cache readiness. Add `--enforce-label-balance` if the next experiment must preserve the original `10000/10000` train/val and `80000/80000` test class balance exactly.
+
 If `cache_ready=false`, do not train. First extract or recover cache for rows listed in `corrected_manual_review_missing_cache.csv`, then rerun the audit.
 
 Build a bounded recovery plan from the missing-cache CSV:

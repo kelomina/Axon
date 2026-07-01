@@ -103,3 +103,99 @@ def test_shape_enforcement_flags_non_20w_split():
     assert payload["missing_rows"] == 0
     assert payload["shape_failures"]
     assert payload["cache_ready"] is False
+
+
+def test_label_balance_drift_is_reported_but_not_blocking_when_not_enforced(monkeypatch):
+    with _case_dir("corrected_cache_label_drift_report") as tmp_path:
+        import audit_corrected_split_cache_ready as module
+
+        monkeypatch.setattr(module, "EXPECTED_TOTAL", 2)
+        monkeypatch.setattr(module, "EXPECTED_SPLIT_COUNTS", {"train": 2})
+        monkeypatch.setattr(module, "EXPECTED_LABEL_SPLIT_COUNTS", {"train": {"0": 1, "1": 1}, "val": {}, "test": {}})
+
+        cache_dir = tmp_path / "cache"
+        cache_dir.mkdir()
+        source_a = tmp_path / "data" / ("a" * 64)
+        source_b = tmp_path / "data" / ("b" * 64)
+        cache_a = cache_dir / "a.npz"
+        cache_b = cache_dir / "b.npz"
+        cache_a.write_bytes(b"npz-placeholder")
+        cache_b.write_bytes(b"npz-placeholder")
+        manifest_path = tmp_path / "manifest.json"
+        manifest_path.write_text(
+            json.dumps(
+                {
+                    "samples": [
+                        {"source_path": str(source_a), "source_sha256": "a" * 64, "cache_path": str(cache_a)},
+                        {"source_path": str(source_b), "source_sha256": "b" * 64, "cache_path": str(cache_b)},
+                    ]
+                }
+            ),
+            encoding="utf-8",
+        )
+        split_csv = tmp_path / "split.csv"
+        _write_split(
+            split_csv,
+            [
+                {"source_path": str(source_a), "label": "1", "sample_index": "0", "split": "train"},
+                {"source_path": str(source_b), "label": "1", "sample_index": "1", "split": "train"},
+            ],
+        )
+
+        payload = audit_corrected_split_cache_ready(
+            split_csv=split_csv,
+            manifest_json=manifest_path,
+        )
+
+    assert payload["shape_failures"] == []
+    assert payload["cache_ready"] is True
+    assert payload["label_balance_enforced"] is False
+    assert payload["label_balance_drift"] == ["train:{'1': 2}"]
+
+
+def test_label_balance_drift_blocks_when_enforced(monkeypatch):
+    with _case_dir("corrected_cache_label_drift_enforced") as tmp_path:
+        import audit_corrected_split_cache_ready as module
+
+        monkeypatch.setattr(module, "EXPECTED_TOTAL", 2)
+        monkeypatch.setattr(module, "EXPECTED_SPLIT_COUNTS", {"train": 2})
+        monkeypatch.setattr(module, "EXPECTED_LABEL_SPLIT_COUNTS", {"train": {"0": 1, "1": 1}, "val": {}, "test": {}})
+
+        cache_dir = tmp_path / "cache"
+        cache_dir.mkdir()
+        source_a = tmp_path / "data" / ("a" * 64)
+        source_b = tmp_path / "data" / ("b" * 64)
+        cache_a = cache_dir / "a.npz"
+        cache_b = cache_dir / "b.npz"
+        cache_a.write_bytes(b"npz-placeholder")
+        cache_b.write_bytes(b"npz-placeholder")
+        manifest_path = tmp_path / "manifest.json"
+        manifest_path.write_text(
+            json.dumps(
+                {
+                    "samples": [
+                        {"source_path": str(source_a), "source_sha256": "a" * 64, "cache_path": str(cache_a)},
+                        {"source_path": str(source_b), "source_sha256": "b" * 64, "cache_path": str(cache_b)},
+                    ]
+                }
+            ),
+            encoding="utf-8",
+        )
+        split_csv = tmp_path / "split.csv"
+        _write_split(
+            split_csv,
+            [
+                {"source_path": str(source_a), "label": "1", "sample_index": "0", "split": "train"},
+                {"source_path": str(source_b), "label": "1", "sample_index": "1", "split": "train"},
+            ],
+        )
+
+        payload = audit_corrected_split_cache_ready(
+            split_csv=split_csv,
+            manifest_json=manifest_path,
+            enforce_label_balance=True,
+        )
+
+    assert payload["label_balance_enforced"] is True
+    assert payload["shape_failures"]
+    assert payload["cache_ready"] is False
