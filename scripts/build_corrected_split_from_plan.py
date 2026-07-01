@@ -55,10 +55,29 @@ def split_key(row: dict) -> str:
     return f"path:{str(row.get('source_path', '')).strip().casefold()}"
 
 
+def exact_row_key(row: dict) -> str:
+    return f"{str(row.get('sample_index', '')).strip()}|{str(row.get('source_path', '')).strip().casefold()}"
+
+
 def key_set(row: dict) -> set[str]:
     keys = set(source_keys(row))
     keys.add(split_key(row))
     return keys
+
+
+def plan_has_exact_row_identity(row: dict) -> bool:
+    return bool(str(row.get("sample_index", "")).strip() and str(row.get("source_path", "")).strip())
+
+
+def lookup_plan(original: dict, exact_plan_by_key: dict[str, dict], loose_plan_by_key: dict[str, dict]) -> Optional[dict]:
+    plan = exact_plan_by_key.get(exact_row_key(original))
+    if plan is not None:
+        return plan
+    for key in source_keys(original):
+        plan = loose_plan_by_key.get(key)
+        if plan is not None:
+            return plan
+    return None
 
 
 def _row_sort_key(row: dict) -> tuple[int, int]:
@@ -196,10 +215,14 @@ def build_corrected_split(
 ) -> tuple[list[dict], dict]:
     original_rows = read_csv_rows(split_csv)
     plan_rows = read_csv_rows(plan_csv)
-    plan_by_key: dict[str, dict] = {}
+    exact_plan_by_key: dict[str, dict] = {}
+    loose_plan_by_key: dict[str, dict] = {}
     for row in plan_rows:
-        for key in source_keys(row):
-            plan_by_key.setdefault(key, row)
+        if plan_has_exact_row_identity(row):
+            exact_plan_by_key.setdefault(exact_row_key(row), row)
+        else:
+            for key in source_keys(row):
+                loose_plan_by_key.setdefault(key, row)
 
     kept_rows: list[dict] = []
     excluded_rows: list[dict] = []
@@ -207,11 +230,7 @@ def build_corrected_split(
     used_keys: set[str] = set()
 
     for original in original_rows:
-        plan = None
-        for key in source_keys(original):
-            plan = plan_by_key.get(key)
-            if plan is not None:
-                break
+        plan = lookup_plan(original, exact_plan_by_key, loose_plan_by_key)
         if plan is None:
             kept = dict(original)
             kept_rows.append(kept)

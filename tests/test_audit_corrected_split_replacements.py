@@ -291,3 +291,59 @@ def test_replacement_audit_rejects_new_duplicates_added_by_corrected_split():
     assert payload["replacement_integrity_ok"] is False
     assert payload["duplicate_key_row_delta"] == 1
     assert "corrected split introduced duplicate source keys: +1" in payload["integrity_failures"]
+
+
+def test_replacement_audit_uses_exact_plan_row_for_duplicate_sha_cleanup():
+    sample_sha = "a" * 64
+    with _case_dir("replacement_audit_duplicate_sha_exact") as tmp_path:
+        original_csv = tmp_path / "original.csv"
+        corrected_csv = tmp_path / "corrected.csv"
+        plan_csv = tmp_path / "plan.csv"
+        duplicate_to_replace = f"data/date/{sample_sha}.exe"
+        canonical_to_keep = f"data/family/{sample_sha}.exe"
+        fresh = "data/fresh.exe"
+        _write_csv(
+            original_csv,
+            SPLIT_FIELDS,
+            [
+                {"source_path": duplicate_to_replace, "label": "1", "sample_index": "0", "split": "train"},
+                {"source_path": canonical_to_keep, "label": "1", "sample_index": "1", "split": "test"},
+            ],
+        )
+        _write_csv(
+            corrected_csv,
+            SPLIT_FIELDS,
+            [
+                {"source_path": fresh, "label": "1", "sample_index": "0", "split": "train"},
+                {"source_path": canonical_to_keep, "label": "1", "sample_index": "1", "split": "test"},
+            ],
+        )
+        _write_csv(
+            plan_csv,
+            PLAN_FIELDS,
+            [{
+                "source_path": duplicate_to_replace,
+                "source_sha256": "",
+                "sample_index": "0",
+                "split": "train",
+                "original_label": "1",
+                "planned_label": "1",
+                "plan_action": "exclude_and_replace",
+                "replacement_required": "true",
+                "replacement_label": "1",
+                "usable_for_training_policy": "false",
+            }],
+        )
+
+        payload = audit_corrected_split_replacements(
+            original_split_csv=original_csv,
+            corrected_split_csv=corrected_csv,
+            plan_csv=plan_csv,
+            enforce_shape=False,
+        )
+
+    assert payload["replacement_integrity_ok"] is True
+    assert payload["excluded_rows_found_in_original"] == 1
+    assert payload["excluded_rows_present_after_correction"] == 0
+    assert payload["planned_excluded_rows_removed"] == 1
+    assert payload["fresh_replacement_rows"] == 1

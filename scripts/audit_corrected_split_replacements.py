@@ -69,6 +69,18 @@ def row_keys(row: dict) -> set[str]:
     return keys
 
 
+def exact_row_key(row: dict) -> str:
+    return f"{str(row.get('sample_index', '')).strip()}|{str(row.get('source_path', '')).strip().casefold()}"
+
+
+def has_exact_row_identity(row: dict) -> bool:
+    return bool(str(row.get("sample_index", "")).strip() and str(row.get("source_path", "")).strip())
+
+
+def build_exact_lookup(rows: Sequence[dict]) -> dict[str, dict]:
+    return {exact_row_key(row): row for row in rows if has_exact_row_identity(row)}
+
+
 def build_key_lookup(rows: Sequence[dict]) -> dict[str, list[dict]]:
     lookup: dict[str, list[dict]] = {}
     for row in rows:
@@ -95,6 +107,13 @@ def lookup_rows(row: dict, lookup: dict[str, list[dict]]) -> list[dict]:
     return matched
 
 
+def lookup_request_rows(row: dict, exact_lookup: dict[str, dict], loose_lookup: dict[str, list[dict]]) -> list[dict]:
+    if has_exact_row_identity(row):
+        exact = exact_lookup.get(exact_row_key(row))
+        return [exact] if exact is not None else []
+    return lookup_rows(row, loose_lookup)
+
+
 def split_summary(rows: Sequence[dict]) -> dict:
     return {
         "rows": len(rows),
@@ -115,6 +134,12 @@ def duplicate_key_count(rows: Sequence[dict]) -> int:
             duplicate_rows += 1
         seen.update(keys)
     return duplicate_rows
+
+
+def row_present_exact(row: dict, exact_lookup: dict[str, dict], loose_lookup: dict[str, list[dict]]) -> bool:
+    if has_exact_row_identity(row):
+        return exact_row_key(row) in exact_lookup
+    return any_key_in(row_keys(row), loose_lookup)
 
 
 def count_by_split_label(rows: Sequence[dict], *, label_field: str = "label") -> dict[str, int]:
@@ -184,6 +209,8 @@ def audit_corrected_split_replacements(
 
     original_lookup = build_key_lookup(original_rows)
     corrected_lookup = build_key_lookup(corrected_rows)
+    original_exact_lookup = build_exact_lookup(original_rows)
+    corrected_exact_lookup = build_exact_lookup(corrected_rows)
     original_key_set = set(original_lookup)
     corrected_key_set = set(corrected_lookup)
 
@@ -206,26 +233,41 @@ def audit_corrected_split_replacements(
     excluded_original_rows: list[dict] = []
     missing_excluded_in_original = 0
     test_replacement_requests = 0
+    planned_excluded_removed_count = 0
     for request in replacement_requests:
         if str(request.get("split", "")) == "test":
             test_replacement_requests += 1
-        matches = lookup_rows(request, original_lookup)
+        matches = lookup_request_rows(request, original_exact_lookup, original_lookup)
         if not matches:
             missing_excluded_in_original += 1
             detail_rows.append(_detail(request, "replacement_request", "missing_original", "replacement request did not match original split"))
             continue
         for original in matches:
             excluded_original_rows.append(original)
-            status = "still_present" if any_key_in(row_keys(original), corrected_lookup) else "removed"
+            status = "still_present" if row_present_exact(original, corrected_exact_lookup, corrected_lookup) else "removed"
             reason = "excluded row still appears in corrected split" if status == "still_present" else "excluded row removed"
+            if status == "removed":
+                planned_excluded_removed_count += 1
             detail_rows.append(_detail(original, "excluded_original", status, reason))
 
     excluded_key_set: set[str] = set()
+    excluded_exact_key_set: set[str] = set()
     for row in excluded_original_rows:
         excluded_key_set.update(row_keys(row))
+        if has_exact_row_identity(row):
+            excluded_exact_key_set.add(exact_row_key(row))
 
     excluded_present_after = [
-        row for row in corrected_rows if excluded_key_set and any_key_in(row_keys(row), excluded_key_set)
+        row
+        for row in corrected_rows
+        if (
+            (excluded_exact_key_set and exact_row_key(row) in excluded_exact_key_set)
+            or (
+                not excluded_exact_key_set
+                and excluded_key_set
+                and any_key_in(row_keys(row), excluded_key_set)
+            )
+        )
     ]
     for row in excluded_present_after:
         detail_rows.append(_detail(row, "corrected_row", "excluded_key_present", "corrected row matches an excluded source"))
@@ -240,10 +282,28 @@ def audit_corrected_split_replacements(
         row for row in original_rows if not any_key_in(row_keys(row), corrected_key_set)
     ]
     planned_excluded_missing = [
-        row for row in original_missing_rows if excluded_key_set and any_key_in(row_keys(row), excluded_key_set)
+        row
+        for row in original_missing_rows
+        if (
+            (excluded_exact_key_set and exact_row_key(row) in excluded_exact_key_set)
+            or (
+                not excluded_exact_key_set
+                and excluded_key_set
+                and any_key_in(row_keys(row), excluded_key_set)
+            )
+        )
     ]
     unplanned_removed_rows = [
-        row for row in original_missing_rows if not (excluded_key_set and any_key_in(row_keys(row), excluded_key_set))
+        row
+        for row in original_missing_rows
+        if not (
+            (excluded_exact_key_set and exact_row_key(row) in excluded_exact_key_set)
+            or (
+                not excluded_exact_key_set
+                and excluded_key_set
+                and any_key_in(row_keys(row), excluded_key_set)
+            )
+        )
     ]
     for row in unplanned_removed_rows:
         detail_rows.append(_detail(row, "original_row", "unplanned_removed", "original row disappeared without replacement request"))
@@ -255,8 +315,8 @@ def audit_corrected_split_replacements(
     for request in relabel_requests:
         if str(request.get("split", "")) == "test":
             test_relabel_requests += 1
-        original_matches = lookup_rows(request, original_lookup)
-        corrected_matches = lookup_rows(request, corrected_lookup)
+        original_matches = lookup_request_rows(request, original_exact_lookup, original_lookup)
+        corrected_matches = lookup_request_rows(request, corrected_exact_lookup, corrected_lookup)
         if not original_matches:
             relabel_missing_original += 1
             detail_rows.append(_detail(request, "relabel_request", "missing_original", "relabel request did not match original split"))
@@ -337,7 +397,7 @@ def audit_corrected_split_replacements(
         "excluded_rows_found_in_original": len(excluded_original_rows),
         "excluded_rows_missing_in_original": missing_excluded_in_original,
         "excluded_rows_present_after_correction": len(excluded_present_after),
-        "planned_excluded_rows_removed": len(planned_excluded_missing),
+        "planned_excluded_rows_removed": planned_excluded_removed_count,
         "unplanned_original_rows_removed": len(unplanned_removed_rows),
         "fresh_replacement_rows": len(fresh_replacement_rows),
         "replacement_request_counts_by_split_label": request_counts,
