@@ -18,7 +18,7 @@ Primary inputs:
 Use `manual_label_verdict` for the human decision:
 
 - `label_correct`: current label is correct
-- `label_wrong`: current label is wrong and should be flipped unless a corrected label column says otherwise
+- `label_wrong`: current label is wrong; the reviewer must also provide an explicit corrected label in one of `corrected_label`, `new_label`, `target_label`, or `manual_label`
 - `out_of_scope`: sample should not count as an in-scope malware/benign sample
 - `feature_broken`: sample features or source file are not valid for this experiment
 - `uncertain`: not enough evidence
@@ -33,6 +33,11 @@ Use `recommended_action` for the operational recommendation:
 - `model_blindspot`
 
 The verdict and action must describe the same operational class. For example, `label_wrong` pairs with `relabel_train_only`, while `feature_broken` and `out_of_scope` pair with `replace_sample` or `quarantine_source_group`. A row such as `feature_broken + relabel_train_only` is rejected as inconsistent, because a broken sample must be replaced rather than relabeled.
+
+Important: `label_wrong` does not automatically flip `0` to `1` or `1` to `0`.
+The adjustment plan only creates a relabel action when the reviewer provides a
+clear corrected label. Without that explicit target, the row becomes
+`needs_manual_target_label` and is not eligible for training policy.
 
 ## Run
 
@@ -49,6 +54,9 @@ The verdict and action must describe the same operational class. For example, `l
 - The script does not edit the original split, raw data, or feature cache.
 - Empty or uncertain review rows produce no action.
 - Test-split verdicts are held out of training policy by default.
+- `label_wrong` rows without an explicit corrected label produce
+  `needs_manual_target_label`; they are not auto-flipped and are not eligible
+  for training policy.
 - `out_of_scope` and `feature_broken` rows become `exclude_and_replace`.
 - Excluded rows require fresh replacement sampling from valid unused candidates with the same intended label. They are not used to fill their own slots.
 - The corrected split builder also rejects candidate rows that match an excluded sample, so a manually edited candidate CSV cannot accidentally put the bad file back into the 20w split.

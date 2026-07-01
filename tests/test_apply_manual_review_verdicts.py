@@ -53,7 +53,7 @@ def test_empty_manual_verdicts_create_no_actions():
     assert summary["review_rows_in_test_split"] == 0
 
 
-def test_relabel_verdict_flips_train_label_without_replacement():
+def test_relabel_verdict_without_target_label_requires_manual_target():
     with _case_dir("manual_verdict_relabel") as tmp_path:
         split_csv = tmp_path / "split.csv"
         review_csv = tmp_path / "review.csv"
@@ -76,10 +76,43 @@ def test_relabel_verdict_flips_train_label_without_replacement():
 
         rows, summary = build_plan(review_csv=review_csv, split_csv=split_csv)
 
+    assert rows[0]["plan_action"] == "needs_manual_target_label"
+    assert rows[0]["original_label"] == 0
+    assert rows[0]["planned_label"] == 0
+    assert rows[0]["replacement_required"] == "false"
+    assert rows[0]["usable_for_training_policy"] == "false"
+    assert summary["training_policy_rows"] == 0
+
+
+def test_relabel_verdict_uses_explicit_corrected_label_without_replacement():
+    with _case_dir("manual_verdict_relabel_target") as tmp_path:
+        split_csv = tmp_path / "split.csv"
+        review_csv = tmp_path / "review.csv"
+        _write_csv(
+            split_csv,
+            ["source_path", "label", "sample_index", "split"],
+            [{"source_path": "data/a.exe", "label": "0", "sample_index": "1", "split": "train"}],
+        )
+        _write_csv(
+            review_csv,
+            ["source_path", "source_sha256", "label", "corrected_label", "manual_label_verdict", "recommended_action"],
+            [{
+                "source_path": "data/a.exe",
+                "source_sha256": "",
+                "label": "0",
+                "corrected_label": "1",
+                "manual_label_verdict": "label_wrong",
+                "recommended_action": "relabel_train_only",
+            }],
+        )
+
+        rows, summary = build_plan(review_csv=review_csv, split_csv=split_csv)
+
     assert rows[0]["plan_action"] == "relabel"
     assert rows[0]["original_label"] == 0
     assert rows[0]["planned_label"] == 1
     assert rows[0]["replacement_required"] == "false"
+    assert rows[0]["usable_for_training_policy"] == "true"
     assert summary["training_policy_rows"] == 1
 
 
@@ -219,11 +252,12 @@ def test_review_sha_can_match_split_path_filename():
         )
         _write_csv(
             review_csv,
-            ["source_path", "source_sha256", "label", "manual_label_verdict", "recommended_action"],
+            ["source_path", "source_sha256", "label", "corrected_label", "manual_label_verdict", "recommended_action"],
             [{
                 "source_path": "",
                 "source_sha256": sample_sha,
                 "label": "0",
+                "corrected_label": "1",
                 "manual_label_verdict": "label_wrong",
                 "recommended_action": "relabel_train_only",
             }],

@@ -168,9 +168,6 @@ def infer_relabel_target(row: dict) -> Optional[int]:
             return 0
         if value in {"1", "malicious", "black", "malware"}:
             return 1
-    current = normalize_text(row.get("label"))
-    if current in {"0", "1"}:
-        return 1 - int(current)
     return None
 
 
@@ -203,6 +200,7 @@ def _plan_row(review_row: dict, split_row: dict, action: str, reason: str, allow
         if target is None:
             row["plan_action"] = "needs_manual_target_label"
             row["reason"] = "relabel verdict did not provide an inferable target label"
+            row["usable_for_training_policy"] = "false"
         else:
             row["planned_label"] = target
     elif action == "exclude_and_replace":
