@@ -2,6 +2,14 @@
 
 更新时间：2026-07-02
 
+## 2026-07-03 补充：Loop61 override-only classifier 未通过 Test-10k
+
+Loop61 把 Loop57 的 FN gate 改成更窄的 override-only classifier：只在 locked base 判白、overlay-aware candidate 判黑的 possible override 行上训练 allow/block 分类器，仍然只允许 `0 -> 1`，不允许把 base 判黑改成白。该实验继续使用严格 OOF train 分数，Val 选择 classifier 和 allow threshold，身份字段只用于加载、对齐和审计，不作为模型证据。
+
+Val 上 Loop61 确实超过 Loop57：从 Loop57 的 F1 `0.9926635724`、`147` errors、FP/FN `92/55`，提升到 F1 `0.9930139721`、`140` errors、FP/FN `90/50`。但冻结 Test-10k 没有超过当前 best：Loop61 为 F1 `0.9897816069`、`102` errors、FP/FN `62/40`，与 Loop57 的 `102` errors 持平，只是把 FP `-3` 换成 FN `+3`。因此按漏斗规则拒绝 full-test，Loop57 仍是当前 best full-test reference。
+
+这个结果说明 override-only 分类方向能削减一部分新增 FP，但 possible override 训练样本太少：本轮 train possible override 只有 `160` 行，其中真修复 `54`、新 FP `106`；Val possible override 只有 `130` 行，其中真修复 `42`、新 FP `88`。继续在同一批 score/overlay gate 上薄调很容易过拟合 Val。下一步应转向更强的内容证据或回到噪声/源标签审计，而不是把 Test-10k tie 强行推进 full-test。相关记录见 `docs/phase3_loop61_override_classifier.md`。
+
 ## 2026-07-02 补充：命名不是证据，content PE v1 已产品化
 
 最新硬规则已经固定：文件名、路径、扩展名、目录名、`source_sha256`、`cache_path`、`sample_index`、`split` 和行顺序只能用于加载、缓存对齐、覆盖审计、去重、人工复核、以及生成一次性的人工标签清单，不能作为模型特征、二阶段融合特征、阈值捷径、自动改标证据或上线推理依据。原因是实战文件命名和训练集命名完全不是同一个分布，且攻击者改名几乎没有成本；训练集目录只能说明人工当时把样本放进哪个标签桶，不能说明文件本身因名字而恶意或良性。
