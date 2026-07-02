@@ -74,23 +74,59 @@ Reject for full-test. The Val gain did not translate into fewer Test-10k errors,
 
 The useful lesson is narrower: override-only classification can reduce some new FP, but the possible override training set is tiny and unstable. The next loop should either collect stronger content evidence for these possible override rows or move back to noise/source-label adjudication instead of continuing to tune the same sparse gate.
 
+## Follow-Up Audits
+
+Loop61 exchange audit:
+
+- New script: `scripts/analyze_loop61_exchange.py`
+- Val exchange vs Loop57: Loop61 repaired `13` Loop57 errors and introduced `6` new errors.
+- Test-10k exchange vs Loop57: Loop61 repaired `6` Loop57 errors and introduced `6` new errors.
+
+This explains the gate decision: Val had a real but small net advantage, while Test-10k showed no net error reduction.
+
+Loop62 tried the obvious extension, adding full anonymous content matrix features to the override classifier. It was rejected on Val:
+
+| Candidate | Classifier | F1 | Errors | FP/FN | Overrides |
+| --- | --- | ---: | ---: | ---: | ---: |
+| `extra_trees_300_leaf1` | `override_logreg_balanced_c0.10` | `0.9926096075` | `148` | `87 / 61` | `14` |
+
+Loop62 reduced FP but blocked too many true malicious repairs, so it did not reach Test-10k. This confirms that simply feeding high-dimensional content features into the sparse override-only classifier is not a stable path.
+
+Loop63 then returned to noise/data triage:
+
+- New script: `scripts/build_loop63_persistent_error_review_queue.py`
+- Output queue: `reports/random_20w_split/loop63_persistent_error_review_queue.csv`
+- Summary: `reports/random_20w_split/loop63_persistent_error_review_queue_summary.json`
+
+Loop63 is read-only full-test triage, not model selection. It found all `1868` current-best Loop57 full-test errors, with `643` rows intersecting the Loop39 high-confidence conflict queue. These rows are the strongest current evidence that the remaining gap is not only a gate-tuning problem.
+
 ## Artifacts
 
 - Val report:
   `reports/random_20w_split/loop61_override_classifier_valonly/loop61_override_classifier_report.json`
 - Frozen Test-10k report:
   `reports/random_20w_split/loop61_override_classifier_frozen_test10k_eval.json`
+- Loop61 Val exchange audit:
+  `reports/random_20w_split/loop61_exchange_val_audit.json`
+- Loop61 Test-10k exchange audit:
+  `reports/random_20w_split/loop61_exchange_test10k_audit.json`
+- Loop63 persistent error queue summary:
+  `reports/random_20w_split/loop63_persistent_error_review_queue_summary.json`
 
 Large generated artifacts are intentionally not committed:
 
 - `loop61_override_classifier_selected_model.pkl`
 - `loop61_override_classifier_*_predictions.csv`
+- `loop61_exchange_*_details.csv`
+- `loop63_persistent_error_review_queue.csv`
 
 ## 验证
 
 ```powershell
 .\vnev\Scripts\python.exe -m pytest tests\test_loop61_override_classifier.py tests\test_loop57_fn_overlay_gate.py tests\test_loop42_oof_residual_gate.py tests\test_loop55_overlay_boundary.py tests\test_identity_feature_guard.py -q
 .\vnev\Scripts\python.exe -m py_compile scripts\train_loop61_override_classifier.py scripts\evaluate_loop57_fn_overlay_gate.py
+.\vnev\Scripts\python.exe -m pytest tests\test_analyze_loop61_exchange.py tests\test_build_loop63_persistent_error_review_queue.py -q
+.\vnev\Scripts\python.exe -m py_compile scripts\analyze_loop61_exchange.py scripts\build_loop63_persistent_error_review_queue.py
 ```
 
-Latest local result: `25 passed`.
+Latest local results: `25 passed` for Loop61/57/42/55 identity coverage, plus `2 passed` for Loop61 exchange and Loop63 queue coverage.

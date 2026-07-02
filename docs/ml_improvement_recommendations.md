@@ -10,6 +10,10 @@ Val 上 Loop61 确实超过 Loop57：从 Loop57 的 F1 `0.9926635724`、`147` er
 
 这个结果说明 override-only 分类方向能削减一部分新增 FP，但 possible override 训练样本太少：本轮 train possible override 只有 `160` 行，其中真修复 `54`、新 FP `106`；Val possible override 只有 `130` 行，其中真修复 `42`、新 FP `88`。继续在同一批 score/overlay gate 上薄调很容易过拟合 Val。下一步应转向更强的内容证据或回到噪声/源标签审计，而不是把 Test-10k tie 强行推进 full-test。相关记录见 `docs/phase3_loop61_override_classifier.md`。
 
+随后补做了两件只读审计。第一，Loop61 exchange audit 解释了 Val/Test-10k 不一致：Val 上 Loop61 相对 Loop57 是 `13` 个修复对 `6` 个新增错，Test-10k 变成 `6` 对 `6`，净收益归零。第二，Loop62 尝试把匿名 content matrix 加入 override-only classifier，但 Val 退到 `148` errors、FP/FN `87/61`，说明高维内容特征在百级 possible override 行上更像过拟合或过度保守，不进 Test-10k。
+
+Loop63 已把路线切回噪声/数据复核：基于当前 best Loop57 full-test 生成持久错误队列，`160000` test 行中仍有 `1868` 个错误，其中 `1760` 个是 Loop28 与 Loop57 都错的持久错误，`108` 个是 Loop57 新增错误；更关键的是 `643` 个 current-best 错误与 Loop39 高置信冲突队列重合。这个量级本身已经远超 `F1 >= 99.9%` 的容错空间，因此下一阶段优先级应是人工/外部证据复核这些持久高置信冲突，而不是继续薄调同一类 sparse gate。Loop63 只用于目标可行性和复核排序，不允许作为训练、阈值选择或自动改标依据；若确认坏样本，仍必须 fresh same-label redraw，保持严格 `200000`。
+
 ## 2026-07-02 补充：命名不是证据，content PE v1 已产品化
 
 最新硬规则已经固定：文件名、路径、扩展名、目录名、`source_sha256`、`cache_path`、`sample_index`、`split` 和行顺序只能用于加载、缓存对齐、覆盖审计、去重、人工复核、以及生成一次性的人工标签清单，不能作为模型特征、二阶段融合特征、阈值捷径、自动改标证据或上线推理依据。原因是实战文件命名和训练集命名完全不是同一个分布，且攻击者改名几乎没有成本；训练集目录只能说明人工当时把样本放进哪个标签桶，不能说明文件本身因名字而恶意或良性。
