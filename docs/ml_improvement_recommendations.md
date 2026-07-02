@@ -1,6 +1,6 @@
 # Axon 机器学习改进建议
 
-更新时间：2026-07-02
+更新时间：2026-07-03
 
 ## 2026-07-03 补充：Loop61 override-only classifier 未通过 Test-10k
 
@@ -31,6 +31,8 @@ Loop68 把“还能不能继续叠第三层残差模型”做成只读协议审�
 Loop69 已实现并运行 Loop61-style override pipeline 的 train-only nested OOF 物化。它不训练第三层、不跑 Val 选择、不碰 Test，只在 train 内用外层 fold 生成每行 `base_oof_prob_malicious`、`candidate_oof_prob_malicious`、`allow_oof_prob`、`final_oof_prob_malicious`、`final_oof_prediction`、`oof_override_flag` 和 `oof_fold`。400 行 smoke 与完整 `20000/20000` train 都已通过 Loop68 readiness gate：`third_layer_residual_training_allowed`。完整产物黑白各 `10000`，5 folds 各 `4000`，缺失分数 `0`；train OOF F1 `0.9874489491`、errors `252`、FP/FN `165/87`，possible overrides `120`，actual overrides `36`。这份 CSV 现在是第三层 residual learner 的合格 train 输入，但它仍不是 Val/Test 候选。相关记录见 `docs/phase3_loop69_nested_oof_materialization.md`。
 
 Loop70 用 Loop69 的合格 nested OOF 输入训练第三层 meta layer，并在完整 Val 上验证。协议上它比直接复用 Loop61 Val 预测更干净：meta 只吃 train OOF 分数训练，上游 base/candidate/override 在全 train 拟合后冻结生成 Val 分数，Val 只用于选择 meta model 和阈值，不触碰 Test。结果没有通过：最佳 `meta_logreg_balanced_c0.1` 为 Val F1 `0.9917173935`、`166` errors、FP/FN `104/62`，比 Loop57 reference 的 `147` errors 多 `19`，因此拒绝 Test-10k。结论是：即便修正了第三层 OOF 协议，继续堆同一组 base/candidate/allow/final 分数也不能突破当前 best；下一步应停止同路线 stack/gate，转向新独立内容证据或人工/外部噪声复核。相关记录见 `docs/phase3_loop70_nested_oof_meta.md`。
+
+Loop71 把目标缺口量化成了硬数字：当前 best Loop57 full-test F1 `0.9883629658`，仍有 `1868` 个错误，FP/FN 为 `1195/673`；要达到 `F1 >= 0.999`，即使按最有利情况优先修复 FN，也至少需要修复 `1708` 个错误，占当前错误的 `91.43%`，最后只允许约 `160` 个 FP 且 `0` 个 FN。现有复核队列覆盖不了这个缺口：Loop65 的 `62` 行即使全部确认并修复，best-case 也只有 F1 `0.9887535495`；Loop63 A-lane 的 `643` 行即使全部确认并修复，best-case 也只有 F1 `0.9923990941`。Loop50/Loop64 这类客观自动审计又只找到 `0` 个 objective issue row 和 `4` 个 focus duplicate detail rows，不能支撑自动大规模改标。结论是：99.9% 不是继续拧阈值或重排同一路线分数能解决的目标；下一步必须扩大人工/外部证据复核，或引入真正独立的新检测视角。相关记录见 `docs/phase3_loop71_target_gap_noise_roi.md`。
 
 ## 2026-07-02 补充：命名不是证据，content PE v1 已产品化
 

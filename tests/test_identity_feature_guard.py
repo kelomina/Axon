@@ -21,11 +21,39 @@ def test_identity_guard_rejects_external_identity_features():
     assert violations == ["source_path", "file_extension_exe", "sample_index", "split_train"]
 
 
+def test_identity_guard_rejects_identity_aliases():
+    violations = identity_feature_violations(
+        [
+            "manifest_source_sha256",
+            "file_hash",
+            "filename_hash",
+            "row_number",
+            "record_index",
+            "dir_name",
+            "hash_bucket_from_path",
+            "sha256_prefix",
+            "content_entropy",
+        ]
+    )
+
+    assert violations == [
+        "manifest_source_sha256",
+        "file_hash",
+        "filename_hash",
+        "row_number",
+        "record_index",
+        "dir_name",
+        "hash_bucket_from_path",
+        "sha256_prefix",
+    ]
+
+
 def test_identity_guard_allows_content_derived_path_and_sha_terms():
     assert_no_identity_feature_names(
         [
             "string_windows_path_count_log",
             "cert_oid_sha256_present",
+            "authenticode_sha256_rsa_oid_present",
             "content_dir_import_present",
             "content_resource_entry_count_log",
         ],

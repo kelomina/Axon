@@ -3,7 +3,9 @@
 ## Rule
 
 Filename, path, extension, directory name, `source_sha256`, `cache_path`,
-`sample_index`, `split`, and row order are not model features.
+`sample_index`, `split`, and row order are not model features. Alias fields
+such as `manifest_source_sha256`, `file_hash`, `filename_hash`, `row_number`,
+`record_index`, and `dir_name` follow the same rule.
 
 They may only be used for:
 
@@ -56,12 +58,28 @@ currently wired into:
 - `scripts/train_stage2_oof_stacker.py`
 - Loop57/Loop61-style residual gate feature construction
 - `scripts/audit_loop68_residual_oof_readiness.py`
+- `scripts/materialize_loop69_nested_oof_override.py`
+- `scripts/train_loop70_nested_oof_meta.py`
 
 If a future Stage-2 experiment introduces a feature named like `source_path`,
-`file_extension_*`, `sample_index`, `split_*`, `filename_*`, or similar external
-identity metadata, the training script raises before writing the selected model.
+`file_extension_*`, `sample_index`, `split_*`, `filename_*`,
+`manifest_source_sha256`, `file_hash`, `row_number`, `record_index`, `dir_name`,
+or similar external identity metadata, the training script raises before writing
+the selected model.
 
 Loop68 adds a separate readiness check for stacked residual experiments. It does
 not train anything; it verifies that a candidate has row-level train final OOF
 predictions before another residual layer is allowed. Identity fields in those
 prediction CSVs remain alignment-only columns, not model inputs.
+
+Loop69 materializes train-only nested OOF predictions so a later residual layer
+can train without seeing in-fold upstream predictions. Its identity columns are
+for row alignment and cache audit only. Loop70 trains a meta layer from Loop69
+OOF score fields and validates on Val; it explicitly excludes fold id, path,
+hash, filename, directory, extension, split, `correct`, and row-order fields
+from the model matrix.
+
+Loop71 is a read-only target-gap and review-ROI audit. It may read full-test
+errors to quantify feasibility and prioritize manual or external-evidence
+review, but it does not train, tune thresholds, mutate splits, auto-relabel, or
+turn full-test error identity fields into model rules.
