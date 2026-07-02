@@ -64,6 +64,8 @@ Loop46 按策略重审建议转向新信息源：真实一点的 Authenticode/AS
 
 Loop41-46 已触发停滞熔断和策略重审：连续多轮没有候选达到 `<=152` Val errors 的 Test-10k 门槛，最好也只是 Loop41 的 `159` errors，只有 `2-3` 个错误级别的改善。应暂停继续围绕 prefix/region byte n-gram、浅融合、同款 OOF gate、手工内容交叉、浅/结构证书追加做微调。后续必须换成真正不同的信息源、真实多 checkpoint/多 seed OOF、多字节长度神经模型，或带人工证据的数据清洗，而不是再扩大 hash 空间、调 stride/alpha/epoch 或重复堆 gate。
 
+Loop47 对现有 `models/` 做了 checkpoint provenance 审计，用来判断是否能直接进入“多 checkpoint / 多 seed OOF stacking”。结论是否定的：共扫描 `177` 个 `.pt` checkpoint，只有 `1` 个能明确归属当前 `loop27_corrected_split.csv`、fixed-v2、8192-byte random 20w 口径，即 `models/random_20w_8192/best_model.pt`；其余为 `provenance_mismatch=2`、`incompatible=40`、`unknown=134`。因此，当前仓库没有可安全直接 stack 的多 checkpoint 池。若要做真正多样化 OOF stacking，必须重新训练当前 split 的新 seed / 新 byte length checkpoint，不能拿旧 group-isolated、comparison-cache、hard replay 或未知来源 checkpoint 混入当前 Val/Test 漏斗。相关文档见 `docs/phase3_loop47_checkpoint_provenance_audit.md`。
+
 因此，下一阶段 P1 不应继续把主要时间花在“再替换少量 Val 噪声样本”上，而应转为三个方向：
 
 1. **把 Loop28 content PE metadata 正式产品化，但不要继续在当前 v2 上排列组合。** 当前大量白样本在数据集中表现为 SHA 文件名或无扩展名，但实战文件名可被任意改写，所以 filename/extension 只能作为错误分析切片，不能作为生产模型输入。Loop28 已证明 PE 内容侧信号有效；Loop32-35 又证明“直接追加一大包细特征”以及“把这包细特征拆子组”都不够稳。下一步应把 Loop28 的 100 维内容特征并入稳定 schema，同时转向 OOF stacking 或更高质量解析，而不是继续消耗轮次在 v2 group permutation 上。
