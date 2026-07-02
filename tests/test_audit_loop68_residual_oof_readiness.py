@@ -23,6 +23,18 @@ def _write_report(path: Path, artifacts: dict | None = None) -> None:
     path.write_text(json.dumps(report), encoding="utf-8")
 
 
+def _write_train_only_report(path: Path, artifacts: dict | None = None) -> None:
+    report = {
+        "schema": "unit_nested_oof_report",
+        "protocol": "train-only nested OOF materialization; no Val selection and no Test",
+        "records": {"total": 3, "kept": 3, "skipped_missing_cache": 0},
+        "gate_feature_names": ["gate_base_score", "gate_content_feature_0"],
+        "metrics": {"f1": 0.9, "errors": 1},
+        "artifacts": artifacts or {},
+    }
+    path.write_text(json.dumps(report), encoding="utf-8")
+
+
 def _write_payload(path: Path, feature_names: list[str] | None = None) -> None:
     with path.open("wb") as handle:
         pickle.dump(
@@ -150,3 +162,22 @@ def test_loop68_rejects_identity_like_model_feature_names(tmp_path: Path):
     assert report["overall_decision"] == "third_layer_residual_training_blocked"
     assert "identity_like_model_feature_name_detected" in audit["missing_requirements"]
     assert audit["payload_summary"]["feature_name_violations"] == ["source_path_bucket"]
+
+
+def test_loop68_accepts_train_only_nested_oof_report_shape(tmp_path: Path):
+    oof_csv = tmp_path / "train_final_oof_predictions.csv"
+    report_path = tmp_path / "report.json"
+    output_json = tmp_path / "audit.json"
+    _write_oof_csv(oof_csv)
+    _write_train_only_report(report_path, {"train_oof_predictions": str(oof_csv)})
+
+    report = run_audit(
+        candidates=[str(report_path)],
+        output_json=output_json,
+        expected_train_rows=3,
+        expected_val_rows=0,
+    )
+
+    assert report["overall_decision"] == "third_layer_residual_training_allowed"
+    assert report["audits"][0]["records"]["train_kept"] == 3
+    assert report["audits"][0]["records"]["val_kept"] == 0

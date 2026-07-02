@@ -295,8 +295,12 @@ def audit_candidate(
     report_resolved = resolve_path(report_path)
     report = read_json(report_resolved)
     records = report.get("records") or {}
-    train_records = records.get("train") if isinstance(records.get("train"), dict) else {}
-    val_records = records.get("val") if isinstance(records.get("val"), dict) else {}
+    if isinstance(records.get("train"), dict) or isinstance(records.get("val"), dict):
+        train_records = records.get("train") if isinstance(records.get("train"), dict) else {}
+        val_records = records.get("val") if isinstance(records.get("val"), dict) else {}
+    else:
+        train_records = records if isinstance(records, dict) else {}
+        val_records = {"kept": 0}
     train_kept = int(train_records.get("kept") or 0)
     val_kept = int(val_records.get("kept") or 0)
 
@@ -319,7 +323,8 @@ def audit_candidate(
     if not usable_oof_artifacts:
         missing_requirements.append("missing_row_level_train_final_whole_pipeline_oof_predictions")
     protocol = str(report.get("protocol") or "")
-    if "strict OOF" not in protocol and "strict oof" not in protocol.lower():
+    protocol_lower = protocol.lower()
+    if "strict oof" not in protocol_lower and "nested oof" not in protocol_lower:
         missing_requirements.append("report_protocol_does_not_claim_train_oof")
 
     readiness = "ready_for_third_layer_residual_training" if not missing_requirements else "not_ready"

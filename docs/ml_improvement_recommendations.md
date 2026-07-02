@@ -28,6 +28,8 @@ Loop67 把 Loop66 的内容分层直觉转成固定规则探针，仍然只跑 V
 
 Loop68 把“还能不能继续叠第三层残差模型”做成只读协议审计。结果是 `Loop57`、`Loop61`、`Loop62` 三个候选都被阻断：它们的二层实验本身使用了 base/candidate train OOF 分数，报告和 payload 的 feature names 也没有发现身份字段泄漏；但现有产物没有导出“整条已选流水线”的训练集逐行最终 OOF 预测。因此不能再拿同一批 train 行训练第三层纠错器，否则会把二层 gate/override 在训练集上的拟合痕迹当成泛化信号。真实审计输出 `ready_candidate_count=0`，`overall_decision=third_layer_residual_training_blocked`。下一步若仍要做第三层学习，必须先实现 nested OOF export：每个 train 样本的 final prob/prediction 都必须来自没有见过该样本的完整 Loop57/61 风格流水线。否则优先继续噪声复核和新独立内容证据。相关记录见 `docs/phase3_loop68_residual_oof_readiness.md`。
 
+Loop69 已实现 Loop61-style override pipeline 的 train-only nested OOF 物化脚本。它不训练第三层、不跑 Val 选择、不碰 Test，只在 train 内用外层 fold 生成每行 `base_oof_prob_malicious`、`candidate_oof_prob_malicious`、`allow_oof_prob`、`final_oof_prob_malicious`、`final_oof_prediction`、`oof_override_flag` 和 `oof_fold`。400 行 smoke 已完整跑通，并通过 Loop68 readiness gate：`third_layer_residual_training_allowed`。这说明第三层 residual learner 的合格输入格式已经打通；下一步应运行完整 `20000/20000` train OOF 物化，再基于该 CSV 训练第三层候选。相关记录见 `docs/phase3_loop69_nested_oof_materialization.md`。
+
 ## 2026-07-02 补充：命名不是证据，content PE v1 已产品化
 
 最新硬规则已经固定：文件名、路径、扩展名、目录名、`source_sha256`、`cache_path`、`sample_index`、`split` 和行顺序只能用于加载、缓存对齐、覆盖审计、去重、人工复核、以及生成一次性的人工标签清单，不能作为模型特征、二阶段融合特征、阈值捷径、自动改标证据或上线推理依据。原因是实战文件命名和训练集命名完全不是同一个分布，且攻击者改名几乎没有成本；训练集目录只能说明人工当时把样本放进哪个标签桶，不能说明文件本身因名字而恶意或良性。
