@@ -2,11 +2,13 @@
 
 更新时间：2026-07-02
 
-## 2026-07-02 补充：命名不是证据，seed43 低收益候选已拒绝
+## 2026-07-02 补充：命名不是证据，content PE v1 已产品化
 
 最新硬规则已经固定：文件名、路径、扩展名、目录名、`source_sha256`、`cache_path`、`sample_index`、`split` 和行顺序只能用于加载、缓存对齐、覆盖审计、去重、人工复核、以及生成一次性的人工标签清单，不能作为模型特征、二阶段融合特征、阈值捷径、自动改标证据或上线推理依据。原因是实战文件命名和训练集命名完全不是同一个分布，且攻击者改名几乎没有成本；训练集目录只能说明人工当时把样本放进哪个标签桶，不能说明文件本身因名字而恶意或良性。
 
 当前 `docs/identity_feature_policy.md` 已把这条写成策略文档，`scripts/identity_feature_guard.py` 已接入 Stage-2 cache matrix 和 OOF stacker。后续如果新增类似 filename/path/extension/hash/split/row-id 的派生特征，训练脚本应直接失败，而不是让这类身份线索进入模型。
+
+Loop52 已把 Loop28 的 100 维 content PE metadata 从 Stage-2 临时脚本产品化为 `src/kvd_features/content_pe_v1.py`，并让 Stage-2 训练矩阵和 sidecar cache builder 都引用同一份稳定 schema。这个 schema 只从文件字节和 PE 结构中提取 header、data directory、import/export/resource、overlay、section 权限/熵等内容信号；路径参数只用于打开文件，不编码 filename、path、extension、directory、hash、split 或行号。新增测试要求同一内容在不同文件名下提取结果完全一致，并要求全部 feature names 通过 identity guard。32 条限量 smoke 必须显式使用 `--smoke --limit`，只验证 extractor/cache writer 链路，`feature_dim=100`、`created=32`、`zero_features=0`，不作为 Val 指标，也不触碰 Test-10k；正式 sidecar cache 报告必须满足 `"limit": null` 且 `"unique_rows" == "deduplicated_rows_before_limit"`。相关记录见 `docs/phase3_loop52_content_pe_v1_productization.md`。
 
 Loop48 对 fresh seed43 current-split checkpoint 做了 Val-only 复验。它使用 `config/random_20w_8192_seed43.toml`，保持当前 `loop27_corrected_split.csv`、fixed-v2、8192-byte、PE 256、stat 49 的同一口径；split/cache 复审仍为 `200000/200000` 覆盖、missing `0`。1 epoch smoke Val F1 为 `0.8158`；完整训练保留的 `models/random_20w_8192_seed43/best_model.pt` 在 epoch `17` 的 best Val F1 只有 `0.9500494559841741`，且没有 final checkpoint。该结果远低于 Loop28 content PE metadata 的 Val F1 `0.9919048571`，因此 seed43 未进入 Test-10k，也不导出给 Stage-2 stacker 使用。相关记录见 `docs/phase3_loop48_fresh_seed43_valonly.md`。
 

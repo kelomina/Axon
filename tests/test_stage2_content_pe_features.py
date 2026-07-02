@@ -2,7 +2,7 @@ from pathlib import Path
 
 import numpy as np
 
-from scripts.train_stage2_cache_matrix import CONTENT_PE_FEATURE_NAMES, _content_pe_features_from_path
+from kvd_features.content_pe_v1 import CONTENT_PE_FEATURE_NAMES, _content_pe_features_from_path
 
 
 def test_content_pe_features_do_not_depend_on_filename(tmp_path: Path):

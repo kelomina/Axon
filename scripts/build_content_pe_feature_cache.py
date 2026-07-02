@@ -16,13 +16,13 @@ import numpy as np
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS_DIR = PROJECT_ROOT / "scripts"
-for item in (PROJECT_ROOT, SCRIPTS_DIR):
+SRC_DIR = PROJECT_ROOT / "src"
+for item in (PROJECT_ROOT, SCRIPTS_DIR, SRC_DIR):
     if str(item) not in sys.path:
         sys.path.insert(0, str(item))
 
+from kvd_features.content_pe_v1 import CONTENT_PE_FEATURE_NAMES, _content_pe_features_from_path  # noqa: E402
 from train_stage2_cache_matrix import (  # noqa: E402
-    CONTENT_PE_FEATURE_NAMES,
-    _content_pe_features_from_path,
     read_prediction_rows,
     resolve_path,
     save_feature_npz_atomic,
@@ -70,18 +70,38 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     parser.add_argument("--predictions", type=Path, nargs="+", required=True)
     parser.add_argument("--cache-dir", type=Path, required=True)
     parser.add_argument("--workers", type=int, default=4)
+    parser.add_argument(
+        "--limit",
+        type=int,
+        default=None,
+        help="Optional smoke-test limit applied after de-duplicating prediction rows.",
+    )
+    parser.add_argument(
+        "--smoke",
+        action="store_true",
+        help="Required when --limit is used, so production cache builds cannot be truncated accidentally.",
+    )
     parser.add_argument("--output-json", type=Path, required=True)
     return parser.parse_args(argv)
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
     args = parse_args(argv)
+    if args.limit is not None:
+        if not args.smoke:
+            raise ValueError("--limit requires --smoke; production cache builds must not be truncated.")
+        if args.limit < 0:
+            raise ValueError("--limit must be non-negative")
+
     cache_dir = resolve_path(args.cache_dir)
     cache_dir.mkdir(parents=True, exist_ok=True)
     rows = []
     for prediction_path in args.predictions:
         rows.extend(read_prediction_rows(prediction_path))
     unique_rows = _deduplicate_rows(rows)
+    total_unique_rows = len(unique_rows)
+    if args.limit is not None:
+        unique_rows = unique_rows[: args.limit]
 
     start = time.perf_counter()
     counts = {"exists": 0, "created": 0, "zero_features": 0}
@@ -111,7 +131,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "predictions": [str(resolve_path(path)) for path in args.predictions],
         "cache_dir": str(cache_dir),
         "workers": worker_count,
+        "smoke": bool(args.smoke),
         "input_rows": len(rows),
+        "deduplicated_rows_before_limit": total_unique_rows,
+        "limit": args.limit,
         "unique_rows": len(unique_rows),
         "feature_dim": len(CONTENT_PE_FEATURE_NAMES),
         "counts": counts,

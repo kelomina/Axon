@@ -1,0 +1,21 @@
+{
+  "schema": "axon_content_pe_feature_cache_v1",
+  "protocol": "content-only PE metadata; filename/path/extension are not encoded as model features",
+  "predictions": [
+    "E:\\Project\\python\\Axon_v2.6Exp\\reports\\random_20w_split\\loop27_val_predictions.csv"
+  ],
+  "cache_dir": "E:\\Project\\python\\Axon_v2.6Exp\\reports\\random_20w_split\\loop52_content_pe_v1_smoke_cache_limit32_guarded",
+  "workers": 1,
+  "smoke": true,
+  "input_rows": 20000,
+  "deduplicated_rows_before_limit": 20000,
+  "limit": 32,
+  "unique_rows": 32,
+  "feature_dim": 100,
+  "counts": {
+    "exists": 0,
+    "created": 32,
+    "zero_features": 0
+  },
+  "elapsed_sec": 5.6326458000112325
+}
