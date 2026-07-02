@@ -14,6 +14,8 @@ Loop48 对 fresh seed43 current-split checkpoint 做了 Val-only 复验。它使
 
 噪声问题仍然要作为主线处理。Loop38/Loop39 的高置信冲突队列不能靠命名猜标签，也不能自动改标；一旦人工确认样本 `feature_broken`、`out_of_scope` 或 `label_wrong`，必须从同标签候选池 fresh re-draw 替换，并重新生成完整 `20000 train / 20000 val / 160000 test` split 与 cache readiness。坏样本不补齐，坏样本只触发重新抽样。
 
+Loop49 又补了一次产品化前置审计：当前 fixed-v2 PE 主 schema 配置维度是 `256`，实际使用 `143` 维，保留位 `113` 维；Loop28 的 100 维 content PE 特征中只有 `20` 个能和 fixed-v2 形成已有/部分覆盖，仍有 `80` 个产品化缺口。高价值缺口集中在 data directory size/ratio、header flags、section permission combo、layout ratio、import shape、overlay 和 resource shape。结论是：Loop28 的收益不是命名泄漏，而是主 schema 尚未稳定吸收的内容侧 PE 结构信号。下一步应把这些信号迁入明确版本的稳定 schema，例如 `fixed_v3` 或 `content_pe_v1`，再进入 Train/Val 漏斗；不能悄悄复用 reserved 位让旧 checkpoint 语义变得模糊。相关记录见 `docs/phase3_loop49_content_pe_productization_audit.md`。
+
 ## 2026-07-01 补充：20w 严格漏斗实验后的最新判断
 
 在 20 万完整 split 上，当前最强可复现实验是 Loop28 的 Stage-2 content PE metadata 模型。它严格保持 `20000 train / 20000 val / 160000 test`，每个 split 内黑白样本平衡不变，fixed-v2 uncompressed cache 覆盖 `200000/200000`。Val 只用于选模型和阈值；Test-10k 只做确认；full-test 只做一次冻结评估。Loop28 新增的 100 维 PE metadata 只来自文件内容和 PE 结构，不包含 filename、extension、目录名或路径文本。

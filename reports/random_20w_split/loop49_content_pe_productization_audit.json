@@ -1,0 +1,248 @@
+{
+  "schema": "axon_loop49_content_pe_productization_audit_v1",
+  "identity_feature_policy": "filename/path/extension/directory/hash/sample index/split/row order are audit-only, never model evidence",
+  "fixed_v2": {
+    "section_slots": 32,
+    "pe_feature_dim": 256,
+    "used_dim_without_reserved": 143,
+    "feature_name_count": 256,
+    "reserved_feature_count": 113
+  },
+  "loop28_content_pe": {
+    "feature_count": 100,
+    "exact_name_overlap_count": 0,
+    "exact_name_overlaps": [],
+    "covered_or_partial_count": 20,
+    "covered_or_partial": [
+      {
+        "content_feature": "content_api_crypto_ratio",
+        "fixed_v2_features": [
+          "fixed_v2_api_crypto_ratio"
+        ]
+      },
+      {
+        "content_feature": "content_api_filesystem_ratio",
+        "fixed_v2_features": [
+          "fixed_v2_api_filesystem_ratio"
+        ]
+      },
+      {
+        "content_feature": "content_api_injection_ratio",
+        "fixed_v2_features": [
+          "fixed_v2_api_injection_ratio"
+        ]
+      },
+      {
+        "content_feature": "content_api_network_ratio",
+        "fixed_v2_features": [
+          "fixed_v2_api_network_ratio"
+        ]
+      },
+      {
+        "content_feature": "content_api_process_ratio",
+        "fixed_v2_features": [
+          "fixed_v2_api_process_ratio"
+        ]
+      },
+      {
+        "content_feature": "content_api_registry_ratio",
+        "fixed_v2_features": [
+          "fixed_v2_api_registry_ratio"
+        ]
+      },
+      {
+        "content_feature": "content_dir_basereloc_present",
+        "fixed_v2_features": [
+          "fixed_v2_has_relocs"
+        ]
+      },
+      {
+        "content_feature": "content_dir_debug_present",
+        "fixed_v2_features": [
+          "fixed_v2_has_debug_info"
+        ]
+      },
+      {
+        "content_feature": "content_dir_exception_present",
+        "fixed_v2_features": [
+          "fixed_v2_has_exceptions"
+        ]
+      },
+      {
+        "content_feature": "content_dir_security_present",
+        "fixed_v2_features": [
+          "fixed_v2_has_signature"
+        ]
+      },
+      {
+        "content_feature": "content_dir_tls_present",
+        "fixed_v2_features": [
+          "fixed_v2_has_tls"
+        ]
+      },
+      {
+        "content_feature": "content_dll_characteristics",
+        "fixed_v2_features": [
+          "fixed_v2_dll_characteristics"
+        ]
+      },
+      {
+        "content_feature": "content_file_log_size",
+        "fixed_v2_features": [
+          "fixed_v2_log_size"
+        ]
+      },
+      {
+        "content_feature": "content_file_size_norm_100mb",
+        "fixed_v2_features": [
+          "fixed_v2_file_size"
+        ]
+      },
+      {
+        "content_feature": "content_num_sections_norm",
+        "fixed_v2_features": [
+          "fixed_v2_sections_count"
+        ]
+      },
+      {
+        "content_feature": "content_section_high_entropy_ratio",
+        "fixed_v2_features": [
+          "fixed_v2_section_high_entropy_ratio"
+        ]
+      },
+      {
+        "content_feature": "content_section_max_entropy",
+        "fixed_v2_features": [
+          "fixed_v2_section_entropy_max"
+        ]
+      },
+      {
+        "content_feature": "content_section_mean_entropy",
+        "fixed_v2_features": [
+          "fixed_v2_section_entropy_avg"
+        ]
+      },
+      {
+        "content_feature": "content_section_name_packer_hit_ratio",
+        "fixed_v2_features": [
+          "fixed_v2_packer_keyword_hits_ratio"
+        ]
+      },
+      {
+        "content_feature": "content_subsystem",
+        "fixed_v2_features": [
+          "fixed_v2_subsystem"
+        ]
+      }
+    ],
+    "productization_gap_count": 80,
+    "productization_gaps": [
+      "content_machine",
+      "content_characteristics",
+      "content_timestamp_valid",
+      "content_timestamp_year_norm",
+      "content_optional_magic",
+      "content_major_linker_norm",
+      "content_minor_linker_norm",
+      "content_size_of_code_ratio",
+      "content_size_init_data_ratio",
+      "content_size_uninit_data_ratio",
+      "content_entry_point_ratio",
+      "content_image_base_log",
+      "content_section_alignment_log",
+      "content_file_alignment_log",
+      "content_size_of_image_ratio",
+      "content_size_of_headers_ratio",
+      "content_is_dll",
+      "content_is_executable_image",
+      "content_is_system",
+      "content_large_address_aware",
+      "content_32bit_machine",
+      "content_relocs_stripped",
+      "content_debug_stripped",
+      "content_dir_export_present",
+      "content_dir_export_log_size",
+      "content_dir_export_size_ratio",
+      "content_dir_import_present",
+      "content_dir_import_log_size",
+      "content_dir_import_size_ratio",
+      "content_dir_resource_present",
+      "content_dir_resource_log_size",
+      "content_dir_resource_size_ratio",
+      "content_dir_exception_log_size",
+      "content_dir_exception_size_ratio",
+      "content_dir_security_log_size",
+      "content_dir_security_size_ratio",
+      "content_dir_basereloc_log_size",
+      "content_dir_basereloc_size_ratio",
+      "content_dir_debug_log_size",
+      "content_dir_debug_size_ratio",
+      "content_dir_tls_log_size",
+      "content_dir_tls_size_ratio",
+      "content_dir_iat_present",
+      "content_dir_iat_log_size",
+      "content_dir_iat_size_ratio",
+      "content_dir_delay_import_present",
+      "content_dir_delay_import_log_size",
+      "content_dir_delay_import_size_ratio",
+      "content_dir_clr_present",
+      "content_dir_clr_log_size",
+      "content_dir_clr_size_ratio",
+      "content_import_dll_count_log",
+      "content_import_api_count_log",
+      "content_unique_import_api_count_log",
+      "content_import_ordinal_ratio",
+      "content_system_dll_ratio",
+      "content_avg_imports_per_dll",
+      "content_max_imports_per_dll_norm",
+      "content_export_count_log",
+      "content_export_name_ratio",
+      "content_resource_entry_count_log",
+      "content_resource_type_count_log",
+      "content_tls_callback_count_log",
+      "content_reloc_block_count_log",
+      "content_reloc_entry_count_log",
+      "content_overlay_present",
+      "content_overlay_log_size",
+      "content_overlay_ratio",
+      "content_overlay_entropy",
+      "content_section_combo_rx_ratio",
+      "content_section_combo_rw_ratio",
+      "content_section_combo_rwx_ratio",
+      "content_section_combo_wx_ratio",
+      "content_section_combo_exec_only_ratio",
+      "content_section_combo_read_only_ratio",
+      "content_section_combo_write_only_ratio",
+      "content_section_combo_none_ratio",
+      "content_section_nonstandard_name_ratio",
+      "content_section_raw_virtual_mismatch_ratio",
+      "content_section_zero_raw_ratio"
+    ],
+    "gap_groups": {
+      "data_directory_size_ratio": 28,
+      "export_shape": 2,
+      "header_flags": 12,
+      "import_shape": 5,
+      "layout_ratio": 8,
+      "other": 7,
+      "overlay": 4,
+      "resource_shape": 2,
+      "section_aggregate": 4,
+      "section_permission_combo": 8
+    },
+    "high_value_gap_groups": {
+      "data_directory_size_ratio": 28,
+      "header_flags": 12,
+      "import_shape": 5,
+      "layout_ratio": 8,
+      "overlay": 4,
+      "resource_shape": 2,
+      "section_permission_combo": 8
+    }
+  },
+  "decision": {
+    "loop49_action": "productization_preflight_only",
+    "test10k_allowed": false,
+    "recommendation": "Promote Loop28 content PE as a named stable content-derived schema or fixed_v3 candidate; do not rely on external identity fields. Prioritize gap groups that Loop28 proved useful: import_shape, layout_ratio, overlay, data_directory_size_ratio, resource_shape, section_permission_combo, and header_flags."
+  }
+}
