@@ -1,6 +1,18 @@
 # Axon 机器学习改进建议
 
-更新时间：2026-07-01
+更新时间：2026-07-02
+
+## 2026-07-02 补充：命名不是证据，seed43 低收益候选已拒绝
+
+最新硬规则已经固定：文件名、路径、扩展名、目录名、`source_sha256`、`cache_path`、`sample_index`、`split` 和行顺序只能用于加载、缓存对齐、覆盖审计、去重、人工复核、以及生成一次性的人工标签清单，不能作为模型特征、二阶段融合特征、阈值捷径、自动改标证据或上线推理依据。原因是实战文件命名和训练集命名完全不是同一个分布，且攻击者改名几乎没有成本；训练集目录只能说明人工当时把样本放进哪个标签桶，不能说明文件本身因名字而恶意或良性。
+
+当前 `docs/identity_feature_policy.md` 已把这条写成策略文档，`scripts/identity_feature_guard.py` 已接入 Stage-2 cache matrix 和 OOF stacker。后续如果新增类似 filename/path/extension/hash/split/row-id 的派生特征，训练脚本应直接失败，而不是让这类身份线索进入模型。
+
+Loop48 对 fresh seed43 current-split checkpoint 做了 Val-only 复验。它使用 `config/random_20w_8192_seed43.toml`，保持当前 `loop27_corrected_split.csv`、fixed-v2、8192-byte、PE 256、stat 49 的同一口径；split/cache 复审仍为 `200000/200000` 覆盖、missing `0`。1 epoch smoke Val F1 为 `0.8158`；完整训练保留的 `models/random_20w_8192_seed43/best_model.pt` 在 epoch `17` 的 best Val F1 只有 `0.9500494559841741`，且没有 final checkpoint。该结果远低于 Loop28 content PE metadata 的 Val F1 `0.9919048571`，因此 seed43 未进入 Test-10k，也不导出给 Stage-2 stacker 使用。相关记录见 `docs/phase3_loop48_fresh_seed43_valonly.md`。
+
+这个反例很关键：Loop47 说明现有 checkpoint 池不能安全直接 stack；Loop48 又说明“只换 seed 重训同款 8192 fixed-v2 神经底座”不是高价值路线。下一阶段不应继续盲目堆同款 seed，而应把 Loop28 content PE metadata 产品化为稳定 schema，同时训练真正多样化的 current-split base：不同输入长度或区域视角、不同模型结构、不同内容特征族，全部用 OOF 协议和 Val gate 验证。
+
+噪声问题仍然要作为主线处理。Loop38/Loop39 的高置信冲突队列不能靠命名猜标签，也不能自动改标；一旦人工确认样本 `feature_broken`、`out_of_scope` 或 `label_wrong`，必须从同标签候选池 fresh re-draw 替换，并重新生成完整 `20000 train / 20000 val / 160000 test` split 与 cache readiness。坏样本不补齐，坏样本只触发重新抽样。
 
 ## 2026-07-01 补充：20w 严格漏斗实验后的最新判断
 
