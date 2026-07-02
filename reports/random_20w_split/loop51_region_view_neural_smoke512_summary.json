@@ -1,0 +1,22 @@
+{
+  "schema": "axon_loop51_region_view_neural_train_v1",
+  "config": "E:\\Project\\python\\Axon_v2.6Exp\\config\\random_20w_region_view_8192_seed51.toml",
+  "cache_dir": "E:\\Project\\python\\Axon_v2.6Exp\\data\\.cache_loop51_region_view_8192",
+  "split_file": "E:\\Project\\python\\Axon_v2.6Exp\\reports\\random_20w_split\\loop27_corrected_split.csv",
+  "train_samples": 512,
+  "val_samples": 512,
+  "test_samples": 0,
+  "best_f1": 0.6692810457516339,
+  "best_epoch": 1,
+  "epochs": 1,
+  "model_dir": "models\\smoke_loop51_region_view_e1",
+  "test_policy": "not loaded or evaluated before Val gate",
+  "val_history": [
+    {
+      "epoch": 1,
+      "f1": 0.6692810457516339,
+      "fp": 253,
+      "fn": 0
+    }
+  ]
+}

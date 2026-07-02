@@ -18,6 +18,8 @@ Loop49 又补了一次产品化前置审计：当前 fixed-v2 PE 主 schema 配�
 
 Loop50 对 Loop39 的 `649` 条高置信冲突做了只读内容/缓存卫生审计：全部仍在 active `loop27_corrected_split.csv` 和当前 manifest 中，cache NPZ shape/dtype/finite、cache label/source SHA、源文件 SHA、strict PE parse 均未发现可直接支持 `feature_broken/out_of_scope` 的客观问题；`objective_issue_row_count=0`。仅有 `5` 行落入重复 SHA 组，需要人工按内容组复核。结论是：这些冲突不能自动改标或自动替换，必须继续依赖人工/外部证据；若未来确认坏样本，仍然按 fresh same-label re-draw 保持严格 `200000`。相关记录见 `docs/phase3_loop50_conflict_content_audit.md`。
 
+Loop51 已把“语义区域字节交给神经模型”推进到可训练前置状态：基于 PE/content-derived offsets 生成了 region-view byte cache，只覆盖 train/val，严格不生成 Test cache、不跑 Test-10k。结果为 `40000/40000` train/val rows，train `20000`、val `20000`、黑白各 `20000`，issue_counts `{}`。512/512 的 1 epoch neural smoke 能完整通过 Trainer，证明链路可用；该 smoke F1 `0.6693` 不是候选指标。下一步若继续 Loop51，应跑完整 `20000 train / 20000 val` 多 epoch，并以 Loop28 的 `162` Val errors 为 reference，未过 Val gate 不得进入 Test-10k。相关记录见 `docs/phase3_loop51_region_view_cache_and_smoke.md`。
+
 ## 2026-07-01 补充：20w 严格漏斗实验后的最新判断
 
 在 20 万完整 split 上，当前最强可复现实验是 Loop28 的 Stage-2 content PE metadata 模型。它严格保持 `20000 train / 20000 val / 160000 test`，每个 split 内黑白样本平衡不变，fixed-v2 uncompressed cache 覆盖 `200000/200000`。Val 只用于选模型和阈值；Test-10k 只做确认；full-test 只做一次冻结评估。Loop28 新增的 100 维 PE metadata 只来自文件内容和 PE 结构，不包含 filename、extension、目录名或路径文本。
