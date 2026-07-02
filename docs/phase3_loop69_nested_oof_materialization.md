@@ -84,11 +84,68 @@ Smoke 结果：
 
 Loop69 smoke 通过。下一步可以运行完整 train `20000/20000` nested OOF 物化。完整输出仍不是 Test 候选，也不触碰 Val/Test；它只是为后续第三层 residual learner 提供合格的 train-only 输入。
 
+## 完整 Train OOF 物化
+
+真实命令：
+
+```powershell
+.\vnev\Scripts\python.exe scripts\materialize_loop69_nested_oof_override.py `
+  --checkpoint models\random_20w_8192\best_model.pt `
+  --train-predictions reports\random_20w_split\loop27_train_predictions.csv `
+  --output-dir reports\random_20w_split\loop69_nested_oof_override_full_train `
+  --content-pe-cache-dir reports\random_20w_split\content_pe_cache_v1 `
+  --overlay-boundary-cache-dir reports\random_20w_split\loop55_overlay_boundary_cache_train_val `
+  --drop-base-prob-features `
+  --outer-folds 5 `
+  --inner-folds 5 `
+  --thresholds 0.35:0.65:0.005 `
+  --allow-thresholds 0.05:0.99:0.005 `
+  --base-model-candidate hgb_lr0.06_leaf31_l2_0 `
+  --candidate-model-candidate extra_trees_300_leaf1 `
+  --override-model-candidate override_logreg_balanced_c1
+```
+
+完整结果：
+
+| Check | Result |
+| --- | ---: |
+| rows | `20000` |
+| records kept | `20000/20000` |
+| label counts | `10000 / 10000` |
+| fold counts | `4000` each |
+| missing scores | `0` |
+| OOF F1 | `0.9874489491` |
+| OOF errors | `252` |
+| FP/FN | `165 / 87` |
+| possible overrides | `120` |
+| actual overrides | `36` |
+| override label1/label0 | `18 / 18` |
+
+Loop68 readiness 复验：
+
+```powershell
+.\vnev\Scripts\python.exe scripts\audit_loop68_residual_oof_readiness.py `
+  --candidate "reports\random_20w_split\loop69_nested_oof_override_full_train\loop69_nested_oof_override_report.json" `
+  --output-json reports\random_20w_split\loop69_nested_oof_override_full_train\loop68_readiness_on_loop69_full_train.json `
+  --expected-train-rows 20000 `
+  --expected-val-rows 0
+```
+
+结果：
+
+- `overall_decision=third_layer_residual_training_allowed`
+- `ready_candidate_count=1`
+
+这说明完整 `20000` train OOF CSV 已经满足第三层 residual learner 的输入协议。注意：这仍然不是模型收益结论，因为没有跑 Val；它只是把“能合法训练下一层”的数据准备好了。
+
 ## Artifacts
 
 - Smoke report: `reports/random_20w_split/loop69_nested_oof_override_smoke/loop69_nested_oof_override_report.json`
 - Smoke OOF CSV: `reports/random_20w_split/loop69_nested_oof_override_smoke/loop69_nested_oof_override_train_predictions.csv`
 - Smoke readiness report: `reports/random_20w_split/loop69_nested_oof_override_smoke/loop68_readiness_on_loop69_smoke.json`
+- Full train report: `reports/random_20w_split/loop69_nested_oof_override_full_train/loop69_nested_oof_override_report.json`
+- Full train OOF CSV: `reports/random_20w_split/loop69_nested_oof_override_full_train/loop69_nested_oof_override_train_predictions.csv`
+- Full train readiness report: `reports/random_20w_split/loop69_nested_oof_override_full_train/loop68_readiness_on_loop69_full_train.json`
 
 Generated reports are not committed.
 
