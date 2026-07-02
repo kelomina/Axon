@@ -108,6 +108,29 @@ loaded by the neural model and trained through `AxonTrainer`. A real Loop51
 candidate still requires full `20000 train / 20000 val` training and must beat
 the Loop28 Val gate before any Test-10k run.
 
+## Full Val-only Training
+
+After the cache and smoke passed, Loop51 started full train/val neural training
+with:
+
+```powershell
+.\vnev\Scripts\python.exe scripts\train_loop51_region_view_neural.py --config config\random_20w_region_view_8192_seed51.toml --cache-dir data\.cache_loop51_region_view_8192 --summary-json reports\random_20w_split\loop51_region_view_full_train_val_summary.json
+```
+
+It was stopped early after epoch `3` because the candidate was clearly below
+the Loop28 reference:
+
+- best checkpoint: `models/random_20w_region_view_8192_seed51/best_model.pt`
+- best epoch: `3`
+- best Val F1: `0.9448912132`
+- reference Loop28 Val F1: `0.9919048571`
+- Test-10k: not eligible, not run
+
+This rejects region-view neural as a standalone replacement for the current
+Loop28 content PE Stage-2 path. The useful part of Loop51 is the cache/tooling;
+future use should be as a diverse auxiliary base only if it can prove residual
+complementarity under OOF, not as a direct candidate.
+
 ## Gate
 
 Reference remains Loop28 content PE metadata:
@@ -132,3 +155,7 @@ Commands run:
 ```
 
 Result: `3 passed`.
+
+Additional summary:
+
+- `reports/random_20w_split/loop51_region_view_full_train_val_summary.json`

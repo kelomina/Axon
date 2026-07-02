@@ -1,0 +1,11 @@
+{
+  "schema": "axon_loop51_region_view_neural_early_stop_v1",
+  "status": "early_stopped_low_yield",
+  "checkpoint": "models\\random_20w_region_view_8192_seed51\\best_model.pt",
+  "epoch": 3,
+  "last_epoch": 3,
+  "best_f1": 0.9448912131826928,
+  "mtime": "2026-07-02T17:12:02.078868",
+  "reference": "Loop28 content PE Val F1 0.9919048571 / 162 errors",
+  "test_policy": "not eligible for Test-10k"
+}
