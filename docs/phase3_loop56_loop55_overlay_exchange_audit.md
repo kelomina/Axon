@@ -12,6 +12,10 @@ Loop56 是 Loop55 的只读错误交换审计，不训练模型、不调阈值�
 
 这条规则是硬约束：filename、path、extension、directory、`source_sha256`、`cache_path`、`sample_index`、`split` 和行顺序只能用于加载、对齐、覆盖审计、去重、人工复核或一次性人工标签 manifest。实战命名和训练集命名不在同一分布，攻击者也能低成本改名，所以模型证据必须来自文件内容、PE 结构、字节序列和统计特征。
 
+Loop56 输出的 CSV/JSON 中即使包含 `sample_index`、`source_sha256`、`source_path`，也只允许用于复现实验、人工定位和 cache lookup；任何后续 residual gate、阈值、融合、GA 掩码、噪声处理或自动重抽逻辑，都不得读取这些列作为输入、排序键或分桶依据。
+
+若基于 Loop56 继续设计 FN-specific residual gate，建模矩阵必须在 fit/select 前丢弃所有对齐键、cache key、split 和 CSV 行序字段，并再次通过 `identity_feature_guard` 验证 feature names。
+
 ## 实现
 
 新增：
