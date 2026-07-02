@@ -147,6 +147,107 @@ def test_feature_broken_row_requires_replacement_instead_of_self_fill():
     assert summary["replacement_counts_by_original_label"] == {"1": 1}
 
 
+def test_duplicate_sha_review_rows_are_kept_distinct_by_sample_index():
+    shared_sha = "e" * 64
+    with _case_dir("manual_verdict_duplicate_sha_row_identity") as tmp_path:
+        split_csv = tmp_path / "split.csv"
+        review_csv = tmp_path / "review.csv"
+        _write_csv(
+            split_csv,
+            ["source_path", "source_sha256", "label", "sample_index", "split"],
+            [
+                {
+                    "source_path": "data/dup-a.exe",
+                    "source_sha256": shared_sha,
+                    "label": "1",
+                    "sample_index": "100",
+                    "split": "val",
+                },
+                {
+                    "source_path": "data/dup-b.exe",
+                    "source_sha256": shared_sha,
+                    "label": "1",
+                    "sample_index": "101",
+                    "split": "val",
+                },
+            ],
+        )
+        _write_csv(
+            review_csv,
+            ["source_path", "source_sha256", "label", "sample_index", "manual_label_verdict", "recommended_action"],
+            [
+                {
+                    "source_path": "data/dup-a.exe",
+                    "source_sha256": shared_sha,
+                    "label": "1",
+                    "sample_index": "100",
+                    "manual_label_verdict": "feature_broken",
+                    "recommended_action": "replace_sample",
+                },
+                {
+                    "source_path": "data/dup-b.exe",
+                    "source_sha256": shared_sha,
+                    "label": "1",
+                    "sample_index": "101",
+                    "manual_label_verdict": "feature_broken",
+                    "recommended_action": "replace_sample",
+                },
+            ],
+        )
+
+        rows, summary = build_plan(review_csv=review_csv, split_csv=split_csv)
+
+    assert [row["sample_index"] for row in rows] == ["100", "101"]
+    assert all(row["plan_action"] == "exclude_and_replace" for row in rows)
+    assert summary["planned_rows"] == 2
+    assert summary["duplicate_review_rows"] == 0
+    assert summary["duplicate_review_key_examples"] == []
+    assert summary["replacement_required"] == 2
+    assert summary["replacement_counts_by_original_label"] == {"1": 2}
+
+
+def test_duplicate_sha_without_sample_index_is_reported_as_folded_review_key():
+    shared_sha = "f" * 64
+    with _case_dir("manual_verdict_duplicate_sha_without_sample_index") as tmp_path:
+        split_csv = tmp_path / "split.csv"
+        review_csv = tmp_path / "review.csv"
+        _write_csv(
+            split_csv,
+            ["source_path", "source_sha256", "label", "sample_index", "split"],
+            [
+                {"source_path": "data/dup-a.exe", "source_sha256": shared_sha, "label": "1", "sample_index": "200", "split": "val"},
+                {"source_path": "data/dup-b.exe", "source_sha256": shared_sha, "label": "1", "sample_index": "201", "split": "val"},
+            ],
+        )
+        _write_csv(
+            review_csv,
+            ["source_path", "source_sha256", "label", "manual_label_verdict", "recommended_action"],
+            [
+                {
+                    "source_path": "data/dup-a.exe",
+                    "source_sha256": shared_sha,
+                    "label": "1",
+                    "manual_label_verdict": "feature_broken",
+                    "recommended_action": "replace_sample",
+                },
+                {
+                    "source_path": "data/dup-b.exe",
+                    "source_sha256": shared_sha,
+                    "label": "1",
+                    "manual_label_verdict": "feature_broken",
+                    "recommended_action": "replace_sample",
+                },
+            ],
+        )
+
+        rows, summary = build_plan(review_csv=review_csv, split_csv=split_csv)
+
+    assert len(rows) == 1
+    assert summary["duplicate_review_rows"] == 1
+    assert summary["duplicate_review_key_examples"] == [{"review_key": f"sha:{shared_sha}", "count": 2}]
+    assert any("Include sample_index" in note for note in summary["notes"])
+
+
 def test_exclude_verdict_takes_priority_over_conflicting_relabel_action():
     with _case_dir("manual_verdict_conflicting_replace") as tmp_path:
         split_csv = tmp_path / "split.csv"
@@ -206,6 +307,40 @@ def test_test_split_verdict_is_withheld_by_default():
     assert summary["training_policy_rows"] == 0
     assert summary["review_split_counts"] == {"test": 1}
     assert summary["review_label_split_counts"] == {"test:0": 1}
+    assert summary["review_rows_in_test_split"] == 1
+
+
+def test_allow_test_actions_keeps_test_verdict_out_of_training_policy():
+    with _case_dir("manual_verdict_test_allowed") as tmp_path:
+        split_csv = tmp_path / "split.csv"
+        review_csv = tmp_path / "review.csv"
+        _write_csv(
+            split_csv,
+            ["source_path", "label", "sample_index", "split"],
+            [{"source_path": "data/test.exe", "label": "0", "sample_index": "19", "split": "test"}],
+        )
+        _write_csv(
+            review_csv,
+            ["source_path", "source_sha256", "label", "corrected_label", "manual_label_verdict", "recommended_action"],
+            [
+                {
+                    "source_path": "data/test.exe",
+                    "source_sha256": "",
+                    "label": "0",
+                    "corrected_label": "1",
+                    "manual_label_verdict": "label_wrong",
+                    "recommended_action": "relabel_train_only",
+                }
+            ],
+        )
+
+        rows, summary = build_plan(review_csv=review_csv, split_csv=split_csv, allow_test_actions=True)
+
+    assert rows[0]["plan_action"] == "relabel"
+    assert rows[0]["split"] == "test"
+    assert rows[0]["planned_label"] == 1
+    assert rows[0]["usable_for_training_policy"] == "false"
+    assert summary["training_policy_rows"] == 0
     assert summary["review_rows_in_test_split"] == 1
 
 

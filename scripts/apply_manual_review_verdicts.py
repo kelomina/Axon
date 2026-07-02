@@ -67,6 +67,9 @@ def write_csv_rows(path: Path, rows: Sequence[dict], fieldnames: Sequence[str]) 
 
 
 def source_key(row: dict) -> str:
+    sample_index = normalize_text(row.get("sample_index"))
+    if sample_index:
+        return f"sample_index:{sample_index}"
     sha = normalize_text(row.get("source_sha256"))
     if sha:
         return f"sha:{sha}"
@@ -99,14 +102,18 @@ def source_keys(row: dict) -> list[str]:
 def load_split_index(split_csv: Path) -> tuple[dict[str, dict[str, dict]], dict]:
     rows = read_csv_rows(split_csv)
     split_index: dict[str, dict[str, dict]] = {
+        "by_sample_index": {},
         "by_sha": {},
         "by_path": {},
         "by_path_stem_sha": {},
     }
     for row in rows:
+        sample_index = normalize_text(row.get("sample_index"))
         sha = normalize_text(row.get("source_sha256"))
         source_path = normalize_source_path(row.get("source_path"))
         stem_sha = source_path_stem_sha(row)
+        if sample_index:
+            split_index["by_sample_index"].setdefault(sample_index, row)
         if sha:
             split_index["by_sha"].setdefault(sha, row)
         if source_path:
@@ -125,10 +132,15 @@ def load_split_index(split_csv: Path) -> tuple[dict[str, dict[str, dict]], dict]
 
 
 def find_split_row(review_row: dict, split_index: dict[str, dict[str, dict]]) -> Optional[dict]:
+    sample_index = normalize_text(review_row.get("sample_index"))
     sha = normalize_text(review_row.get("source_sha256"))
     source_path = normalize_source_path(review_row.get("source_path"))
     stem_sha = source_path_stem_sha(review_row)
 
+    if sample_index:
+        split_row = split_index["by_sample_index"].get(sample_index)
+        if split_row is not None:
+            return split_row
     if sha:
         split_row = split_index["by_sha"].get(sha)
         if split_row is not None:
@@ -255,6 +267,22 @@ def build_plan(
     replacement_counts = Counter(row["replacement_label"] for row in planned_rows if row["replacement_required"] == "true")
     split_action_counts = Counter(f"{row['split']}:{row['plan_action']}" for row in planned_rows)
     train_policy_rows = [row for row in planned_rows if row["split"] in TRAINING_SPLITS and row["usable_for_training_policy"] == "true"]
+    duplicate_review_rows = int(sum(count - 1 for count in duplicate_review_keys.values() if count > 1))
+    duplicate_review_key_examples = [
+        {"review_key": key, "count": count}
+        for key, count in sorted(duplicate_review_keys.items())
+        if count > 1
+    ][:10]
+    notes = [
+        "This plan is non-destructive; it does not edit the original split, cache, or raw files.",
+        "Excluded or feature-broken rows require fresh replacement sampling; they are not used to fill their own slots.",
+        "Test split verdicts are withheld from train/val policy unless --allow-test-actions is explicitly set.",
+    ]
+    if duplicate_review_rows:
+        notes.append(
+            "Duplicate review keys were folded. Include sample_index in the review CSV when distinct split rows share "
+            "the same source hash or path and must be handled separately."
+        )
     summary = {
         "schema": "axon_manual_review_adjustment_plan_v1",
         "review_csv": str(resolve_path(review_csv)),
@@ -266,7 +294,8 @@ def build_plan(
         "ignored_rows": ignored_rows,
         "unknown_verdict_rows": unknown_rows,
         "missing_split_rows": missing_split_rows,
-        "duplicate_review_rows": int(sum(count - 1 for count in duplicate_review_keys.values() if count > 1)),
+        "duplicate_review_rows": duplicate_review_rows,
+        "duplicate_review_key_examples": duplicate_review_key_examples,
         "review_split_counts": dict(sorted(review_split_counts.items())),
         "review_label_split_counts": dict(sorted(review_label_split_counts.items())),
         "review_rows_in_test_split": int(review_split_counts.get("test", 0)),
@@ -275,11 +304,7 @@ def build_plan(
         "replacement_required": int(sum(row["replacement_required"] == "true" for row in planned_rows)),
         "replacement_counts_by_original_label": dict(sorted(replacement_counts.items())),
         "training_policy_rows": len(train_policy_rows),
-        "notes": [
-            "This plan is non-destructive; it does not edit the original split, cache, or raw files.",
-            "Excluded or feature-broken rows require fresh replacement sampling; they are not used to fill their own slots.",
-            "Test split verdicts are withheld from train/val policy unless --allow-test-actions is explicitly set.",
-        ],
+        "notes": notes,
     }
     return planned_rows, summary
 

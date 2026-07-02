@@ -32,7 +32,7 @@ Use `recommended_action` for the operational recommendation:
 - `needs_more_evidence`
 - `model_blindspot`
 
-The verdict and action must describe the same operational class. For example, `label_wrong` pairs with `relabel_train_only`, while `feature_broken` and `out_of_scope` pair with `replace_sample` or `quarantine_source_group`. A row such as `feature_broken + relabel_train_only` is rejected as inconsistent, because a broken sample must be replaced rather than relabeled.
+The verdict and action should describe the same operational class. For example, `label_wrong` pairs with `relabel_train_only`, while `feature_broken` and `out_of_scope` pair with `replace_sample` or `quarantine_source_group`. If a row conflicts, such as `feature_broken + relabel_train_only`, the safer exclude/replace interpretation wins because a broken sample must be replaced rather than relabeled.
 
 Important: `label_wrong` does not automatically flip `0` to `1` or `1` to `0`.
 The adjustment plan only creates a relabel action when the reviewer provides a
@@ -55,6 +55,13 @@ clear corrected label. Without that explicit target, the row becomes
 - Filename, path, extension, directory, source hash, sample id, split, and row
   order are audit/join fields only. They can help locate the reviewed file, but
   they must not become model features or relabel evidence.
+- When the same content or `source_sha256` appears in multiple split rows,
+  `sample_index` preserves row-level review identity. This prevents a duplicate
+  content group from accidentally collapsing into one adjustment row. It is
+  still an audit/join field only, not a model feature.
+- SHA-like filename fallback is allowed only as a row-matching fallback when an
+  explicit `source_sha256` is missing. It is not naming evidence and must not
+  influence labels, thresholds, or model features.
 - Empty or uncertain review rows produce no action.
 - Test-split verdicts are held out of training policy by default.
 - `label_wrong` rows without an explicit corrected label produce
