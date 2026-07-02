@@ -36,6 +36,8 @@ Loop71 把目标缺口量化成了硬数字：当前 best Loop57 full-test F1 `0
 
 Loop72 已把 `1868` 个 current-best full-test 错误全部生成 review wave plan，按 `200` 行一波分成 `10` 波，并把重复内容组保持在同一复核波次。若每个复核错误都能被确认并修复，按当前顺序到第 `9` 波才理论达到 `0.999` F1；前 `8` 波 best-case 仍只有 `0.9983278009`。这进一步证明目标缺口需要接近全量错误级别的证据处理。Loop72 仍然不训练、不调阈值、不改 split、不自动改标；空 manual verdict no-op 复验为 `review_rows=1868`、`planned_rows=0`、`duplicate_review_rows=0`、`training_policy_rows=0`。本轮还修复了人工复核应用阶段的同 SHA 重复行问题：`apply_manual_review_verdicts.py` 现在优先用 `sample_index` 保留行级身份，避免同内容重复样本被折叠导致“少处理行”。`sample_index` 仍只是复核/对齐字段，不是模型证据。相关记录见 `docs/phase3_loop72_review_wave_plan.md`。
 
+Loop73 尝试了一个真正不同的信息源：Windows Authenticode 签名/信任状态。它只在 Loop57 Val 上运行，只对 `prediction=1` 的 `10037` 行读取签名状态，路径只用于打开文件，不执行样本，不碰 Test。结果显示：预测恶意行中 `Valid` 签名只有 `69` 行；如果全部降级为良性，能修复 `20` 个 FP，但会新增 `49` 个 FN，Val 错误从 `147` 升到 `176`。加入 Val 分数阈值后最佳规则是 `Valid and final_prob <= 0.65 -> benign`，错误降到 `143`，只净少 `4` 个，低于进入 Test-10k 的 `10` 错误门槛。因此 Authenticode 只能作为人工复核上下文，不适合作为自动 FP guard 或模型特征。相关记录见 `docs/phase3_loop73_authenticode_val_probe.md`。
+
 ## 2026-07-02 补充：命名不是证据，content PE v1 已产品化
 
 最新硬规则已经固定：文件名、路径、扩展名、目录名、`source_sha256`、`cache_path`、`sample_index`、`split` 和行顺序只能用于加载、缓存对齐、覆盖审计、去重、人工复核、以及生成一次性的人工标签清单，不能作为模型特征、二阶段融合特征、阈值捷径、自动改标证据或上线推理依据。原因是实战文件命名和训练集命名完全不是同一个分布，且攻击者改名几乎没有成本；训练集目录只能说明人工当时把样本放进哪个标签桶，不能说明文件本身因名字而恶意或良性。
