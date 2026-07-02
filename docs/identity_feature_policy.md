@@ -54,7 +54,14 @@ currently wired into:
 
 - `scripts/train_stage2_cache_matrix.py`
 - `scripts/train_stage2_oof_stacker.py`
+- Loop57/Loop61-style residual gate feature construction
+- `scripts/audit_loop68_residual_oof_readiness.py`
 
 If a future Stage-2 experiment introduces a feature named like `source_path`,
 `file_extension_*`, `sample_index`, `split_*`, `filename_*`, or similar external
 identity metadata, the training script raises before writing the selected model.
+
+Loop68 adds a separate readiness check for stacked residual experiments. It does
+not train anything; it verifies that a candidate has row-level train final OOF
+predictions before another residual layer is allowed. Identity fields in those
+prediction CSVs remain alignment-only columns, not model inputs.

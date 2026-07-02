@@ -26,6 +26,8 @@ Loop66 又把注意力拉回 Val-only 内容盲区审计：只读 Loop57 Val 预
 
 Loop67 把 Loop66 的内容分层直觉转成固定规则探针，仍然只跑 Val。结果没有形成足够 margin：最佳 `repair_signed_overlay_complex_c250_g80` 只把 Loop57 Val errors 从 `147` 降到 `145`，FN `55 -> 50`，但 FP `92 -> 95`，净改善只有 `2` 个样本，按 `>=10` errors 的 Test-10k 进入门槛拒绝。几个低置信 unsigned/import-heavy/payload-like rollback 规则全部明显变差，最多把 errors 推高到 `182`。结论：手工内容阈值规则已经不值得继续拧；下一步若做模型侧候选，必须转向严格 OOF 学习协议或更强外部/人工噪声证据。相关记录见 `docs/phase3_loop67_val_content_strata_rule_probe.md`。
 
+Loop68 把“还能不能继续叠第三层残差模型”做成只读协议审计。结果是 `Loop57`、`Loop61`、`Loop62` 三个候选都被阻断：它们的二层实验本身使用了 base/candidate train OOF 分数，报告和 payload 的 feature names 也没有发现身份字段泄漏；但现有产物没有导出“整条已选流水线”的训练集逐行最终 OOF 预测。因此不能再拿同一批 train 行训练第三层纠错器，否则会把二层 gate/override 在训练集上的拟合痕迹当成泛化信号。真实审计输出 `ready_candidate_count=0`，`overall_decision=third_layer_residual_training_blocked`。下一步若仍要做第三层学习，必须先实现 nested OOF export：每个 train 样本的 final prob/prediction 都必须来自没有见过该样本的完整 Loop57/61 风格流水线。否则优先继续噪声复核和新独立内容证据。相关记录见 `docs/phase3_loop68_residual_oof_readiness.md`。
+
 ## 2026-07-02 补充：命名不是证据，content PE v1 已产品化
 
 最新硬规则已经固定：文件名、路径、扩展名、目录名、`source_sha256`、`cache_path`、`sample_index`、`split` 和行顺序只能用于加载、缓存对齐、覆盖审计、去重、人工复核、以及生成一次性的人工标签清单，不能作为模型特征、二阶段融合特征、阈值捷径、自动改标证据或上线推理依据。原因是实战文件命名和训练集命名完全不是同一个分布，且攻击者改名几乎没有成本；训练集目录只能说明人工当时把样本放进哪个标签桶，不能说明文件本身因名字而恶意或良性。
