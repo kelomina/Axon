@@ -22,6 +22,8 @@ Loop64 进一步用 manifest/cache 的真实 `source_sha256` 审计完整 20w sp
 
 Loop65 已把 Loop63 A-lane 转成一份小批量人工/外部证据复核表：输出 `62` 行，包含 severe persistent FN `20`、severe persistent FP `20`、重复内容组专项 `2`、以及其它模型曾修正的持久错误 `20`；FN/FP 为 `37/25`，人工判定字段全部为空。它只用于复核排序，不训练、不扫阈值、不改 split。重复内容组通过 Loop64 的 `manifest_source_sha256` 审计结果接入，真实命中 `4` 个 queue rows，本批选入前 `2` 行作为成组复核入口；这些身份字段只用于定位和审计，不作为模型证据。相关输出是 `reports/random_20w_split/loop65_A_lane_review_batch_summary.json` 和 `reports/random_20w_split/loop65_A_lane_review_batch.csv`。
 
+Loop66 又把注意力拉回 Val-only 内容盲区审计：只读 Loop57 Val 预测和 content PE v1 / overlay boundary sidecar cache，不训练、不扫阈值、不碰 Test。结果确认 Loop57 Val 的 `147` 个错误中只有 `5` 个是 gate 新增误伤，`142` 个是 base 和 Loop57 都错的持久错误；因此继续只打磨 overlay FP guard 的收益上限很窄。内容差异显示：剩余 FN 更偏 signed/overlay/export/exception/basereloc/import-shape 复杂 PE；FP 则 import/API/IAT 规模偏高，但 security/overlay/cert-like 证据弱于大量 TN。下一轮候选应围绕这些持久错误分层做 Val-only 假设，而不是从 full-test 归因里反推规则。相关记录见 `docs/phase3_loop66_val_blindspot_content_audit.md`。
+
 ## 2026-07-02 补充：命名不是证据，content PE v1 已产品化
 
 最新硬规则已经固定：文件名、路径、扩展名、目录名、`source_sha256`、`cache_path`、`sample_index`、`split` 和行顺序只能用于加载、缓存对齐、覆盖审计、去重、人工复核、以及生成一次性的人工标签清单，不能作为模型特征、二阶段融合特征、阈值捷径、自动改标证据或上线推理依据。原因是实战文件命名和训练集命名完全不是同一个分布，且攻击者改名几乎没有成本；训练集目录只能说明人工当时把样本放进哪个标签桶，不能说明文件本身因名字而恶意或良性。
