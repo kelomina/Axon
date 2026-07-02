@@ -60,6 +60,10 @@ Loop44 已验证 regionized byte n-gram。它不再只看缓存前缀，而是�
 
 Loop45 已把 Loop44 的 regionized byte n-gram 放进严格 OOF residual gate：base 与 region candidate 的 train 分数都使用 5 折 OOF，gate 只在 train OOF 上学习“candidate 何时能纠正 base”，Val 只选择 gate 模型和阈值。完整 `20000 train / 20000 val`、cache miss `0`。最佳 `region_byte_ngram_sgd + gate_logreg_balanced_c0.25` 的 Val 为 F1 `0.9905113863`、`190` errors、FP/FN `107/83`，比 gate 内部 base 少 `3` 个错误，但仍比 Loop28 锁定参考多 `28` 个错误；train OOF 中 beneficial overrides 只有 `92`，harmful overrides 有 `676`，说明这条弱模型信号不够干净。Loop45 因此拒绝 Test-10k，立即的 region n-gram OOF gate 分支也应暂停。相关文档见 `docs/phase3_loop45_oof_region_gate.md`。
 
+Loop46 按策略重审建议转向新信息源：真实一点的 Authenticode/ASN.1 结构解析。它只读取 PE Security Directory 的 WIN_CERTIFICATE/PKCS#7 内容，新增 ASN.1 parse 成功/异常、sequence/set/context/OID/time/string 聚合、标准 OID presence 等 `63` 维结构特征，不使用 filename/path/extension/hash/id/split。完整 `20000 train / 20000 val`、cache miss `0`，签名结构覆盖 train `6815`、val `6936`。最佳 `hgb_lr0.08_leaf31_l2_1e-3__noise_none` 为 Val F1 `0.9909891870`、`180` errors、FP/FN `78/102`，比 Loop28 多 `18` 个错误，也弱于 Loop31 浅证书 blob 的 `168` errors，因此拒绝 Test-10k。结论是：证书结构解析本身没有解决 signed-file residual，除非接入真实信任链/吊销/时间戳验证或人工证据，否则不建议继续做小幅证书字段变体。相关文档见 `docs/phase3_loop46_cert_structure_valonly.md`。
+
+Loop41-46 已触发停滞熔断和策略重审：连续多轮没有候选达到 `<=152` Val errors 的 Test-10k 门槛，最好也只是 Loop41 的 `159` errors，只有 `2-3` 个错误级别的改善。应暂停继续围绕 prefix/region byte n-gram、浅融合、同款 OOF gate、手工内容交叉、浅/结构证书追加做微调。后续必须换成真正不同的信息源、真实多 checkpoint/多 seed OOF、多字节长度神经模型，或带人工证据的数据清洗，而不是再扩大 hash 空间、调 stride/alpha/epoch 或重复堆 gate。
+
 因此，下一阶段 P1 不应继续把主要时间花在“再替换少量 Val 噪声样本”上，而应转为三个方向：
 
 1. **把 Loop28 content PE metadata 正式产品化，但不要继续在当前 v2 上排列组合。** 当前大量白样本在数据集中表现为 SHA 文件名或无扩展名，但实战文件名可被任意改写，所以 filename/extension 只能作为错误分析切片，不能作为生产模型输入。Loop28 已证明 PE 内容侧信号有效；Loop32-35 又证明“直接追加一大包细特征”以及“把这包细特征拆子组”都不够稳。下一步应把 Loop28 的 100 维内容特征并入稳定 schema，同时转向 OOF stacking 或更高质量解析，而不是继续消耗轮次在 v2 group permutation 上。
