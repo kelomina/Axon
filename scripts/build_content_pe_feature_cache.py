@@ -48,19 +48,40 @@ def _cache_path_for_row(row: dict, cache_dir: Path) -> Path:
     return cache_dir / f"{key}.npz"
 
 
+def _load_valid_cached_features(cache_path: Path) -> np.ndarray | None:
+    try:
+        with np.load(cache_path, allow_pickle=False) as data:
+            if "features" not in data.files:
+                return None
+            features = data["features"].astype(np.float32, copy=False)
+    except Exception:
+        return None
+    if features.shape != (len(CONTENT_PE_FEATURE_NAMES),):
+        return None
+    if not np.isfinite(features).all():
+        return None
+    return features
+
+
 def _build_one(payload: tuple[dict, str]) -> dict:
     row, cache_dir_text = payload
     cache_dir = Path(cache_dir_text)
     cache_path = _cache_path_for_row(row, cache_dir)
-    if cache_path.exists():
-        return {"status": "exists", "zero": False}
+    existed_before = cache_path.exists()
+    if existed_before:
+        features = _load_valid_cached_features(cache_path)
+        if features is not None:
+            return {
+                "status": "exists",
+                "zero": bool(np.count_nonzero(features) == 0),
+            }
 
     source_path = resolve_path(Path(row["source_path"]))
     features = _content_pe_features_from_path(source_path)
     cache_path.parent.mkdir(parents=True, exist_ok=True)
     save_feature_npz_atomic(cache_path, features)
     return {
-        "status": "created",
+        "status": "refreshed_invalid" if existed_before else "created",
         "zero": bool(np.count_nonzero(features) == 0),
     }
 
@@ -104,7 +125,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         unique_rows = unique_rows[: args.limit]
 
     start = time.perf_counter()
-    counts = {"exists": 0, "created": 0, "zero_features": 0}
+    counts = {"exists": 0, "created": 0, "refreshed_invalid": 0, "zero_features": 0}
     worker_count = max(1, int(args.workers))
     payloads = [(row, str(cache_dir)) for row in unique_rows]
     if worker_count == 1:

@@ -1,0 +1,23 @@
+{
+  "schema": "axon_content_pe_feature_cache_v1",
+  "protocol": "content-only PE metadata; filename/path/extension are not encoded as model features",
+  "predictions": [
+    "E:\\Project\\python\\Axon_v2.6Exp\\reports\\random_20w_split\\loop27_train_predictions.csv",
+    "E:\\Project\\python\\Axon_v2.6Exp\\reports\\random_20w_split\\loop27_val_predictions.csv"
+  ],
+  "cache_dir": "E:\\Project\\python\\Axon_v2.6Exp\\reports\\random_20w_split\\content_pe_cache_v1",
+  "workers": 8,
+  "smoke": false,
+  "input_rows": 40000,
+  "deduplicated_rows_before_limit": 40000,
+  "limit": null,
+  "unique_rows": 40000,
+  "feature_dim": 100,
+  "counts": {
+    "exists": 40000,
+    "created": 0,
+    "refreshed_invalid": 0,
+    "zero_features": 0
+  },
+  "elapsed_sec": 10.468454699992435
+}

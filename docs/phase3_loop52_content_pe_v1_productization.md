@@ -16,6 +16,7 @@ Loop52 不是新的模型冲榜候选，而是把 Loop28 已验证有效的 100 
 - 保留向后兼容别名 `CONTENT_PE_FEATURE_NAMES` 和 `_content_pe_features_from_path`，让现有 Loop28/Stage-2 脚本不需要改变实验语义。
 - `scripts/train_stage2_cache_matrix.py` 改为引用稳定 schema，移除脚本内重复的 v1 特征定义与提取函数。
 - `scripts/build_content_pe_feature_cache.py` 改为从稳定 schema 导入 v1 特征，并新增 `--smoke --limit`，只用于 smoke-test 时防止误跑全量；单独使用 `--limit` 会被程序拒绝，避免正式缓存被误截断。
+- cache builder 对已有 `.npz` 不再只看文件存在，而是打开验证 `features` shape、dtype 和 finite 数值；坏缓存会被重新提取并计入 `refreshed_invalid`。
 - 测试补充：
   - 同一内容在不同文件名下提取结果必须一致。
   - productized schema 必须等于 Stage-2 alias。
@@ -46,6 +47,7 @@ Loop52 不是新的模型冲榜候选，而是把 Loop28 已验证有效的 100 
 | processed unique rows | 32 |
 | feature dim | 100 |
 | created | 32 |
+| refreshed invalid | 0 |
 | zero features | 0 |
 
 这个 smoke 只验证 extractor/cache writer 链路，不构成 Val 结果，也不允许进入 Test-10k。
@@ -57,7 +59,7 @@ Loop52 不是新的模型冲榜候选，而是把 Loop28 已验证有效的 100 
 .\vnev\Scripts\python.exe -m pytest tests\test_stage2_content_pe_features.py tests\test_content_pe_v1_productized.py tests\test_build_content_pe_feature_cache.py tests\test_audit_content_pe_productization.py tests\test_identity_feature_guard.py -q
 ```
 
-结果：`10 passed`。
+结果：`11 passed`。
 
 ## 决策
 
