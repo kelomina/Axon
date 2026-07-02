@@ -16,6 +16,8 @@ Loop63 已把路线切回噪声/数据复核：基于当前 best Loop57 full-tes
 
 Loop63 A-lane `643` 条又复用了 Loop50 content/cache health audit：cache/source SHA、NPZ shape、active split、manifest、strict PE parse 均未发现客观可自动替换的问题，`objective_issue_row_count=0`，仅有 `5` 条重复 SHA 组需要按内容组复核。因此不能自动删除或改标这些样本；它们只能进入人工/外部证据判定，或者被记录为当前模型盲区。
 
+Loop64 进一步用 manifest/cache 的真实 `source_sha256` 审计完整 20w split，弥补 split CSV 不一定携带内容 SHA 的问题。结果是 `200000/200000` split 行都能匹配 manifest，存在 `6` 个同内容 SHA 重复组、`12` 行，全部为同 label `1` 且都在 test split；没有 cross-label、没有 cross-split 泄漏。Loop63 focus queue 中只有 `2` 个重复组、`4` 行命中。结论：重复内容组需要成组复核，但不能作为自动清洗或自动替换依据。
+
 ## 2026-07-02 补充：命名不是证据，content PE v1 已产品化
 
 最新硬规则已经固定：文件名、路径、扩展名、目录名、`source_sha256`、`cache_path`、`sample_index`、`split` 和行顺序只能用于加载、缓存对齐、覆盖审计、去重、人工复核、以及生成一次性的人工标签清单，不能作为模型特征、二阶段融合特征、阈值捷径、自动改标证据或上线推理依据。原因是实战文件命名和训练集命名完全不是同一个分布，且攻击者改名几乎没有成本；训练集目录只能说明人工当时把样本放进哪个标签桶，不能说明文件本身因名字而恶意或良性。

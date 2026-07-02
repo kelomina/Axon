@@ -115,6 +115,20 @@ If any are later confirmed `label_wrong`, `feature_broken`, or `out_of_scope`,
 the replacement rule remains fresh same-label redraw while preserving the exact
 `200000` rows.
 
+Loop64 adds a stricter duplicate-content audit using `manifest.source_sha256`,
+because the split CSV does not always expose the true content SHA. Result:
+
+- split rows matched to manifest: `200000/200000`
+- manifest SHA duplicate groups: `6`
+- duplicate detail rows: `12`
+- cross-label duplicate groups: `0`
+- cross-split duplicate groups: `0`
+- overlap with Loop63 focus queue: `2` groups, `4` rows
+
+This is useful for content-group review but still does not justify automatic
+replacement: all duplicate groups are same-label `test` rows, with no
+train/val/test leakage and no cross-label contradiction.
+
 ## Artifacts
 
 - Val report:
@@ -129,6 +143,8 @@ the replacement rule remains fresh same-label redraw while preserving the exact
   `reports/random_20w_split/loop63_persistent_error_review_queue_summary.json`
 - Loop63 A-lane content/cache health audit:
   `reports/random_20w_split/loop63_A_persistent_conflict_content_audit_summary.json`
+- Loop64 manifest SHA duplicate audit:
+  `reports/random_20w_split/loop64_manifest_sha_duplicate_audit.json`
 
 Large generated artifacts are intentionally not committed:
 
@@ -144,6 +160,8 @@ Large generated artifacts are intentionally not committed:
 .\vnev\Scripts\python.exe -m py_compile scripts\train_loop61_override_classifier.py scripts\evaluate_loop57_fn_overlay_gate.py
 .\vnev\Scripts\python.exe -m pytest tests\test_analyze_loop61_exchange.py tests\test_build_loop63_persistent_error_review_queue.py -q
 .\vnev\Scripts\python.exe -m py_compile scripts\analyze_loop61_exchange.py scripts\build_loop63_persistent_error_review_queue.py
+.\vnev\Scripts\python.exe -m pytest tests\test_audit_split_manifest_sha_duplicates.py -q
+.\vnev\Scripts\python.exe -m py_compile scripts\audit_split_manifest_sha_duplicates.py
 ```
 
 Latest local results: `25 passed` for Loop61/57/42/55 identity coverage, plus `2 passed` for Loop61 exchange and Loop63 queue coverage.
