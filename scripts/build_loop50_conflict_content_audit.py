@@ -249,10 +249,12 @@ def build_audit(
             {
                 "review_priority_rank": row.get("review_priority_rank", ""),
                 "review_lane": row.get("review_lane", ""),
-                "conflict_bucket": row.get("conflict_bucket", ""),
+                "conflict_bucket": row.get("conflict_bucket", row.get("loop39_conflict_bucket", "")),
                 "label": label,
                 "loop28_error_type": row.get("loop28_error_type", ""),
                 "loop28_score": row.get("loop28_score", ""),
+                "loop57_error_type": row.get("loop57_error_type", ""),
+                "loop57_final_prob": row.get("loop57_final_prob", ""),
                 "source_sha256": source_sha256,
                 "source_path": source_path_text,
                 "manual_label_verdict": row.get("manual_label_verdict", ""),
@@ -273,7 +275,9 @@ def build_audit(
         writer.writerows(audited_rows)
 
     lane_counts = Counter(row.get("review_lane", "") for row in audited_rows)
-    error_type_counts = Counter(row.get("loop28_error_type", "") for row in audited_rows)
+    error_type_counts = Counter(
+        row.get("loop28_error_type", "") or row.get("loop57_error_type", "") for row in audited_rows
+    )
     objective_issue_rows = [row for row in audited_rows if int(row["objective_issue_count"]) > 0]
     report = {
         "schema": "axon_loop50_conflict_content_audit_v1",

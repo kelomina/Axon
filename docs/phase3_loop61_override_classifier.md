@@ -100,6 +100,21 @@ Loop63 then returned to noise/data triage:
 
 Loop63 is read-only full-test triage, not model selection. It found all `1868` current-best Loop57 full-test errors, with `643` rows intersecting the Loop39 high-confidence conflict queue. These rows are the strongest current evidence that the remaining gap is not only a gate-tuning problem.
 
+The `643` A-lane rows were then passed through the Loop50 content/cache health
+audit path:
+
+- output: `reports/random_20w_split/loop63_A_persistent_conflict_content_audit_summary.json`
+- rows: `643`
+- FP/FN: `416 / 227`
+- objective cache/source/strict-PE issue rows: `0`
+- duplicate SHA group rows: `5`
+
+So the current evidence does not justify automatic replacement. The A-lane rows
+remain manual or external-evidence adjudication targets, or model blindspots.
+If any are later confirmed `label_wrong`, `feature_broken`, or `out_of_scope`,
+the replacement rule remains fresh same-label redraw while preserving the exact
+`200000` rows.
+
 ## Artifacts
 
 - Val report:
@@ -112,6 +127,8 @@ Loop63 is read-only full-test triage, not model selection. It found all `1868` c
   `reports/random_20w_split/loop61_exchange_test10k_audit.json`
 - Loop63 persistent error queue summary:
   `reports/random_20w_split/loop63_persistent_error_review_queue_summary.json`
+- Loop63 A-lane content/cache health audit:
+  `reports/random_20w_split/loop63_A_persistent_conflict_content_audit_summary.json`
 
 Large generated artifacts are intentionally not committed:
 
