@@ -129,6 +129,24 @@ This is useful for content-group review but still does not justify automatic
 replacement: all duplicate groups are same-label `test` rows, with no
 train/val/test leakage and no cross-label contradiction.
 
+Loop65 converts the Loop63 A-lane into a compact manual/external-evidence
+review batch:
+
+- New script: `scripts/build_loop65_review_batch.py`
+- Output queue: `reports/random_20w_split/loop65_A_lane_review_batch.csv`
+- Summary: `reports/random_20w_split/loop65_A_lane_review_batch_summary.json`
+- Selected rows: `62`
+- Category counts: severe persistent FN `20`, severe persistent FP `20`,
+  duplicate content group `2`, corrected-by-other-model `20`
+- Error type counts: FN/FP `37 / 25`
+- Manual verdict/action fields: blank
+- Requested duplicate groups: `2`, matching `4` queue rows; selected duplicate
+  group rows: `2`
+
+This batch is not model evidence. `source_path`, `source_sha256`, `cache_path`,
+`sample_index`, and `split` are included only so a human or external system can
+open the right object and write an auditable verdict.
+
 ## Artifacts
 
 - Val report:
@@ -145,6 +163,8 @@ train/val/test leakage and no cross-label contradiction.
   `reports/random_20w_split/loop63_A_persistent_conflict_content_audit_summary.json`
 - Loop64 manifest SHA duplicate audit:
   `reports/random_20w_split/loop64_manifest_sha_duplicate_audit.json`
+- Loop65 compact review batch summary:
+  `reports/random_20w_split/loop65_A_lane_review_batch_summary.json`
 
 Large generated artifacts are intentionally not committed:
 
@@ -152,6 +172,7 @@ Large generated artifacts are intentionally not committed:
 - `loop61_override_classifier_*_predictions.csv`
 - `loop61_exchange_*_details.csv`
 - `loop63_persistent_error_review_queue.csv`
+- `loop65_A_lane_review_batch.csv`
 
 ## 验证
 
@@ -162,6 +183,8 @@ Large generated artifacts are intentionally not committed:
 .\vnev\Scripts\python.exe -m py_compile scripts\analyze_loop61_exchange.py scripts\build_loop63_persistent_error_review_queue.py
 .\vnev\Scripts\python.exe -m pytest tests\test_audit_split_manifest_sha_duplicates.py -q
 .\vnev\Scripts\python.exe -m py_compile scripts\audit_split_manifest_sha_duplicates.py
+.\vnev\Scripts\python.exe -m pytest tests\test_build_loop65_review_batch.py -q
+.\vnev\Scripts\python.exe -m py_compile scripts\build_loop65_review_batch.py
 ```
 
-Latest local results: `25 passed` for Loop61/57/42/55 identity coverage, plus `2 passed` for Loop61 exchange and Loop63 queue coverage.
+Latest local results: `25 passed` for Loop61/57/42/55 identity coverage, plus `2 passed` for Loop61 exchange and Loop63 queue coverage. Loop65 local coverage is tracked by `tests/test_build_loop65_review_batch.py`.

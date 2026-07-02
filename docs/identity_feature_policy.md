@@ -34,6 +34,19 @@ After the split CSV or manifest has a label, the model evidence must come from
 file content: bytes, PE structure, statistics, or other content-derived
 features.
 
+## Label Manifests
+
+`label_inference=filename` or `label_inference=directory` is only a bootstrap
+mechanism for turning a human-curated corpus into an explicit label manifest.
+It is not a modeling signal and should not be used once an official split CSV
+or cache manifest exists.
+
+For the 20w protocol, the frozen split/manifest label is the label source.
+Names, paths, extensions, directory buckets, hashes, `sample_index`, split
+membership, and row order remain identity fields only. If those labels are
+suspect, the fix is manual or external-evidence adjudication followed by a
+fresh same-original-label redraw, not training on naming patterns.
+
 ## Current Guard
 
 `scripts/identity_feature_guard.py` enforces this at feature-name level. It is

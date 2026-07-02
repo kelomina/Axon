@@ -4,6 +4,8 @@
 
 ## 2026-07-03 补充：Loop61 override-only classifier 未通过 Test-10k
 
+命名问题已收紧为硬约束：训练集目录、文件名、后缀和路径只允许在“人工语料 -> 显式 split/manifest label”这一步充当标签来源或索引，不允许进入任何模型矩阵、二阶段融合、阈值捷径或自动改标规则。实战命名和训练集命名不是同一分布，攻击者也能随时改名；所以当前路线只承认字节、PE 结构、统计特征、证书/overlay 等内容证据。若怀疑原始目录桶标签本身有噪声，只能做人工/外部证据判定；确认坏样本后按同原始标签池 fresh re-draw，重新生成严格 `200000` split 和 cache，而不是让坏行补齐或让模型学习命名。
+
 Loop61 把 Loop57 的 FN gate 改成更窄的 override-only classifier：只在 locked base 判白、overlay-aware candidate 判黑的 possible override 行上训练 allow/block 分类器，仍然只允许 `0 -> 1`，不允许把 base 判黑改成白。该实验继续使用严格 OOF train 分数，Val 选择 classifier 和 allow threshold，身份字段只用于加载、对齐和审计，不作为模型证据。
 
 Val 上 Loop61 确实超过 Loop57：从 Loop57 的 F1 `0.9926635724`、`147` errors、FP/FN `92/55`，提升到 F1 `0.9930139721`、`140` errors、FP/FN `90/50`。但冻结 Test-10k 没有超过当前 best：Loop61 为 F1 `0.9897816069`、`102` errors、FP/FN `62/40`，与 Loop57 的 `102` errors 持平，只是把 FP `-3` 换成 FN `+3`。因此按漏斗规则拒绝 full-test，Loop57 仍是当前 best full-test reference。
@@ -17,6 +19,8 @@ Loop63 已把路线切回噪声/数据复核：基于当前 best Loop57 full-tes
 Loop63 A-lane `643` 条又复用了 Loop50 content/cache health audit：cache/source SHA、NPZ shape、active split、manifest、strict PE parse 均未发现客观可自动替换的问题，`objective_issue_row_count=0`，仅有 `5` 条重复 SHA 组需要按内容组复核。因此不能自动删除或改标这些样本；它们只能进入人工/外部证据判定，或者被记录为当前模型盲区。
 
 Loop64 进一步用 manifest/cache 的真实 `source_sha256` 审计完整 20w split，弥补 split CSV 不一定携带内容 SHA 的问题。结果是 `200000/200000` split 行都能匹配 manifest，存在 `6` 个同内容 SHA 重复组、`12` 行，全部为同 label `1` 且都在 test split；没有 cross-label、没有 cross-split 泄漏。Loop63 focus queue 中只有 `2` 个重复组、`4` 行命中。结论：重复内容组需要成组复核，但不能作为自动清洗或自动替换依据。
+
+Loop65 已把 Loop63 A-lane 转成一份小批量人工/外部证据复核表：输出 `62` 行，包含 severe persistent FN `20`、severe persistent FP `20`、重复内容组专项 `2`、以及其它模型曾修正的持久错误 `20`；FN/FP 为 `37/25`，人工判定字段全部为空。它只用于复核排序，不训练、不扫阈值、不改 split。重复内容组通过 Loop64 的 `manifest_source_sha256` 审计结果接入，真实命中 `4` 个 queue rows，本批选入前 `2` 行作为成组复核入口；这些身份字段只用于定位和审计，不作为模型证据。相关输出是 `reports/random_20w_split/loop65_A_lane_review_batch_summary.json` 和 `reports/random_20w_split/loop65_A_lane_review_batch.csv`。
 
 ## 2026-07-02 补充：命名不是证据，content PE v1 已产品化
 
