@@ -24,6 +24,8 @@ Loop65 已把 Loop63 A-lane 转成一份小批量人工/外部证据复核表：
 
 Loop66 又把注意力拉回 Val-only 内容盲区审计：只读 Loop57 Val 预测和 content PE v1 / overlay boundary sidecar cache，不训练、不扫阈值、不碰 Test。结果确认 Loop57 Val 的 `147` 个错误中只有 `5` 个是 gate 新增误伤，`142` 个是 base 和 Loop57 都错的持久错误；因此继续只打磨 overlay FP guard 的收益上限很窄。内容差异显示：剩余 FN 更偏 signed/overlay/export/exception/basereloc/import-shape 复杂 PE；FP 则 import/API/IAT 规模偏高，但 security/overlay/cert-like 证据弱于大量 TN。下一轮候选应围绕这些持久错误分层做 Val-only 假设，而不是从 full-test 归因里反推规则。相关记录见 `docs/phase3_loop66_val_blindspot_content_audit.md`。
 
+Loop67 把 Loop66 的内容分层直觉转成固定规则探针，仍然只跑 Val。结果没有形成足够 margin：最佳 `repair_signed_overlay_complex_c250_g80` 只把 Loop57 Val errors 从 `147` 降到 `145`，FN `55 -> 50`，但 FP `92 -> 95`，净改善只有 `2` 个样本，按 `>=10` errors 的 Test-10k 进入门槛拒绝。几个低置信 unsigned/import-heavy/payload-like rollback 规则全部明显变差，最多把 errors 推高到 `182`。结论：手工内容阈值规则已经不值得继续拧；下一步若做模型侧候选，必须转向严格 OOF 学习协议或更强外部/人工噪声证据。相关记录见 `docs/phase3_loop67_val_content_strata_rule_probe.md`。
+
 ## 2026-07-02 补充：命名不是证据，content PE v1 已产品化
 
 最新硬规则已经固定：文件名、路径、扩展名、目录名、`source_sha256`、`cache_path`、`sample_index`、`split` 和行顺序只能用于加载、缓存对齐、覆盖审计、去重、人工复核、以及生成一次性的人工标签清单，不能作为模型特征、二阶段融合特征、阈值捷径、自动改标证据或上线推理依据。原因是实战文件命名和训练集命名完全不是同一个分布，且攻击者改名几乎没有成本；训练集目录只能说明人工当时把样本放进哪个标签桶，不能说明文件本身因名字而恶意或良性。
