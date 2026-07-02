@@ -30,6 +30,8 @@ Loop68 把“还能不能继续叠第三层残差模型”做成只读协议审�
 
 Loop69 已实现并运行 Loop61-style override pipeline 的 train-only nested OOF 物化。它不训练第三层、不跑 Val 选择、不碰 Test，只在 train 内用外层 fold 生成每行 `base_oof_prob_malicious`、`candidate_oof_prob_malicious`、`allow_oof_prob`、`final_oof_prob_malicious`、`final_oof_prediction`、`oof_override_flag` 和 `oof_fold`。400 行 smoke 与完整 `20000/20000` train 都已通过 Loop68 readiness gate：`third_layer_residual_training_allowed`。完整产物黑白各 `10000`，5 folds 各 `4000`，缺失分数 `0`；train OOF F1 `0.9874489491`、errors `252`、FP/FN `165/87`，possible overrides `120`，actual overrides `36`。这份 CSV 现在是第三层 residual learner 的合格 train 输入，但它仍不是 Val/Test 候选。相关记录见 `docs/phase3_loop69_nested_oof_materialization.md`。
 
+Loop70 用 Loop69 的合格 nested OOF 输入训练第三层 meta layer，并在完整 Val 上验证。协议上它比直接复用 Loop61 Val 预测更干净：meta 只吃 train OOF 分数训练，上游 base/candidate/override 在全 train 拟合后冻结生成 Val 分数，Val 只用于选择 meta model 和阈值，不触碰 Test。结果没有通过：最佳 `meta_logreg_balanced_c0.1` 为 Val F1 `0.9917173935`、`166` errors、FP/FN `104/62`，比 Loop57 reference 的 `147` errors 多 `19`，因此拒绝 Test-10k。结论是：即便修正了第三层 OOF 协议，继续堆同一组 base/candidate/allow/final 分数也不能突破当前 best；下一步应停止同路线 stack/gate，转向新独立内容证据或人工/外部噪声复核。相关记录见 `docs/phase3_loop70_nested_oof_meta.md`。
+
 ## 2026-07-02 补充：命名不是证据，content PE v1 已产品化
 
 最新硬规则已经固定：文件名、路径、扩展名、目录名、`source_sha256`、`cache_path`、`sample_index`、`split` 和行顺序只能用于加载、缓存对齐、覆盖审计、去重、人工复核、以及生成一次性的人工标签清单，不能作为模型特征、二阶段融合特征、阈值捷径、自动改标证据或上线推理依据。原因是实战文件命名和训练集命名完全不是同一个分布，且攻击者改名几乎没有成本；训练集目录只能说明人工当时把样本放进哪个标签桶，不能说明文件本身因名字而恶意或良性。
