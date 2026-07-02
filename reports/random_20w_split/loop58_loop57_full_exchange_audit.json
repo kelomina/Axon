@@ -1,0 +1,329 @@
+{
+  "schema": "axon_loop57_full_exchange_v1",
+  "protocol": "read-only full-test exchange audit; identity fields used only for alignment/cache lookup",
+  "identity_feature_policy": "sample_index/source_sha256/source_path are alignment and cache lookup fields only; do not use them as model, threshold, gate, GA, noise, or replacement evidence",
+  "loop28_predictions": "E:\\Project\\python\\Axon_v2.6Exp\\reports\\random_20w_split\\stage2_loop28_content_pe_frozen_full_test_predictions.csv",
+  "loop57_predictions": "E:\\Project\\python\\Axon_v2.6Exp\\reports\\random_20w_split\\loop57_fn_overlay_gate_frozen_full_test_predictions.csv",
+  "overlay_cache_dir": "E:\\Project\\python\\Axon_v2.6Exp\\reports\\random_20w_split\\loop57_overlay_boundary_cache_full_test",
+  "rows": 160000,
+  "exchange_counts": {
+    "both_correct": 157943,
+    "loop28_only_error": 189,
+    "loop57_only_error": 108,
+    "both_error": 1760
+  },
+  "transition_counts": {
+    "0->0|label=0": 78805,
+    "0->0|label=1": 673,
+    "0->1|label=0": 108,
+    "0->1|label=1": 189,
+    "1->1|label=0": 1087,
+    "1->1|label=1": 79138
+  },
+  "override_counts_by_group": {
+    "both_correct": 0,
+    "loop28_only_error": 189,
+    "loop57_only_error": 108,
+    "both_error": 0
+  },
+  "feature_summary": {
+    "groups": {
+      "both_correct": {
+        "rows": 157943,
+        "label_counts": {
+          "0": 78805,
+          "1": 79138
+        },
+        "nonzero_overlay_features": 157742,
+        "score_summary": {
+          "rows": 157943,
+          "base_prob_mean": 0.500221312046051,
+          "candidate_prob_mean": 0.4991256594657898,
+          "gate_prob_mean": 0.05920464172959328,
+          "gate_prob_min": 0.0022272199857980013,
+          "gate_prob_max": 0.9952435493469238
+        },
+        "mean_by_feature": {
+          "overlay_boundary_security_present": 0.34483325481414795,
+          "overlay_boundary_security_log_size": 3.179903030395508,
+          "overlay_boundary_security_ratio": 0.07905998826026917,
+          "overlay_boundary_overlay_present": 0.4284583628177643,
+          "overlay_boundary_overlay_log_size": 4.112403869628906,
+          "overlay_boundary_overlay_ratio": 0.12105975300073624,
+          "overlay_boundary_payload_present": 0.10508854687213898,
+          "overlay_boundary_payload_log_size": 1.0853410959243774,
+          "overlay_boundary_payload_ratio": 0.042111463844776154,
+          "overlay_boundary_payload_entropy": 0.07227687537670135,
+          "overlay_boundary_payload_head_entropy": 0.06905297189950943,
+          "overlay_boundary_payload_tail_entropy": 0.0716591328382492,
+          "overlay_boundary_payload_entropy_delta": 0.005156646482646465,
+          "overlay_boundary_payload_high_entropy": 0.05384853854775429,
+          "overlay_boundary_payload_after_security": 0.003165699075907469,
+          "overlay_boundary_payload_before_security": 0.017386019229888916,
+          "overlay_boundary_payload_segment_count_norm": 0.013178804889321327,
+          "overlay_boundary_largest_payload_segment_ratio": 0.10507115721702576,
+          "overlay_boundary_security_covers_overlay": 0.3233698308467865,
+          "overlay_boundary_security_inside_overlay": 0.3411610424518585,
+          "overlay_boundary_security_starts_at_overlay": 0.3237750232219696,
+          "overlay_boundary_security_ends_at_eof": 0.3405469059944153,
+          "overlay_boundary_gap_last_section_to_overlay_log": 0.08829125761985779,
+          "overlay_boundary_gap_last_section_to_security_log": 0.16365450620651245,
+          "overlay_boundary_overlay_touches_last_section": 0.42019590735435486,
+          "overlay_boundary_payload_touches_last_section": 0.09655381739139557,
+          "overlay_boundary_last_section_entropy": 0.3927977681159973,
+          "overlay_boundary_payload_entropy_minus_last_section": -0.32052192091941833,
+          "overlay_boundary_last_section_raw_virtual_delta": 0.4246023893356323,
+          "overlay_boundary_overlay_slack_ratio": 0.0,
+          "overlay_boundary_security_declared_beyond_eof": 0.00031023850897327065,
+          "overlay_boundary_payload_after_cert_log_size": 0.020374739542603493
+        }
+      },
+      "loop28_only_error": {
+        "rows": 189,
+        "label_counts": {
+          "1": 189
+        },
+        "nonzero_overlay_features": 188,
+        "score_summary": {
+          "rows": 189,
+          "base_prob_mean": 0.34255731105804443,
+          "candidate_prob_mean": 0.7107760310173035,
+          "gate_prob_mean": 0.9466613531112671,
+          "gate_prob_min": 0.8805364370346069,
+          "gate_prob_max": 0.9987326860427856
+        },
+        "mean_by_feature": {
+          "overlay_boundary_security_present": 0.380952388048172,
+          "overlay_boundary_security_log_size": 3.5709173679351807,
+          "overlay_boundary_security_ratio": 0.018910374492406845,
+          "overlay_boundary_overlay_present": 0.7830687761306763,
+          "overlay_boundary_overlay_log_size": 7.292850494384766,
+          "overlay_boundary_overlay_ratio": 0.14692330360412598,
+          "overlay_boundary_payload_present": 0.6084656119346619,
+          "overlay_boundary_payload_log_size": 5.237507343292236,
+          "overlay_boundary_payload_ratio": 0.1281493753194809,
+          "overlay_boundary_payload_entropy": 0.3860897421836853,
+          "overlay_boundary_payload_head_entropy": 0.3692278265953064,
+          "overlay_boundary_payload_tail_entropy": 0.37514862418174744,
+          "overlay_boundary_payload_entropy_delta": 0.019810471683740616,
+          "overlay_boundary_payload_high_entropy": 0.2698412835597992,
+          "overlay_boundary_payload_after_security": 0.11640211939811707,
+          "overlay_boundary_payload_before_security": 0.10052909702062607,
+          "overlay_boundary_payload_segment_count_norm": 0.0773809552192688,
+          "overlay_boundary_largest_payload_segment_ratio": 0.6062670946121216,
+          "overlay_boundary_security_covers_overlay": 0.1746031790971756,
+          "overlay_boundary_security_inside_overlay": 0.34391534328460693,
+          "overlay_boundary_security_starts_at_overlay": 0.24338623881340027,
+          "overlay_boundary_security_ends_at_eof": 0.26455026865005493,
+          "overlay_boundary_gap_last_section_to_overlay_log": 0.7274935245513916,
+          "overlay_boundary_gap_last_section_to_security_log": 1.2843682765960693,
+          "overlay_boundary_overlay_touches_last_section": 0.7089946866035461,
+          "overlay_boundary_payload_touches_last_section": 0.460317462682724,
+          "overlay_boundary_last_section_entropy": 0.5016322731971741,
+          "overlay_boundary_payload_entropy_minus_last_section": -0.11554230749607086,
+          "overlay_boundary_last_section_raw_virtual_delta": 0.21742083132266998,
+          "overlay_boundary_overlay_slack_ratio": 0.0,
+          "overlay_boundary_security_declared_beyond_eof": 0.005291005130857229,
+          "overlay_boundary_payload_after_cert_log_size": 0.7082058787345886
+        }
+      },
+      "loop57_only_error": {
+        "rows": 108,
+        "label_counts": {
+          "0": 108
+        },
+        "nonzero_overlay_features": 108,
+        "score_summary": {
+          "rows": 108,
+          "base_prob_mean": 0.3264032304286957,
+          "candidate_prob_mean": 0.6791976094245911,
+          "gate_prob_mean": 0.9348143935203552,
+          "gate_prob_min": 0.8800222873687744,
+          "gate_prob_max": 0.9939854145050049
+        },
+        "mean_by_feature": {
+          "overlay_boundary_security_present": 0.31481480598449707,
+          "overlay_boundary_security_log_size": 2.900132894515991,
+          "overlay_boundary_security_ratio": 0.011034280061721802,
+          "overlay_boundary_overlay_present": 0.7592592835426331,
+          "overlay_boundary_overlay_log_size": 7.556131839752197,
+          "overlay_boundary_overlay_ratio": 0.14187662303447723,
+          "overlay_boundary_payload_present": 0.6111111044883728,
+          "overlay_boundary_payload_log_size": 6.066130638122559,
+          "overlay_boundary_payload_ratio": 0.13163508474826813,
+          "overlay_boundary_payload_entropy": 0.5158902406692505,
+          "overlay_boundary_payload_head_entropy": 0.5015345811843872,
+          "overlay_boundary_payload_tail_entropy": 0.5150106549263,
+          "overlay_boundary_payload_entropy_delta": 0.016027437523007393,
+          "overlay_boundary_payload_high_entropy": 0.4722222089767456,
+          "overlay_boundary_payload_after_security": 0.0,
+          "overlay_boundary_payload_before_security": 0.1388888955116272,
+          "overlay_boundary_payload_segment_count_norm": 0.0763888880610466,
+          "overlay_boundary_largest_payload_segment_ratio": 0.6111111044883728,
+          "overlay_boundary_security_covers_overlay": 0.14814814925193787,
+          "overlay_boundary_security_inside_overlay": 0.28703704476356506,
+          "overlay_boundary_security_starts_at_overlay": 0.14814814925193787,
+          "overlay_boundary_security_ends_at_eof": 0.31481480598449707,
+          "overlay_boundary_gap_last_section_to_overlay_log": 0.36979347467422485,
+          "overlay_boundary_gap_last_section_to_security_log": 1.6482012271881104,
+          "overlay_boundary_overlay_touches_last_section": 0.7222222089767456,
+          "overlay_boundary_payload_touches_last_section": 0.5740740895271301,
+          "overlay_boundary_last_section_entropy": 0.5063605904579163,
+          "overlay_boundary_payload_entropy_minus_last_section": 0.009529614821076393,
+          "overlay_boundary_last_section_raw_virtual_delta": 0.2328021079301834,
+          "overlay_boundary_overlay_slack_ratio": 0.0,
+          "overlay_boundary_security_declared_beyond_eof": 0.03703703731298447,
+          "overlay_boundary_payload_after_cert_log_size": 0.0
+        }
+      },
+      "both_error": {
+        "rows": 1760,
+        "label_counts": {
+          "0": 1087,
+          "1": 673
+        },
+        "nonzero_overlay_features": 1759,
+        "score_summary": {
+          "rows": 1760,
+          "base_prob_mean": 0.5756400227546692,
+          "candidate_prob_mean": 0.5499147772789001,
+          "gate_prob_mean": 0.31133735179901123,
+          "gate_prob_min": 0.0040821838192641735,
+          "gate_prob_max": 0.9818378686904907
+        },
+        "mean_by_feature": {
+          "overlay_boundary_security_present": 0.3482954502105713,
+          "overlay_boundary_security_log_size": 3.2232275009155273,
+          "overlay_boundary_security_ratio": 0.018284302204847336,
+          "overlay_boundary_overlay_present": 0.4431818127632141,
+          "overlay_boundary_overlay_log_size": 4.485068321228027,
+          "overlay_boundary_overlay_ratio": 0.08167030662298203,
+          "overlay_boundary_payload_present": 0.16931818425655365,
+          "overlay_boundary_payload_log_size": 1.8897093534469604,
+          "overlay_boundary_payload_ratio": 0.06350144743919373,
+          "overlay_boundary_payload_entropy": 0.13585765659809113,
+          "overlay_boundary_payload_head_entropy": 0.1310916244983673,
+          "overlay_boundary_payload_tail_entropy": 0.13555222749710083,
+          "overlay_boundary_payload_entropy_delta": 0.0073076472617685795,
+          "overlay_boundary_payload_high_entropy": 0.10454545170068741,
+          "overlay_boundary_payload_after_security": 0.005681818351149559,
+          "overlay_boundary_payload_before_security": 0.06477272510528564,
+          "overlay_boundary_payload_segment_count_norm": 0.021448863670229912,
+          "overlay_boundary_largest_payload_segment_ratio": 0.1692599058151245,
+          "overlay_boundary_security_covers_overlay": 0.27386364340782166,
+          "overlay_boundary_security_inside_overlay": 0.34147727489471436,
+          "overlay_boundary_security_starts_at_overlay": 0.2767045497894287,
+          "overlay_boundary_security_ends_at_eof": 0.3375000059604645,
+          "overlay_boundary_gap_last_section_to_overlay_log": 0.08635125309228897,
+          "overlay_boundary_gap_last_section_to_security_log": 0.8153282999992371,
+          "overlay_boundary_overlay_touches_last_section": 0.43522727489471436,
+          "overlay_boundary_payload_touches_last_section": 0.15852272510528564,
+          "overlay_boundary_last_section_entropy": 0.5179625749588013,
+          "overlay_boundary_payload_entropy_minus_last_section": -0.3821050822734833,
+          "overlay_boundary_last_section_raw_virtual_delta": 0.266239196062088,
+          "overlay_boundary_overlay_slack_ratio": 0.0,
+          "overlay_boundary_security_declared_beyond_eof": 0.0028409091755747795,
+          "overlay_boundary_payload_after_cert_log_size": 0.04178275913000107
+        }
+      }
+    },
+    "top_repair_vs_harm_feature_deltas": [
+      {
+        "feature": "overlay_boundary_payload_log_size",
+        "repair_mean": 5.237507343292236,
+        "harm_mean": 6.066130638122559,
+        "difference": -0.8286232948303223
+      },
+      {
+        "feature": "overlay_boundary_payload_after_cert_log_size",
+        "repair_mean": 0.7082058787345886,
+        "harm_mean": 0.0,
+        "difference": 0.7082058787345886
+      },
+      {
+        "feature": "overlay_boundary_security_log_size",
+        "repair_mean": 3.5709173679351807,
+        "harm_mean": 2.900132894515991,
+        "difference": 0.6707844734191895
+      },
+      {
+        "feature": "overlay_boundary_gap_last_section_to_security_log",
+        "repair_mean": 1.2843682765960693,
+        "harm_mean": 1.6482012271881104,
+        "difference": -0.363832950592041
+      },
+      {
+        "feature": "overlay_boundary_gap_last_section_to_overlay_log",
+        "repair_mean": 0.7274935245513916,
+        "harm_mean": 0.36979347467422485,
+        "difference": 0.35770004987716675
+      },
+      {
+        "feature": "overlay_boundary_overlay_log_size",
+        "repair_mean": 7.292850494384766,
+        "harm_mean": 7.556131839752197,
+        "difference": -0.26328134536743164
+      },
+      {
+        "feature": "overlay_boundary_payload_high_entropy",
+        "repair_mean": 0.2698412835597992,
+        "harm_mean": 0.4722222089767456,
+        "difference": -0.2023809254169464
+      },
+      {
+        "feature": "overlay_boundary_payload_tail_entropy",
+        "repair_mean": 0.37514862418174744,
+        "harm_mean": 0.5150106549263,
+        "difference": -0.1398620307445526
+      },
+      {
+        "feature": "overlay_boundary_payload_head_entropy",
+        "repair_mean": 0.3692278265953064,
+        "harm_mean": 0.5015345811843872,
+        "difference": -0.1323067545890808
+      },
+      {
+        "feature": "overlay_boundary_payload_entropy",
+        "repair_mean": 0.3860897421836853,
+        "harm_mean": 0.5158902406692505,
+        "difference": -0.12980049848556519
+      },
+      {
+        "feature": "overlay_boundary_payload_entropy_minus_last_section",
+        "repair_mean": -0.11554230749607086,
+        "harm_mean": 0.009529614821076393,
+        "difference": -0.1250719279050827
+      },
+      {
+        "feature": "overlay_boundary_payload_after_security",
+        "repair_mean": 0.11640211939811707,
+        "harm_mean": 0.0,
+        "difference": 0.11640211939811707
+      },
+      {
+        "feature": "overlay_boundary_payload_touches_last_section",
+        "repair_mean": 0.460317462682724,
+        "harm_mean": 0.5740740895271301,
+        "difference": -0.11375662684440613
+      },
+      {
+        "feature": "overlay_boundary_security_starts_at_overlay",
+        "repair_mean": 0.24338623881340027,
+        "harm_mean": 0.14814814925193787,
+        "difference": 0.0952380895614624
+      },
+      {
+        "feature": "overlay_boundary_security_present",
+        "repair_mean": 0.380952388048172,
+        "harm_mean": 0.31481480598449707,
+        "difference": 0.06613758206367493
+      },
+      {
+        "feature": "overlay_boundary_security_inside_overlay",
+        "repair_mean": 0.34391534328460693,
+        "harm_mean": 0.28703704476356506,
+        "difference": 0.05687829852104187
+      }
+    ]
+  }
+}
