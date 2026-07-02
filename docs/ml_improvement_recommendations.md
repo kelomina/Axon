@@ -24,6 +24,8 @@ Loop58 对 Loop57 做了只读 full-test exchange audit。完整 `160000` 行中
 
 Loop59 按 Loop58 的方向做了 Val-only FP guard 快速探针。手工测试了 payload size、overlay size、payload entropy、security size、after-cert、after-security、last-section gap 及若干组合规则，只使用 content-derived overlay boundary features，不触碰 Test。最佳规则仅把 Loop57 Val 从 `147` errors 降到 `146`，只拒绝 `1` 个覆盖；其它规则要么不动，要么损伤 FN 修复。该 margin 太薄，按 Loop37 经验不允许进入 Test-10k。结论：不要继续手工拧 overlay 阈值；若要削减 Loop57 新增 FP，应训练 OOF 二级模型，并加入 import/resource/section 等正常软件结构信号。相关记录见 `docs/phase3_loop59_fp_guard_val_probe.md`。
 
+Loop60 将 Loop57 的 gate 扩展为 content-aware gate，新增 `--gate-content-features`，让二级 gate 除 score + overlay 外还能看到匿名化 content/cache 矩阵。默认 Loop57 兼容路径保持不变，新增 content aliases 通过 identity guard 检查。Val-only 结果没有超过 Loop57：最佳仍是 `147` errors，但 FP/FN 从 Loop57 的 `92/55` 变成 `95/52`，更偏低漏报但误报更多。因此拒绝 Test-10k。结论：泛化 content 矩阵直接喂给 gate 没有解决新增 FP；下一步应更明确地建模 benign-like import/resource/section 结构，或做 override-only classifier。相关记录见 `docs/phase3_loop60_content_aware_fn_gate.md`。
+
 Loop48 对 fresh seed43 current-split checkpoint 做了 Val-only 复验。它使用 `config/random_20w_8192_seed43.toml`，保持当前 `loop27_corrected_split.csv`、fixed-v2、8192-byte、PE 256、stat 49 的同一口径；split/cache 复审仍为 `200000/200000` 覆盖、missing `0`。1 epoch smoke Val F1 为 `0.8158`；完整训练保留的 `models/random_20w_8192_seed43/best_model.pt` 在 epoch `17` 的 best Val F1 只有 `0.9500494559841741`，且没有 final checkpoint。该结果远低于 Loop28 content PE metadata 的 Val F1 `0.9919048571`，因此 seed43 未进入 Test-10k，也不导出给 Stage-2 stacker 使用。相关记录见 `docs/phase3_loop48_fresh_seed43_valonly.md`。
 
 这个反例很关键：Loop47 说明现有 checkpoint 池不能安全直接 stack；Loop48 又说明“只换 seed 重训同款 8192 fixed-v2 神经底座”不是高价值路线。下一阶段不应继续盲目堆同款 seed，而应把 Loop28 content PE metadata 产品化为稳定 schema，同时训练真正多样化的 current-split base：不同输入长度或区域视角、不同模型结构、不同内容特征族，全部用 OOF 协议和 Val gate 验证。

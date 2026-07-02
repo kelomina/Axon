@@ -82,11 +82,15 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         probability_column=args.baseline_probability_column,
         key_column=args.alignment_key_column,
     )
+    include_overlay_for_gate = bool(payload.get("include_gate_overlay_features", True))
+    include_content_for_gate = bool(payload.get("include_gate_content_features", False))
     gate_matrix, gate_feature_names = build_fn_gate_matrix(
+        matrix,
         overlay,
         base_scores,
         candidate_scores,
-        include_overlay_features=True,
+        include_overlay_features=include_overlay_for_gate,
+        include_content_features=include_content_for_gate,
     )
     gate_scores = predict_scores(payload["gate_model"], gate_matrix)
     final_predictions, final_scores, override_mask = fn_override_predictions(
@@ -137,6 +141,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "feature_dim": int(matrix.shape[1]),
         "candidate_feature_dim": int(candidate_matrix.shape[1]),
         "gate_feature_dim": int(gate_matrix.shape[1]),
+        "include_gate_overlay_features": include_overlay_for_gate,
+        "include_gate_content_features": include_content_for_gate,
         "gate_feature_names": gate_feature_names,
         "external_base_alignment": external_alignment,
         "base_metrics": base_metrics,

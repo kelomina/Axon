@@ -58,11 +58,31 @@ def test_build_fn_gate_matrix_adds_safe_overlay_aliases():
     base = np.asarray([0.1, 0.9], dtype=np.float32)
     candidate = np.asarray([0.8, 0.2], dtype=np.float32)
 
-    matrix, names = build_fn_gate_matrix(overlay, base, candidate, include_overlay_features=True)
+    content = np.zeros((2, 3), dtype=np.float32)
+    matrix, names = build_fn_gate_matrix(content, overlay, base, candidate, include_overlay_features=True)
 
     assert matrix.shape == (2, 9 + len(OVERLAY_BOUNDARY_FEATURE_NAMES))
     assert names[0] == "gate_base_score"
     assert names[9] == f"gate_{OVERLAY_BOUNDARY_FEATURE_NAMES[0]}"
+
+
+def test_build_fn_gate_matrix_can_add_content_aliases():
+    overlay = np.ones((2, len(OVERLAY_BOUNDARY_FEATURE_NAMES)), dtype=np.float32)
+    content = np.ones((2, 4), dtype=np.float32)
+    base = np.asarray([0.1, 0.9], dtype=np.float32)
+    candidate = np.asarray([0.8, 0.2], dtype=np.float32)
+
+    matrix, names = build_fn_gate_matrix(
+        content,
+        overlay,
+        base,
+        candidate,
+        include_overlay_features=True,
+        include_content_features=True,
+    )
+
+    assert matrix.shape == (2, 9 + len(OVERLAY_BOUNDARY_FEATURE_NAMES) + 4)
+    assert names[-1] == "gate_content_feature_3"
 
 
 def test_select_fn_gate_threshold_reports_override_labels():

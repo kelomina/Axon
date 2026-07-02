@@ -63,21 +63,31 @@ LOOP57_TEST10K_ERROR_GATE = 152
 
 
 def build_fn_gate_matrix(
+    content_matrix: np.ndarray,
     overlay_matrix: np.ndarray,
     base_scores: np.ndarray,
     candidate_scores: np.ndarray,
     *,
     include_overlay_features: bool,
+    include_content_features: bool = False,
 ) -> tuple[np.ndarray, list[str]]:
     """Build non-identity gate features for FN-specific override decisions."""
 
     score_features, score_names = build_gate_score_features(base_scores, candidate_scores)
-    if not include_overlay_features:
-        return score_features, score_names
-    overlay_names = [f"gate_{name}" for name in OVERLAY_BOUNDARY_FEATURE_NAMES]
-    assert_no_identity_feature_names(overlay_names, context="Loop57 gate overlay feature aliases")
-    matrix = np.hstack([score_features, overlay_matrix.astype(np.float32, copy=False)])
-    return matrix.astype(np.float32, copy=False), score_names + overlay_names
+    parts = [score_features]
+    names = list(score_names)
+    if include_overlay_features:
+        overlay_names = [f"gate_{name}" for name in OVERLAY_BOUNDARY_FEATURE_NAMES]
+        assert_no_identity_feature_names(overlay_names, context="Loop57 gate overlay feature aliases")
+        parts.append(overlay_matrix.astype(np.float32, copy=False))
+        names.extend(overlay_names)
+    if include_content_features:
+        content_names = [f"gate_content_feature_{index}" for index in range(content_matrix.shape[1])]
+        assert_no_identity_feature_names(content_names, context="Loop57 gate content feature aliases")
+        parts.append(content_matrix.astype(np.float32, copy=False))
+        names.extend(content_names)
+    matrix = np.hstack(parts)
+    return matrix.astype(np.float32, copy=False), names
 
 
 def fn_override_predictions(
@@ -297,6 +307,7 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     parser.add_argument("--overlay-boundary-cache-dir", type=Path, required=True)
     parser.add_argument("--drop-base-prob-features", action="store_true")
     parser.add_argument("--no-gate-overlay-features", action="store_true")
+    parser.add_argument("--gate-content-features", action="store_true")
     parser.add_argument("--base-model-candidate", default="hgb_lr0.06_leaf31_l2_0")
     parser.add_argument(
         "--candidate-model-candidates",
@@ -412,6 +423,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     fitted_results = []
     candidate_reports = []
     include_overlay_for_gate = not bool(args.no_gate_overlay_features)
+    include_content_for_gate = bool(args.gate_content_features)
     for candidate_index, (candidate_name, _prototype) in enumerate(candidate_specs):
         candidate_train_scores = candidate_oof[:, candidate_index]
         candidate_val_scores = candidate_val[:, candidate_index]
@@ -433,16 +445,20 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             print(f"[gate-skip] {candidate_name}: no beneficial FN repairs in train OOF", flush=True)
             continue
         train_gate_x, gate_feature_names = build_fn_gate_matrix(
+            train_x,
             train_overlay,
             base_train_scores,
             candidate_train_scores,
             include_overlay_features=include_overlay_for_gate,
+            include_content_features=include_content_for_gate,
         )
         val_gate_x, _ = build_fn_gate_matrix(
+            val_x,
             val_overlay,
             external_base_scores,
             candidate_val_scores,
             include_overlay_features=include_overlay_for_gate,
+            include_content_features=include_content_for_gate,
         )
         gate_model_reports = []
         for gate_name, gate_prototype in selected_gate_candidates:
@@ -558,6 +574,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 "checkpoint_config": checkpoint_config.to_dict(),
                 "dropped_feature_count": dropped_feature_count,
                 "gate_feature_names": gate_feature_names,
+                "include_gate_overlay_features": include_overlay_for_gate,
+                "include_gate_content_features": include_content_for_gate,
                 "overlay_boundary_feature_names": OVERLAY_BOUNDARY_FEATURE_NAMES,
                 "identity_feature_policy": (
                     "source_path/source_sha256/cache_path/sample_index/split/filename/extension/directory "
@@ -595,6 +613,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "feature_name_groups": safe_feature_name_groups,
         "overlay_boundary_feature_names": OVERLAY_BOUNDARY_FEATURE_NAMES,
         "gate_feature_names": gate_feature_names,
+        "include_gate_overlay_features": include_overlay_for_gate,
+        "include_gate_content_features": include_content_for_gate,
         "dropped_feature_count": dropped_feature_count,
         "folds": folds,
         "base_model": base_name,
