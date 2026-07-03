@@ -27,6 +27,7 @@ for item in (PROJECT_ROOT, SCRIPTS_DIR, SRC_DIR):
         sys.path.insert(0, str(item))
 
 from config import AxonExperimentConfig  # noqa: E402
+from audit_loop127_content_cross_readiness import audit_loop127_content_cross_readiness  # noqa: E402
 from identity_feature_guard import assert_no_identity_feature_names  # noqa: E402
 from security import load_safe_checkpoint  # noqa: E402
 from train_stage2_cache_matrix import (  # noqa: E402
@@ -322,6 +323,28 @@ def build_content_cross_matrix(rows: Sequence[dict], config: CrossConfig) -> np.
     return np.vstack(features).astype(np.float32, copy=False)
 
 
+def run_strict_readiness_preflight(args: argparse.Namespace, output_dir: Path) -> dict:
+    """Block training before matrix build if strict Loop127 inputs are not ready."""
+
+    report_path = output_dir / "loop43_content_cross_preflight.json"
+    payload = audit_loop127_content_cross_readiness(
+        train_predictions=args.train_predictions,
+        val_predictions=args.val_predictions,
+        content_pe_cache_dir=args.content_pe_cache_dir,
+        content_pe_v2_cache_dir=args.content_pe_v2_cache_dir,
+        output_json=report_path,
+        expected_train_rows=int(args.expected_train_rows),
+        expected_val_rows=int(args.expected_val_rows),
+        expected_test_rows=int(args.expected_test_rows),
+        expected_total_rows=int(args.expected_total_rows),
+        validate_npz_contents=True,
+    )
+    if not payload.get("ready_for_loop43_val_only"):
+        blockers = ", ".join(payload.get("blockers", [])) or "unknown"
+        raise RuntimeError(f"Loop43 content-cross preflight blocked training: {blockers}. See {report_path}")
+    return payload
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Train Loop43 content-cross Stage-2 candidates.")
     parser.add_argument("--checkpoint", type=Path, required=True)
@@ -339,15 +362,21 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--baseline-val-errors", type=int, default=LOOP28_VAL_ERRORS)
     parser.add_argument("--baseline-val-f1", type=float, default=LOOP28_VAL_F1)
+    parser.add_argument("--expected-train-rows", type=int, default=20000)
+    parser.add_argument("--expected-val-rows", type=int, default=20000)
+    parser.add_argument("--expected-test-rows", type=int, default=160000)
+    parser.add_argument("--expected-total-rows", type=int, default=200000)
     return parser
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
     args = build_parser().parse_args(argv)
-    checkpoint = load_safe_checkpoint(resolve_path(args.checkpoint), map_location="cpu")
-    checkpoint_config = AxonExperimentConfig.from_dict(dict(checkpoint["config"]))
     output_dir = resolve_path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
+    preflight = run_strict_readiness_preflight(args, output_dir)
+
+    checkpoint = load_safe_checkpoint(resolve_path(args.checkpoint), map_location="cpu")
+    checkpoint_config = AxonExperimentConfig.from_dict(dict(checkpoint["config"]))
 
     feature_config = FeatureConfig(
         prefix_len=max(0, int(args.prefix_len)),
@@ -457,6 +486,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         ),
         "records": {"train": train_counts, "val": val_counts},
         "feature_config": feature_config.__dict__,
+        "readiness_preflight": {
+            "ready_for_loop43_val_only": bool(preflight.get("ready_for_loop43_val_only")),
+            "report_json": str(output_dir / "loop43_content_cross_preflight.json"),
+            "split_contract": preflight.get("split_contract", {}),
+        },
         "feature_name_groups": {
             **safe_feature_name_groups,
             "content_cross_feature_names": CONTENT_CROSS_FEATURE_NAMES,

@@ -1,10 +1,15 @@
+import argparse
+import csv
+
 import numpy as np
+import pytest
 
 from scripts.train_loop43_content_cross import (
     CONTENT_CROSS_FEATURE_NAMES,
     CONTENT_PE_FEATURE_NAMES,
     CONTENT_PE_V2_FEATURE_NAMES,
     content_cross_features_from_arrays,
+    run_strict_readiness_preflight,
 )
 
 
@@ -71,3 +76,93 @@ def test_content_cross_features_do_not_fire_for_unsigned_overlay_security_cross(
 
     assert features[CONTENT_CROSS_FEATURE_NAMES.index("cross_security_overlay_log_size")] == 0.0
     assert features[CONTENT_CROSS_FEATURE_NAMES.index("cross_unsigned_overlay_log_size")] == 5.0
+
+
+def _write_predictions_csv(path, rows):
+    with path.open("w", encoding="utf-8-sig", newline="") as handle:
+        writer = csv.DictWriter(
+            handle,
+            fieldnames=[
+                "source_path",
+                "source_sha256",
+                "cache_path",
+                "label",
+                "split",
+                "sample_index",
+                "prob_malicious",
+                "prediction",
+                "correct",
+            ],
+        )
+        writer.writeheader()
+        writer.writerows(rows)
+
+
+def _write_main_cache(path, *, label, sha):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    np.savez(path, label=np.asarray(label), source_sha256=np.asarray(sha))
+
+
+def _write_sidecar(path, *, dim):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    np.savez(path, features=np.zeros(dim, dtype=np.float32))
+
+
+def test_strict_readiness_preflight_blocks_missing_sidecar_before_training(tmp_path):
+    train_sha = "a" * 64
+    val_sha = "b" * 64
+    train_cache = tmp_path / "cache" / "train.npz"
+    val_cache = tmp_path / "cache" / "val.npz"
+    _write_main_cache(train_cache, label=0, sha=train_sha)
+    _write_main_cache(val_cache, label=1, sha=val_sha)
+    _write_sidecar(tmp_path / "v1" / f"{train_sha}.npz", dim=len(CONTENT_PE_FEATURE_NAMES))
+    _write_sidecar(tmp_path / "v2" / f"{train_sha}.npz", dim=len(CONTENT_PE_V2_FEATURE_NAMES))
+    _write_sidecar(tmp_path / "v1" / f"{val_sha}.npz", dim=len(CONTENT_PE_FEATURE_NAMES))
+
+    train_csv = tmp_path / "train.csv"
+    val_csv = tmp_path / "val.csv"
+    _write_predictions_csv(
+        train_csv,
+        [
+            {
+                "source_path": str(tmp_path / "train.exe"),
+                "source_sha256": train_sha,
+                "cache_path": str(train_cache),
+                "label": "0",
+                "split": "train",
+                "sample_index": "1",
+                "prob_malicious": "0.1",
+                "prediction": "0",
+                "correct": "True",
+            }
+        ],
+    )
+    _write_predictions_csv(
+        val_csv,
+        [
+            {
+                "source_path": str(tmp_path / "val.exe"),
+                "source_sha256": val_sha,
+                "cache_path": str(val_cache),
+                "label": "1",
+                "split": "val",
+                "sample_index": "2",
+                "prob_malicious": "0.9",
+                "prediction": "1",
+                "correct": "True",
+            }
+        ],
+    )
+    args = argparse.Namespace(
+        train_predictions=train_csv,
+        val_predictions=val_csv,
+        content_pe_cache_dir=tmp_path / "v1",
+        content_pe_v2_cache_dir=tmp_path / "v2",
+        expected_train_rows=1,
+        expected_val_rows=1,
+        expected_test_rows=0,
+        expected_total_rows=2,
+    )
+
+    with pytest.raises(RuntimeError, match="preflight blocked training"):
+        run_strict_readiness_preflight(args, tmp_path / "out")

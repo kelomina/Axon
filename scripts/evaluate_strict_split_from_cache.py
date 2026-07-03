@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import gc
 import json
 import sys
 from collections import Counter, defaultdict
@@ -308,94 +309,115 @@ def evaluate_strict_split_from_cache(
         resolved_output.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
         return payload
 
-    checkpoint_payload = load_safe_checkpoint(resolve_path(checkpoint), map_location="cpu")
-    config = AxonExperimentConfig.from_dict(dict(checkpoint_payload["config"]))
     device = torch.device(device_name if device_name == "cpu" or torch.cuda.is_available() else "cpu")
-    model = AxonMalwareModel(config)
-    model.load_state_dict(checkpoint_payload["model_state_dict"])
-    model.to(device)
-    model.eval()
-    feature_mask = load_feature_mask_tensors(feature_mask_path, config, device) if feature_mask_path else None
+    checkpoint_payload = None
+    model = None
+    feature_mask = None
+    dataset = None
+    loader = None
+    byte_seq = None
+    pe_features = None
+    stat_features = None
+    batch_labels = None
+    logits = None
+    batch_probs = None
+    try:
+        checkpoint_payload = load_safe_checkpoint(resolve_path(checkpoint), map_location="cpu")
+        config = AxonExperimentConfig.from_dict(dict(checkpoint_payload["config"]))
+        model = AxonMalwareModel(config)
+        model.load_state_dict(checkpoint_payload["model_state_dict"])
+        checkpoint_payload = None
+        model.to(device)
+        model.eval()
+        feature_mask = load_feature_mask_tensors(feature_mask_path, config, device) if feature_mask_path else None
 
-    labels: list[int] = []
-    probs: list[float] = []
-    dataset = StrictCachedSplitDataset(records, config)
-    loader = DataLoader(
-        dataset,
-        batch_size=int(batch_size),
-        shuffle=False,
-        num_workers=max(0, int(num_workers)),
-        pin_memory=(device.type == "cuda"),
-        persistent_workers=False,
-    )
-    with torch.inference_mode():
-        for byte_seq, pe_features, stat_features, batch_labels, _batch_indices in loader:
-            byte_seq = byte_seq.to(device, non_blocking=True)
-            pe_features = pe_features.to(device, non_blocking=True)
-            stat_features = stat_features.to(device, non_blocking=True)
-            pe_features, stat_features = apply_feature_mask_to_tensors(pe_features, stat_features, feature_mask)
-            logits = model(byte_seq, pe_features, stat_features=stat_features)["logits"]
-            batch_probs = torch.softmax(logits, dim=1)[:, 1].detach().cpu().numpy()
-            labels.extend(int(value) for value in batch_labels.numpy().tolist())
-            probs.extend(float(value) for value in batch_probs)
+        labels: list[int] = []
+        probs: list[float] = []
+        dataset = StrictCachedSplitDataset(records, config)
+        loader = DataLoader(
+            dataset,
+            batch_size=int(batch_size),
+            shuffle=False,
+            num_workers=max(0, int(num_workers)),
+            pin_memory=(device.type == "cuda"),
+            persistent_workers=False,
+        )
+        with torch.inference_mode():
+            for byte_seq, pe_features, stat_features, batch_labels, _batch_indices in loader:
+                byte_seq = byte_seq.to(device, non_blocking=True)
+                pe_features = pe_features.to(device, non_blocking=True)
+                stat_features = stat_features.to(device, non_blocking=True)
+                pe_features, stat_features = apply_feature_mask_to_tensors(pe_features, stat_features, feature_mask)
+                logits = model(byte_seq, pe_features, stat_features=stat_features)["logits"]
+                batch_probs = torch.softmax(logits, dim=1)[:, 1].detach().cpu().numpy()
+                labels.extend(int(value) for value in batch_labels.numpy().tolist())
+                probs.extend(float(value) for value in batch_probs)
+                byte_seq = pe_features = stat_features = batch_labels = logits = batch_probs = None
 
-    thresholds = parse_thresholds(sweep_thresholds, base_threshold=threshold)
-    sweep = [compute_metrics(labels, probs, item) for item in thresholds]
-    primary = next(item for item in sweep if item["threshold"] == float(threshold))
-    best_by_f1 = max(sweep, key=lambda item: (item["f1"], -item["errors"], item["threshold"]))
-    if output_predictions_csv is not None:
-        write_prediction_rows(resolve_path(output_predictions_csv), records, probs, threshold)
+        thresholds = parse_thresholds(sweep_thresholds, base_threshold=threshold)
+        sweep = [compute_metrics(labels, probs, item) for item in thresholds]
+        primary = next(item for item in sweep if item["threshold"] == float(threshold))
+        best_by_f1 = max(sweep, key=lambda item: (item["f1"], -item["errors"], item["threshold"]))
+        if output_predictions_csv is not None:
+            write_prediction_rows(resolve_path(output_predictions_csv), records, probs, threshold)
 
-    payload = {
-        "schema": "axon_strict_split_cache_eval_v1",
-        "decision": "evaluated",
-        "identity_feature_policy": (
-            "source_sha256 is the only manifest/cache alignment key; path/name/extension/directory are never lookup keys or model evidence."
-        ),
-        "checkpoint": str(resolve_path(checkpoint)),
-        "feature_mask": str(resolve_path(feature_mask_path)) if feature_mask_path is not None else None,
-        "feature_mask_summary": summarize_feature_mask(feature_mask[2]) if feature_mask is not None else None,
-        "checkpoint_config": {
-            "max_byte_length": config.max_byte_length,
-            "pe_feature_dim": config.pe_feature_dim,
-            "stat_feature_dim": config.stat_feature_dim,
-            "pe_schema_version": config.pe_schema_version,
-            "pe_fixed_section_slots": config.pe_fixed_section_slots,
-        },
-        "split_csv": str(resolve_path(split_csv)),
-        "manifest_json": str(resolve_path(manifest_json)),
-        "split": split,
-        "record_summary": record_summary,
-        "path_used_for_lookup": False,
-        "predicted_samples": len(labels),
-        "batch_size": int(batch_size),
-        "num_workers": int(num_workers),
-        "max_rows": max_rows,
-        "device": str(device),
-        "metrics": primary,
-        "threshold_sweep": sweep,
-        "best_threshold_by_val_f1": best_by_f1,
-        "predictions_csv": str(resolve_path(output_predictions_csv)) if output_predictions_csv is not None else None,
-        "ready_for": {
-            "train_val_only": True,
-            "test10k": False,
-            "full_test": False,
-        },
-        "memory_leak_profile": {
-            "uses_cuda": device.type == "cuda",
-            "uses_inference_mode": True,
-            "persistent_workers": False,
-            "cache_alignment": "source_sha256_only",
-        },
-    }
-    resolved_output = resolve_path(output_json)
-    resolved_output.parent.mkdir(parents=True, exist_ok=True)
-    resolved_output.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
-
-    del model
-    if device.type == "cuda":
-        torch.cuda.empty_cache()
-    return payload
+        payload = {
+            "schema": "axon_strict_split_cache_eval_v1",
+            "decision": "evaluated",
+            "identity_feature_policy": (
+                "source_sha256 is the only manifest/cache alignment key; path/name/extension/directory are never lookup keys or model evidence."
+            ),
+            "checkpoint": str(resolve_path(checkpoint)),
+            "feature_mask": str(resolve_path(feature_mask_path)) if feature_mask_path is not None else None,
+            "feature_mask_summary": summarize_feature_mask(feature_mask[2]) if feature_mask is not None else None,
+            "checkpoint_config": {
+                "max_byte_length": config.max_byte_length,
+                "pe_feature_dim": config.pe_feature_dim,
+                "stat_feature_dim": config.stat_feature_dim,
+                "pe_schema_version": config.pe_schema_version,
+                "pe_fixed_section_slots": config.pe_fixed_section_slots,
+            },
+            "split_csv": str(resolve_path(split_csv)),
+            "manifest_json": str(resolve_path(manifest_json)),
+            "split": split,
+            "record_summary": record_summary,
+            "path_used_for_lookup": False,
+            "predicted_samples": len(labels),
+            "batch_size": int(batch_size),
+            "num_workers": int(num_workers),
+            "max_rows": max_rows,
+            "device": str(device),
+            "metrics": primary,
+            "threshold_sweep": sweep,
+            "best_threshold_by_val_f1": best_by_f1,
+            "predictions_csv": str(resolve_path(output_predictions_csv)) if output_predictions_csv is not None else None,
+            "ready_for": {
+                "train_val_only": True,
+                "test10k": False,
+                "full_test": False,
+            },
+            "memory_leak_profile": {
+                "uses_cuda": device.type == "cuda",
+                "uses_inference_mode": True,
+                "persistent_workers": False,
+                "cache_alignment": "source_sha256_only",
+                "cleanup_in_finally": True,
+            },
+        }
+        resolved_output = resolve_path(output_json)
+        resolved_output.parent.mkdir(parents=True, exist_ok=True)
+        resolved_output.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+        return payload
+    finally:
+        byte_seq = pe_features = stat_features = batch_labels = logits = batch_probs = None
+        loader = None
+        dataset = None
+        feature_mask = None
+        model = None
+        checkpoint_payload = None
+        gc.collect()
+        if device.type == "cuda":
+            torch.cuda.empty_cache()
 
 
 def build_parser() -> argparse.ArgumentParser:
