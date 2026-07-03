@@ -70,6 +70,8 @@ Loop89 已把证据包扩展到 Loop72 Wave1 的 `200` 行：source/cache 都存
 
 Loop90 已把证据覆盖从单波扩展到多波，并完成 Loop72 Wave2 的 `200` 行证据包。Wave2 source/cache `200/200`、source SHA mismatch `0`、PE parse `ok=200`，FN/FP 为 `102/98`，全部属于 high-conflict persistent error。Wave1+Wave2 合并后共 `400` 行，覆盖 current-best full-error queue `400/1868 = 21.41%`，覆盖 best-case 目标缺口 `400/1708 = 23.42%`；仍有 `1308` 个 best-case 目标缺口行未打包证据。两波 verdict 仍全部为空：blank verdict `400`、actionable rows `0`、replacement required `0`、training policy rows `0`。因此当前仍不能训练、不能替换、不能进 Test-10k；下一步只能继续打包 Wave3，或把 Waves1-2 交给独立人工/外部证据系统并通过 Loop87 导入。身份字段仍只允许定位、对齐、缓存审计和人工索引，不能作为判定依据或替换抽样依据。相关记录见 `docs/phase3_loop90_multiwave_evidence_expansion.md`。
 
+Loop91 已继续打包 Loop72 Wave3 的 `200` 行证据包。Wave3 source/cache `200/200`、source SHA mismatch `0`、PE parse `ok=200`，FN/FP 为 `27/173`，全部属于 high-conflict persistent error；这波偏 FP，补上了前两波之外的误报侧复核材料。Wave1+Wave2+Wave3 合并后共 `600` 行，覆盖 current-best full-error queue `600/1868 = 32.12%`，覆盖 best-case 目标缺口 `600/1708 = 35.13%`；仍有 `1108` 个 best-case 目标缺口行未打包证据。三波 verdict 仍全部为空：blank verdict `600`、actionable rows `0`、replacement required `0`、training policy rows `0`。因此当前仍不能训练、不能替换、不能进 Test-10k；下一步只能继续打包 Wave4，或把 Waves1-3 交给独立人工/外部证据系统并通过 Loop87 导入。manual note 必须引用内容或外部证据，单独引用文件名、路径、hash、`sample_index`、split、review rank 或模型分数会被阻断。相关记录见 `docs/phase3_loop91_wave3_evidence_expansion.md`。
+
 ## 2026-07-02 补充：命名不是证据，content PE v1 已产品化
 
 最新硬规则已经固定：文件名、路径、扩展名、目录名、`source_sha256`、`cache_path`、`sample_index`、`split` 和行顺序只能用于加载、缓存对齐、覆盖审计、去重、人工复核、以及生成一次性的人工标签清单，不能作为模型特征、二阶段融合特征、阈值捷径、自动改标证据或上线推理依据。原因是实战文件命名和训练集命名完全不是同一个分布，且攻击者改名几乎没有成本；训练集目录只能说明人工当时把样本放进哪个标签桶，不能说明文件本身因名字而恶意或良性。
