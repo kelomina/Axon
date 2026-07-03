@@ -2,6 +2,12 @@
 
 更新时间：2026-07-03
 
+## 2026-07-03 补充：Loop113 external focus annotation package
+
+Loop113 新增 `scripts/export_loop113_external_focus_annotation_package.py`，把 Loop106 focus 表导出成外部内容复核安全包：`context_csv` 只含 `blind_review_id` 和内容派生字段，`annotation_template_csv` 只含 Loop111 允许的四列表头，`reviewer_guide_json` 写明允许的 verdict/action 和禁止证据。它会移除 `loop106_focus_rank`、`loop106_focus_score`、manual 字段、身份字段和模型字段，避免外部 reviewer 或证据系统把排序分数当成 verdict 证据。
+
+真实导出 `reports/random_20w_split/loop113_external_focus_package_summary.json` 显示：rows `240`、label counts `0=207/1=33`、context field count `25`、forbidden focus columns `[]`、context header violations `[]`、context value violation count `0`，决策为 `ready_for_external_content_annotation`。随后用 header-only 模板跑 Loop112 no-op，`reports/random_20w_split/loop113_to_loop112_noop_summary.json` 仍为 `ready_noop_no_actionable_verdicts`，Loop87 actionable `0`、replacement required `0`、training/Test-10k/full-test 全部不授权。
+
 ## 2026-07-03 补充：Loop112 external focus verdict pipeline
 
 Loop112 新增 `scripts/run_loop112_external_focus_verdict_pipeline.py`，把 Loop111 外部标注导入和 Loop110 严格 focus verdict pipeline 串成单入口：先导入外部四列标注，再跑导入后 Loop109 preflight，只有通过后才允许 merge、unblind 和 Loop87 import。这样外部文件里只要混入 filename、path、hash、`source_sha256`、`sample_index`、split、probability、score、threshold 或 `loop57` 等身份/模型字段，或者 note 只引用这些伪证据，就会在 Loop110 之前被阻断。

@@ -1,0 +1,39 @@
+{
+  "schema": "axon_loop107_focus_annotation_merge_v1",
+  "protocol": "read-only focus annotation merger; no private-map read, no model fitting, no threshold selection, no automatic verdict, no split/cache mutation",
+  "identity_policy": "Focus annotations are keyed only by blind_review_id. Filename, path, extension, directory, hash, source_sha256, sample_index, split, row order, and model scores are forbidden in the focus CSV.",
+  "inputs": {
+    "full_blinded_csv": "reports\\random_20w_split\\loop96_full_queue_blinded_review.csv",
+    "focus_annotations_csv": "reports\\random_20w_split\\loop113_to_loop112_noop\\loop112_imported_focus.csv"
+  },
+  "rows": {
+    "full_blinded": 1868,
+    "expected_full": 1868,
+    "focus": 240,
+    "expected_focus": 240,
+    "annotated_focus_rows": 0,
+    "merged_annotated_rows": 0
+  },
+  "blockers": [],
+  "warnings": [],
+  "forbidden_focus_columns": [],
+  "unknown_focus_id_count": 0,
+  "unknown_focus_id_examples": [],
+  "decisions": {
+    "ready_for_loop96_unblind": true,
+    "automatic_verdict_allowed": false,
+    "automatic_relabel_allowed": false,
+    "automatic_replacement_allowed": false,
+    "training_allowed": false,
+    "test10k_allowed": false
+  },
+  "outputs": {
+    "merged_blinded_csv": "reports\\random_20w_split\\loop113_to_loop112_noop\\loop112_loop110_focus_pipeline\\loop110_merged_full_blinded.csv",
+    "summary_json": "reports\\random_20w_split\\loop113_to_loop112_noop\\loop112_loop110_focus_pipeline\\loop110_focus_merge.json"
+  },
+  "notes": [
+    "Only manual_label_verdict, manual_verdict_note, and recommended_action are merged from focus rows.",
+    "Unannotated full rows remain blank and will be treated as no_decision by Loop87 after unblinding.",
+    "This script does not read the private map. Loop96 unblind and Loop87 remain the strict downstream gates."
+  ]
+}

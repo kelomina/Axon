@@ -1,0 +1,51 @@
+{
+  "schema": "axon_loop113_external_focus_annotation_guide_v1",
+  "protocol": "Loop113 external focus annotation package export; content context plus Loop111 submission template only; no private-map read, no unblind, no model fitting, no threshold selection, no automatic verdict, no split/cache mutation",
+  "identity_policy": "The external context package may expose blind_review_id and content-derived fields only. Filename/path/directory/extension/hash/source_sha256/sample_index/split/row order/model score/rank fields are not exported and are not verdict evidence.",
+  "annotation_fields": [
+    "blind_review_id",
+    "manual_label_verdict",
+    "manual_verdict_note",
+    "recommended_action"
+  ],
+  "allowed_manual_label_verdict_examples": [
+    "",
+    "bad_feature",
+    "benign_correct",
+    "correct",
+    "corrupt",
+    "feature_broken",
+    "invalid_pe",
+    "keep",
+    "label_correct",
+    "malicious_correct",
+    "needs_more_evidence",
+    "out_of_scope",
+    "review_later",
+    "uncertain",
+    "unknown"
+  ],
+  "allowed_recommended_action_examples": [
+    "",
+    "drop",
+    "exclude",
+    "keep_label",
+    "keep_sample",
+    "model_blindspot",
+    "needs_more_evidence",
+    "quarantine",
+    "quarantine_for_more_evidence",
+    "quarantine_source_group",
+    "replace_sample",
+    "replace_with_fresh_same_label_candidate",
+    "resample"
+  ],
+  "required_note_rule": "Actionable verdicts must cite content or external evidence, not identity fields or model scores.",
+  "submission_rule": "Submit only rows with filled manual fields. Blank rows should be omitted from the Loop111 input file.",
+  "forbidden_evidence": [
+    "filename/path/directory/extension",
+    "hash/source_sha256/sample_index/split/row order",
+    "model score/probability/prediction/threshold",
+    "loop106 rank/score or review ordering"
+  ]
+}
