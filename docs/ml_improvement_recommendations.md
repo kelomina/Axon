@@ -62,6 +62,8 @@ Loop85 已把当前路线收敛成噪声策略门：Loop57 仍是当前 best ful
 
 Loop86 已把 Loop65 的 `62` 行高优先级复核批次扩展成内容证据包，输出 `reports/random_20w_split/loop86_review_evidence_package.csv` 和 summary JSON。资源 guard 首次拦截了脚本中的 `while True` 分块读取风险，已改为哨兵迭代后复跑通过；单测 `2 passed`。真实证据包结果：源文件存在 `62/62`、cache 存在 `62/62`、source SHA mismatch `0`、PE parse `ok=62`、manual fields 仍为空。内容标签中 `overlay_present=40`、`high_overlay_entropy=34`、`has_security_directory=29`、`overlay_after_security_present=14`。这些是人工/外部复核用的内容事实，不是自动改标证据；Loop86 明确禁止从该包训练、融合、调阈值、自动替换或进入 Test-10k。相关记录见 `docs/phase3_loop86_review_evidence_package.md`。
 
+Loop87 已补上 Loop86 证据包后的严格 verdict 导入闸门。它验证 `62` 行证据表、重复 `sample_index`/review rank、verdict/action 合法性，以及 `manual_verdict_note` 是否包含内容或外部证据；如果 note 只引用文件名、路径、目录、hash、`sample_index`、split、review rank、Loop57 分数、模型概率或阈值，就会阻断。真实导入当前为 no-op：`import_ready=true`、`decision=ready_noop_no_actionable_verdicts`、blank verdict `62`、invalid rows `0`、replacement required `0`、training policy rows `0`。因此当前仍不能重抽、不能构建 corrected split、不能训练，也不能进入 Test-10k；只有独立人工/外部 verdict 确认 `label_wrong/feature_broken/out_of_scope` 后，才允许生成非破坏性 fresh redraw 计划。相关记录见 `docs/phase3_loop87_review_evidence_verdict_import.md`。
+
 ## 2026-07-02 补充：命名不是证据，content PE v1 已产品化
 
 最新硬规则已经固定：文件名、路径、扩展名、目录名、`source_sha256`、`cache_path`、`sample_index`、`split` 和行顺序只能用于加载、缓存对齐、覆盖审计、去重、人工复核、以及生成一次性的人工标签清单，不能作为模型特征、二阶段融合特征、阈值捷径、自动改标证据或上线推理依据。原因是实战文件命名和训练集命名完全不是同一个分布，且攻击者改名几乎没有成本；训练集目录只能说明人工当时把样本放进哪个标签桶，不能说明文件本身因名字而恶意或良性。
