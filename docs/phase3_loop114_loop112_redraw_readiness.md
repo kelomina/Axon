@@ -100,3 +100,35 @@ Loop114 对正式 20w 协议采用 full-error data-governance 策略：
 Loop114 已经把“这些文件不合格就重新抽，而不是拿这些样本补齐”的规则固化成只读门控。
 
 当前真实状态仍没有独立 actionable verdict，因此不能进入 redraw、训练、Test-10k 或 full-test。下一步仍是收集独立内容/外部证据标注，再跑 Loop112 和 Loop114；只有出现 confirmed bad row，才允许进入同原始标签 fresh redraw 候选池构建。
+
+## Loop115 下游 hash 严格化
+
+Loop115 补强了 Loop114 之后的 corrected split 链路：
+
+- `build_corrected_split_from_plan.py` 输出 corrected split 时保留 `source_sha256`
+- replacement row 会从 candidate pool 带入内容 hash
+- `audit_corrected_split_replacements.py` 的 detail 输出包含 `source_sha256`
+- `audit_corrected_split_cache_ready.py` 在 metadata validation 开启时，若 corrected split 行缺少有效 `source_sha256`，会产生 `split_missing_source_sha256` 或 `split_invalid_source_sha256` 并阻断 cache_ready
+
+这里的 hash 仍然不是恶意/良性证据，只是为了证明 split、manifest 和 NPZ 指向同一个实际内容，避免路径或文件名变化导致误对齐。
+
+验证：
+
+```powershell
+.\vnev\Scripts\python.exe scripts/pre_run_resource_leak_guard.py --target-script scripts/build_corrected_split_from_plan.py --target-script scripts/audit_corrected_split_replacements.py --target-script scripts/audit_corrected_split_cache_ready.py --target-script tests/test_build_corrected_split_from_plan.py --target-script tests/test_audit_corrected_split_replacements.py --target-script tests/test_audit_corrected_split_cache_ready.py --output-json reports/random_20w_split/loop115_hash_strict_redraw_guard.json --allow-risk npz_array_load
+```
+
+结果：`guard_ready=true`。
+
+```powershell
+.\vnev\Scripts\python.exe -m pytest tests/test_build_corrected_split_from_plan.py tests/test_audit_corrected_split_replacements.py tests/test_audit_corrected_split_cache_ready.py tests/test_run_loop114_loop112_redraw_readiness.py tests/test_build_loop76_redraw_readiness.py -q
+```
+
+结果：`53 passed`。
+
+真实 no-op 复跑：
+
+- `reports/random_20w_split/loop115_loop112_redraw_readiness_noop_summary.json`
+- decision: `await_external_verdicts`
+- replacement_required: `0`
+- Train/Val、Test-10k、full-test 仍全部不授权

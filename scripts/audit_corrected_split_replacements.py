@@ -35,6 +35,7 @@ from apply_manual_review_verdicts import source_keys  # noqa: E402
 DETAIL_FIELDNAMES = [
     "record_type",
     "source_path",
+    "source_sha256",
     "label",
     "sample_index",
     "split",
@@ -186,6 +187,7 @@ def _detail(row: dict, record_type: str, status: str, reason: str) -> dict:
     return {
         "record_type": record_type,
         "source_path": row.get("source_path", ""),
+        "source_sha256": row.get("source_sha256", ""),
         "label": row.get("label", row.get("original_label", "")),
         "sample_index": row.get("sample_index", ""),
         "split": row.get("split", ""),

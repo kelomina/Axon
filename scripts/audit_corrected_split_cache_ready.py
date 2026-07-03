@@ -32,6 +32,7 @@ REQUIRED_NPZ_FIELDS = [
 ]
 METADATA_DETAIL_FIELDNAMES = [
     "source_path",
+    "source_sha256",
     "label",
     "sample_index",
     "split",
@@ -191,6 +192,15 @@ def audit_npz_metadata(
     return issues, shape_skipped
 
 
+def split_row_sha_issue(row: dict) -> str:
+    split_sha = str(row.get("source_sha256") or "").strip().casefold()
+    if not split_sha:
+        return "split_missing_source_sha256"
+    if len(split_sha) != 64 or any(char not in "0123456789abcdef" for char in split_sha):
+        return "split_invalid_source_sha256"
+    return ""
+
+
 def split_summary(rows: Sequence[dict]) -> dict:
     return {
         "rows": len(rows),
@@ -272,6 +282,7 @@ def audit_corrected_split_cache_ready(
 
     for row in rows:
         sample, reason = lookup_sample(row, manifest_lookup)
+        split_sha_issue = split_row_sha_issue(row)
         if sample is None:
             missing = {**row, "reason": reason, "expected_cache_path": ""}
             missing_rows.append(missing)
@@ -294,12 +305,14 @@ def audit_corrected_split_cache_ready(
         match_counts[reason] += 1
         if validate_cache_metadata:
             metadata_checked_rows += 1
+            pre_issues = [split_sha_issue] if split_sha_issue else []
             issues, skipped_shapes = audit_npz_metadata(
                 row=row,
                 sample=sample,
                 manifest=manifest,
                 cache_path=cache_path,
             )
+            issues = pre_issues + issues
             for field in skipped_shapes:
                 shape_check_skipped_counts[field] += 1
             if issues:

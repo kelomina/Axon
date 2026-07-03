@@ -29,7 +29,7 @@ def _write_csv(path: Path, fieldnames: list[str], rows: list[dict]) -> None:
         writer.writerows(rows)
 
 
-SPLIT_FIELDS = ["source_path", "label", "sample_index", "split"]
+SPLIT_FIELDS = ["source_path", "source_sha256", "label", "sample_index", "split"]
 PLAN_FIELDS = [
     "source_path",
     "source_sha256",
@@ -44,14 +44,18 @@ PLAN_FIELDS = [
 ]
 
 
+def _sha(char: str) -> str:
+    return char * 64
+
+
 def test_empty_plan_reports_integrity_ok_with_shape_disabled():
     with _case_dir("replacement_audit_empty") as tmp_path:
         original_csv = tmp_path / "original.csv"
         corrected_csv = tmp_path / "corrected.csv"
         plan_csv = tmp_path / "plan.csv"
         rows = [
-            {"source_path": "data/a.exe", "label": "0", "sample_index": "0", "split": "train"},
-            {"source_path": "data/b.exe", "label": "1", "sample_index": "1", "split": "val"},
+            {"source_path": "data/a.exe", "source_sha256": _sha("a"), "label": "0", "sample_index": "0", "split": "train"},
+            {"source_path": "data/b.exe", "source_sha256": _sha("b"), "label": "1", "sample_index": "1", "split": "val"},
         ]
         _write_csv(original_csv, SPLIT_FIELDS, rows)
         _write_csv(corrected_csv, SPLIT_FIELDS, rows)
@@ -79,16 +83,16 @@ def test_replacement_audit_accepts_fresh_same_split_label_replacement():
             original_csv,
             SPLIT_FIELDS,
             [
-                {"source_path": "data/good.exe", "label": "0", "sample_index": "0", "split": "train"},
-                {"source_path": "data/bad.exe", "label": "1", "sample_index": "1", "split": "val"},
+                {"source_path": "data/good.exe", "source_sha256": _sha("a"), "label": "0", "sample_index": "0", "split": "train"},
+                {"source_path": "data/bad.exe", "source_sha256": _sha("b"), "label": "1", "sample_index": "1", "split": "val"},
             ],
         )
         _write_csv(
             corrected_csv,
             SPLIT_FIELDS,
             [
-                {"source_path": "data/good.exe", "label": "0", "sample_index": "0", "split": "train"},
-                {"source_path": "data/fresh.exe", "label": "1", "sample_index": "1", "split": "val"},
+                {"source_path": "data/good.exe", "source_sha256": _sha("a"), "label": "0", "sample_index": "0", "split": "train"},
+                {"source_path": "data/fresh.exe", "source_sha256": _sha("c"), "label": "1", "sample_index": "1", "split": "val"},
             ],
         )
         _write_csv(
@@ -97,7 +101,7 @@ def test_replacement_audit_accepts_fresh_same_split_label_replacement():
             [
                 {
                     "source_path": "data/bad.exe",
-                    "source_sha256": "",
+                    "source_sha256": _sha("b"),
                     "sample_index": "1",
                     "split": "val",
                     "original_label": "1",
@@ -110,12 +114,15 @@ def test_replacement_audit_accepts_fresh_same_split_label_replacement():
             ],
         )
 
+        detail_csv = tmp_path / "detail.csv"
         payload = audit_corrected_split_replacements(
             original_split_csv=original_csv,
             corrected_split_csv=corrected_csv,
             plan_csv=plan_csv,
+            detail_output_csv=detail_csv,
             enforce_shape=False,
         )
+        detail_rows = list(csv.DictReader(detail_csv.open("r", encoding="utf-8-sig", newline="")))
 
     assert payload["replacement_integrity_ok"] is True
     assert payload["replacement_requests"] == 1
@@ -124,6 +131,8 @@ def test_replacement_audit_accepts_fresh_same_split_label_replacement():
     assert payload["fresh_replacement_rows"] == 1
     assert payload["replacement_request_counts_by_split_label"] == {"val:1": 1}
     assert payload["fresh_replacement_counts_by_split_label"] == {"val:1": 1}
+    assert "source_sha256" in detail_rows[0]
+    assert any(row["record_type"] == "fresh_replacement" and row["source_sha256"] == _sha("c") for row in detail_rows)
 
 
 def test_replacement_audit_rejects_self_replacement():

@@ -29,7 +29,7 @@ EXPECTED_LABEL_SPLIT_COUNTS = {
     "test": {"0": 80000, "1": 80000},
 }
 SPLIT_ORDER = {"train": 0, "val": 1, "test": 2}
-OUTPUT_FIELDNAMES = ["source_path", "label", "sample_index", "split"]
+OUTPUT_FIELDNAMES = ["source_path", "source_sha256", "label", "sample_index", "split"]
 ALLOWED_PLAN_ACTIONS = {"keep_label", "relabel", "exclude_and_replace"}
 BLOCKED_PLAN_ACTIONS = {"needs_manual_target_label", "held_out_test_verdict_only"}
 
@@ -280,6 +280,7 @@ def choose_replacements(
         selected.append(
             {
                 "source_path": candidate["source_path"],
+                "source_sha256": candidate["source_sha256"],
                 "label": label,
                 "split": request["split"],
                 "replacement_for_sample_index": request.get("sample_index", ""),
@@ -393,6 +394,7 @@ def build_corrected_split(
     corrected_rows = kept_rows + [
         {
             "source_path": row["source_path"],
+            "source_sha256": row["source_sha256"],
             "label": row["label"],
             "split": row["split"],
             "sample_index": "",

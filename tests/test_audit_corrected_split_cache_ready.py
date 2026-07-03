@@ -310,6 +310,37 @@ def test_cache_metadata_source_sha_mismatch_blocks():
     assert payload["metadata_issue_counts"]["source_sha256_mismatch_npz_manifest"] == 1
 
 
+def test_cache_metadata_missing_split_source_sha_blocks_even_when_path_matches():
+    with _case_dir("corrected_cache_missing_split_sha") as tmp_path:
+        cache_path = tmp_path / "cache" / "a.npz"
+        _write_cache_npz(cache_path, label=0, source_sha256="a" * 64)
+        source_path = tmp_path / "data" / "renamable-file-name.exe"
+        manifest_path = tmp_path / "manifest.json"
+        manifest_path.write_text(
+            json.dumps(
+                _manifest_payload(
+                    [{"source_path": str(source_path), "source_sha256": "a" * 64, "label": 0, "cache_path": str(cache_path)}]
+                )
+            ),
+            encoding="utf-8",
+        )
+        split_csv = tmp_path / "split.csv"
+        _write_split(
+            split_csv,
+            [{"source_path": str(source_path), "source_sha256": "", "label": "0", "sample_index": "0", "split": "train"}],
+        )
+
+        payload = audit_corrected_split_cache_ready(
+            split_csv=split_csv,
+            manifest_json=manifest_path,
+            enforce_shape=False,
+        )
+
+    assert payload["cache_ready"] is False
+    assert payload["manifest_match_counts"] == {"source_path": 1}
+    assert payload["metadata_issue_counts"]["split_missing_source_sha256"] == 1
+
+
 def test_cache_metadata_missing_required_field_blocks():
     with _case_dir("corrected_cache_missing_field") as tmp_path:
         cache_path = tmp_path / "cache" / "a.npz"
