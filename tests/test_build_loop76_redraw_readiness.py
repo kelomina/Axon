@@ -149,6 +149,11 @@ def _cache_ready_payload(*, ready: bool = True) -> dict:
         "missing_split_counts": {} if ready else {"test": 1},
         "missing_reason_counts": {} if ready else {"manifest_missing": 1},
         "missing_cache_output": "missing.csv",
+        "cache_metadata_validation_enabled": True,
+        "metadata_checked_rows": 200000 if ready else 199999,
+        "metadata_failure_rows": 0,
+        "metadata_issue_counts": {},
+        "metadata_issue_output": "metadata_issues.csv",
         "label_balance_enforced": True,
         "label_balance_drift": [],
     }
@@ -250,6 +255,7 @@ def test_replacement_plan_requires_candidate_pool_first():
     assert "--required-label0 2" in payload["commands"]["build_replacement_candidate_pool"]
     assert "--enforce-label-balance" in payload["commands"]["audit_replacements"]
     assert "--enforce-label-balance" in payload["commands"]["audit_cache_ready"]
+    assert "--metadata-issue-output" in payload["commands"]["audit_cache_ready"]
 
 
 def test_candidate_shortfall_blocks_redraw():
@@ -336,3 +342,47 @@ def test_cache_ready_without_label_balance_blocks():
 
     assert payload["decision"] == "blocked_cache_readiness"
     assert payload["strict_failures"] == ["cache_ready_label_balance_not_enforced"]
+
+
+def test_cache_ready_without_metadata_validation_blocks():
+    with _case_dir("loop76_cache_metadata_disabled") as tmp_path:
+        cache = _cache_ready_payload(ready=True)
+        cache["cache_metadata_validation_enabled"] = False
+        payload = _build(
+            tmp_path,
+            import_payload=_import_payload(),
+            adjustment_payload=_adjustment_payload(replacement_required=2),
+            candidate=_candidate_payload(enough=True),
+            corrected=_corrected_payload(),
+            replacement=_replacement_audit_payload(ok=True),
+            cache=cache,
+        )
+
+    assert payload["decision"] == "blocked_cache_readiness"
+    assert payload["strict_failures"] == ["cache_metadata_validation_not_enabled"]
+
+
+def test_cache_metadata_failures_block_redraw_not_cache_recovery():
+    with _case_dir("loop76_cache_metadata_failures") as tmp_path:
+        cache = _cache_ready_payload(ready=False)
+        cache["covered_rows"] = 200000
+        cache["missing_rows"] = 0
+        cache["coverage_ratio"] = 1.0
+        cache["missing_label_counts"] = {}
+        cache["missing_split_counts"] = {}
+        cache["missing_reason_counts"] = {}
+        cache["metadata_failure_rows"] = 2
+        cache["metadata_issue_counts"] = {"label_mismatch": 1, "shape_mismatch": 1}
+        payload = _build(
+            tmp_path,
+            import_payload=_import_payload(),
+            adjustment_payload=_adjustment_payload(replacement_required=2),
+            candidate=_candidate_payload(enough=True),
+            corrected=_corrected_payload(),
+            replacement=_replacement_audit_payload(ok=True),
+            cache=cache,
+        )
+
+    assert payload["decision"] == "blocked_cache_readiness"
+    assert payload["strict_failures"] == ["cache_metadata_failures_present"]
+    assert payload["next_step"] == "quarantine_bad_cache_rows_then_redraw_same_label"

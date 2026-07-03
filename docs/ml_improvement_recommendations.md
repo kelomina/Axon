@@ -2,6 +2,14 @@
 
 更新时间：2026-07-03
 
+## 2026-07-03 补充：Loop100 full cache metadata readiness
+
+Loop100 把 corrected split 的 cache readiness 从“文件存在”升级成“文件存在且内部元数据一致”。`scripts/audit_corrected_split_cache_ready.py` 现在默认打开每个 NPZ 的轻量元数据，检查必需字段、`label`、`source_sha256`，并用 `.npy` 头信息核对 `byte_sequence / pe_features / stat_features / lightweight_features` 的原始 shape，不做完整数值数组扫描、不加载模型、不使用 CUDA。显式跳过只能通过 `--no-validate-cache-metadata`，Loop76 会把未启用 metadata 校验的 cache readiness 视为阻断项。
+
+真实 20w 复验已完成：`reports/random_20w_split/loop100_cache_ready_metadata.json` 显示 `total_rows=200000`、`covered_rows=200000`、`missing_rows=0`、`metadata_checked_rows=200000`、`metadata_failure_rows=0`、`cache_ready=true`，并且强制 label balance 后仍保持 train/val/test `20000/20000/160000`、每个 split 黑白平衡。空明细文件分别是 `reports/random_20w_split/loop100_cache_ready_missing_cache.csv` 和 `reports/random_20w_split/loop100_cache_ready_metadata_issues.csv`。
+
+这次补强直接回应“坏文件/坏特征不能拿来补齐”的要求：若以后发现 NPZ 内部 label/hash/shape 错位，Loop76 不再把它当作普通 missing cache 去补，而是阻断为 `cache_metadata_failures_present`，下一步只能 quarantine 这些坏行，并从 locked manifest 的同原始标签池 fresh redraw，重新生成严格 `200000` split/cache 后再走 Val-first。路径、文件名、目录、后缀和 hash 仍然只允许用于加载、对齐、cache audit、重复检测和复核索引，不能作为恶意/良性证据，也不能作为模型、阈值、融合、GA feature mask 或自动 verdict 的输入。
+
 ## 2026-07-03 补充：Loop98 identity-safe route audit
 
 Loop98 已把当前路线做成只读总闸：不训练、不调阈值、不加载模型、不打开 NPZ 数组、不改 split/cache，只汇总 Loop79/80/85/95/96/97 的证据。真实输出是 `reports/random_20w_split/loop98_identity_safe_route_audit.json`，当前决策为 `await_independent_blinded_verdicts`。

@@ -182,6 +182,11 @@ def summarize_cache_ready(cache_payload: dict[str, Any]) -> dict[str, Any]:
         "missing_split_counts": dict(cache_payload.get("missing_split_counts", {})),
         "missing_reason_counts": dict(cache_payload.get("missing_reason_counts", {})),
         "missing_cache_output": cache_payload.get("missing_cache_output"),
+        "cache_metadata_validation_enabled": bool(cache_payload.get("cache_metadata_validation_enabled", False)),
+        "metadata_checked_rows": _int(cache_payload.get("metadata_checked_rows")),
+        "metadata_failure_rows": _int(cache_payload.get("metadata_failure_rows")),
+        "metadata_issue_counts": dict(cache_payload.get("metadata_issue_counts", {})),
+        "metadata_issue_output": cache_payload.get("metadata_issue_output"),
         "label_balance_enforced": bool(cache_payload.get("label_balance_enforced", False)),
         "label_balance_drift": list(cache_payload.get("label_balance_drift", [])),
     }
@@ -263,6 +268,7 @@ def command_for_cache_ready(
         f" --split-csv {corrected_split_csv}"
         f" --manifest-json {manifest_json}"
         f" --missing-cache-output {output_prefix}_missing_cache.csv"
+        f" --metadata-issue-output {output_prefix}_cache_metadata_issues.csv"
         f" --output-json {output_prefix}_cache_ready.json"
         f" --strict{balance}"
     )
@@ -336,6 +342,10 @@ def decide(payload: dict[str, Any]) -> tuple[str, list[str], str]:
         return "blocked_replacement_integrity", ["replacement_integrity_label_balance_not_enforced"], "rerun_replacement_audit_with_label_balance"
     if not cache["provided"]:
         return "needs_cache_readiness_audit", [], "audit_corrected_split_cache_ready"
+    if not cache["cache_metadata_validation_enabled"]:
+        return "blocked_cache_readiness", ["cache_metadata_validation_not_enabled"], "rerun_cache_ready_with_metadata_validation"
+    if cache["metadata_failure_rows"]:
+        return "blocked_cache_readiness", ["cache_metadata_failures_present"], "quarantine_bad_cache_rows_then_redraw_same_label"
     if not cache["cache_ready"]:
         return "needs_cache_recovery", [], "recover_missing_cache_then_rerun_cache_ready"
     if not cache["label_balance_enforced"]:

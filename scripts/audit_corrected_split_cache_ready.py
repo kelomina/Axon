@@ -7,9 +7,12 @@ import argparse
 import csv
 import json
 import sys
+import zipfile
 from collections import Counter
 from pathlib import Path
-from typing import Optional, Sequence
+from typing import Any, Optional, Sequence
+
+import numpy as np
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -20,6 +23,22 @@ EXPECTED_LABEL_SPLIT_COUNTS = {
     "val": {"0": 10000, "1": 10000},
     "test": {"0": 80000, "1": 80000},
 }
+REQUIRED_NPZ_FIELDS = [
+    "byte_sequence",
+    "pe_features",
+    "stat_features",
+    "label",
+    "source_sha256",
+]
+METADATA_DETAIL_FIELDNAMES = [
+    "source_path",
+    "label",
+    "sample_index",
+    "split",
+    "manifest_match_reason",
+    "expected_cache_path",
+    "issue_flags",
+]
 
 if str(PROJECT_ROOT / "scripts") not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT / "scripts"))
@@ -36,7 +55,7 @@ def read_csv_rows(path: Path) -> list[dict]:
         return list(csv.DictReader(handle))
 
 
-def load_manifest_lookup(manifest_json: Path) -> dict[str, dict]:
+def load_manifest(manifest_json: Path) -> tuple[dict[str, Any], dict[str, dict[str, Any]]]:
     manifest = json.loads(resolve_path(manifest_json).read_text(encoding="utf-8"))
     lookup: dict[str, dict] = {}
     for sample in manifest.get("samples", []):
@@ -46,7 +65,7 @@ def load_manifest_lookup(manifest_json: Path) -> dict[str, dict]:
         }
         for key in source_keys(row):
             lookup.setdefault(key, sample)
-    return lookup
+    return manifest, lookup
 
 
 def lookup_sample(row: dict, manifest_lookup: dict[str, dict]) -> tuple[Optional[dict], str]:
@@ -57,6 +76,119 @@ def lookup_sample(row: dict, manifest_lookup: dict[str, dict]) -> tuple[Optional
                 return sample, "source_sha256"
             return sample, "source_path"
     return None, "manifest_missing"
+
+
+def scalar_text(value: Any) -> str:
+    array = np.asarray(value)
+    if array.shape == ():
+        return str(array.item())
+    return str(value)
+
+
+def parse_label(value: Any) -> Optional[int]:
+    try:
+        return int(str(value).strip())
+    except (TypeError, ValueError):
+        return None
+
+
+def expected_shapes(manifest: dict[str, Any]) -> dict[str, tuple[int, ...]]:
+    shapes: dict[str, tuple[int, ...]] = {}
+    for field, manifest_key in [
+        ("byte_sequence", "max_byte_length"),
+        ("pe_features", "pe_feature_dim"),
+        ("stat_features", "stat_feature_dim"),
+        ("lightweight_features", "lightweight_feature_dim"),
+    ]:
+        value = int(manifest.get(manifest_key, 0) or 0)
+        if value > 0:
+            shapes[field] = (value,)
+    return shapes
+
+
+def read_npz_array_header(zf: zipfile.ZipFile, field: str) -> tuple[tuple[int, ...], np.dtype]:
+    member = f"{field}.npy"
+    with zf.open(member, "r") as handle:
+        version = np.lib.format.read_magic(handle)
+        if version == (1, 0):
+            shape, _fortran_order, dtype = np.lib.format.read_array_header_1_0(handle)
+        elif version in {(2, 0), (3, 0)}:
+            shape, _fortran_order, dtype = np.lib.format.read_array_header_2_0(handle)
+        else:
+            raise ValueError(f"unsupported_npy_header_version:{version}")
+    return tuple(int(part) for part in shape), np.dtype(dtype)
+
+
+def audit_npz_metadata(
+    *,
+    row: dict,
+    sample: dict[str, Any],
+    manifest: dict[str, Any],
+    cache_path: Path,
+) -> tuple[list[str], list[str]]:
+    issues: list[str] = []
+    shape_skipped: list[str] = []
+
+    try:
+        with zipfile.ZipFile(cache_path, "r") as zf:
+            npz_fields = {
+                Path(info.filename).stem
+                for info in zf.infolist()
+                if info.filename.endswith(".npy")
+            }
+            missing_fields = [field for field in REQUIRED_NPZ_FIELDS if field not in npz_fields]
+            if missing_fields:
+                issues.append("npz_missing_fields:" + "|".join(missing_fields))
+
+            for field, expected_shape in expected_shapes(manifest).items():
+                if field not in npz_fields:
+                    if field in REQUIRED_NPZ_FIELDS:
+                        issues.append(f"shape_missing_required_field:{field}")
+                    else:
+                        shape_skipped.append(field)
+                    continue
+                actual_shape, _dtype = read_npz_array_header(zf, field)
+                if actual_shape != expected_shape:
+                    issues.append(f"shape_mismatch:{field}:actual={actual_shape}:expected={expected_shape}")
+    except Exception as exc:
+        return [f"npz_header_error:{type(exc).__name__}"], shape_skipped
+
+    try:
+        with np.load(cache_path, allow_pickle=False) as data:
+            if "label" in data.files:
+                split_label = parse_label(row.get("label"))
+                manifest_label = parse_label(sample.get("label"))
+                npz_label = parse_label(np.asarray(data["label"]).item())
+                if split_label not in {0, 1}:
+                    issues.append(f"split_label_invalid:{row.get('label', '')}")
+                if manifest_label not in {0, 1}:
+                    issues.append(f"manifest_label_invalid:{sample.get('label', '')}")
+                if npz_label not in {0, 1}:
+                    issues.append(f"npz_label_invalid:{npz_label}")
+                if (
+                    split_label in {0, 1}
+                    and manifest_label in {0, 1}
+                    and npz_label in {0, 1}
+                    and not (split_label == manifest_label == npz_label)
+                ):
+                    issues.append(f"label_mismatch:split={split_label}:manifest={manifest_label}:npz={npz_label}")
+
+            manifest_sha = str(sample.get("source_sha256") or "").strip().casefold()
+            split_sha = str(row.get("source_sha256") or "").strip().casefold()
+            if not manifest_sha:
+                issues.append("manifest_missing_source_sha256")
+            if "source_sha256" in data.files:
+                npz_sha = scalar_text(data["source_sha256"]).strip().casefold()
+                if not npz_sha:
+                    issues.append("npz_missing_source_sha256_value")
+                if manifest_sha and npz_sha and npz_sha != manifest_sha:
+                    issues.append("source_sha256_mismatch_npz_manifest")
+            if split_sha and manifest_sha and split_sha != manifest_sha:
+                issues.append("source_sha256_mismatch_split_manifest")
+    except Exception as exc:
+        issues.append(f"npz_scalar_error:{type(exc).__name__}")
+
+    return issues, shape_skipped
 
 
 def split_summary(rows: Sequence[dict]) -> dict:
@@ -87,6 +219,15 @@ def write_missing_rows(path: Path, rows: Sequence[dict]) -> None:
         writer.writerows(rows)
 
 
+def write_metadata_issue_rows(path: Path, rows: Sequence[dict]) -> None:
+    resolved = resolve_path(path)
+    resolved.parent.mkdir(parents=True, exist_ok=True)
+    with resolved.open("w", encoding="utf-8-sig", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=METADATA_DETAIL_FIELDNAMES, extrasaction="ignore", lineterminator="\n")
+        writer.writeheader()
+        writer.writerows(rows)
+
+
 def validate_split_shape(
     rows: Sequence[dict],
     *,
@@ -111,17 +252,23 @@ def audit_corrected_split_cache_ready(
     split_csv: Path,
     manifest_json: Path,
     missing_cache_output: Optional[Path] = None,
+    metadata_issue_output: Optional[Path] = None,
     enforce_shape: bool = True,
     enforce_label_balance: bool = False,
+    validate_cache_metadata: bool = True,
 ) -> dict:
     rows = read_csv_rows(split_csv)
-    manifest_lookup = load_manifest_lookup(manifest_json)
+    manifest, manifest_lookup = load_manifest(manifest_json)
     manifest_dir = resolve_path(manifest_json).parent
     missing_rows: list[dict] = []
+    metadata_issue_rows: list[dict] = []
     match_counts: Counter[str] = Counter()
     missing_label_counts: Counter[str] = Counter()
     missing_split_counts: Counter[str] = Counter()
     missing_reason_counts: Counter[str] = Counter()
+    metadata_issue_counts: Counter[str] = Counter()
+    shape_check_skipped_counts: Counter[str] = Counter()
+    metadata_checked_rows = 0
 
     for row in rows:
         sample, reason = lookup_sample(row, manifest_lookup)
@@ -145,9 +292,32 @@ def audit_corrected_split_cache_ready(
             continue
 
         match_counts[reason] += 1
+        if validate_cache_metadata:
+            metadata_checked_rows += 1
+            issues, skipped_shapes = audit_npz_metadata(
+                row=row,
+                sample=sample,
+                manifest=manifest,
+                cache_path=cache_path,
+            )
+            for field in skipped_shapes:
+                shape_check_skipped_counts[field] += 1
+            if issues:
+                metadata_issue_rows.append(
+                    {
+                        **row,
+                        "manifest_match_reason": reason,
+                        "expected_cache_path": str(cache_path),
+                        "issue_flags": "|".join(issues),
+                    }
+                )
+                for issue in issues:
+                    metadata_issue_counts[issue.split(":", 1)[0]] += 1
 
     if missing_cache_output is not None:
         write_missing_rows(missing_cache_output, missing_rows)
+    if metadata_issue_output is not None:
+        write_metadata_issue_rows(metadata_issue_output, metadata_issue_rows)
 
     covered = len(rows) - len(missing_rows)
     shape_failures = (
@@ -182,6 +352,14 @@ def audit_corrected_split_cache_ready(
         "missing_rows": len(missing_rows),
         "coverage_ratio": float(covered / len(rows)) if rows else 0.0,
         "manifest_match_counts": dict(sorted(match_counts.items())),
+        "cache_metadata_validation_enabled": bool(validate_cache_metadata),
+        "metadata_checked_rows": metadata_checked_rows,
+        "metadata_failure_rows": len(metadata_issue_rows),
+        "metadata_issue_counts": dict(sorted(metadata_issue_counts.items())),
+        "metadata_issue_examples": metadata_issue_rows[:20],
+        "metadata_issue_output": str(resolve_path(metadata_issue_output)) if metadata_issue_output is not None else None,
+        "manifest_declared_shapes": {key: list(value) for key, value in expected_shapes(manifest).items()},
+        "shape_check_skipped_counts": dict(sorted(shape_check_skipped_counts.items())),
         "missing_label_counts": dict(sorted(missing_label_counts.items())),
         "missing_split_counts": dict(sorted(missing_split_counts.items())),
         "missing_reason_counts": dict(sorted(missing_reason_counts.items())),
@@ -189,10 +367,20 @@ def audit_corrected_split_cache_ready(
         "label_balance_enforced": bool(enforce_label_balance),
         "label_balance_drift": label_balance_drift,
         "shape_failures": shape_failures,
-        "cache_ready": not shape_failures and not missing_rows,
+        "cache_ready": not shape_failures and not missing_rows and (not validate_cache_metadata or not metadata_issue_rows),
+        "memory_leak_profile": {
+            "loads_model": False,
+            "uses_cuda": False,
+            "opens_npz_files": bool(validate_cache_metadata),
+            "npz_scope": "full_split_metadata_only" if validate_cache_metadata else "disabled",
+            "reads_large_arrays": False,
+            "scans_raw_data": False,
+        },
         "notes": [
             "cache_ready=true is required before training from a corrected split.",
             "Missing rows should be passed to the cache recovery/extraction flow before rerunning training.",
+            "Cache metadata validation checks NPZ fields, label, source_sha256, and declared array shapes without full numeric array scans.",
+            "Identity fields are used only for loading/alignment/cache audit, never as model or verdict evidence.",
             "Label balance is reported separately unless --enforce-label-balance is set.",
         ],
     }
@@ -205,7 +393,13 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--manifest-json", type=Path, required=True)
     parser.add_argument("--output-json", type=Path, required=True)
     parser.add_argument("--missing-cache-output", type=Path, default=None)
+    parser.add_argument("--metadata-issue-output", type=Path, default=None)
     parser.add_argument("--no-enforce-shape", action="store_true")
+    parser.add_argument(
+        "--no-validate-cache-metadata",
+        action="store_true",
+        help="Compatibility escape hatch. Strict audits should keep metadata validation enabled.",
+    )
     parser.add_argument(
         "--enforce-label-balance",
         action="store_true",
@@ -221,8 +415,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         split_csv=args.split_csv,
         manifest_json=args.manifest_json,
         missing_cache_output=args.missing_cache_output,
+        metadata_issue_output=args.metadata_issue_output,
         enforce_shape=not bool(args.no_enforce_shape),
         enforce_label_balance=bool(args.enforce_label_balance),
+        validate_cache_metadata=not bool(args.no_validate_cache_metadata),
     )
     output_json = resolve_path(args.output_json)
     output_json.parent.mkdir(parents=True, exist_ok=True)
