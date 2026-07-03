@@ -9,6 +9,7 @@ sample indexes, split names, and row order are not model inputs.
 from __future__ import annotations
 
 import argparse
+import gc
 import json
 import pickle
 import sys
@@ -377,6 +378,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     checkpoint = load_safe_checkpoint(resolve_path(args.checkpoint), map_location="cpu")
     checkpoint_config = AxonExperimentConfig.from_dict(dict(checkpoint["config"]))
+    checkpoint = None
+    gc.collect()
 
     feature_config = FeatureConfig(
         prefix_len=max(0, int(args.prefix_len)),
