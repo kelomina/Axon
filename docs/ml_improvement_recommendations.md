@@ -64,6 +64,8 @@ Loop86 已把 Loop65 的 `62` 行高优先级复核批次扩展成内容证据�
 
 Loop87 已补上 Loop86 证据包后的严格 verdict 导入闸门。它验证 `62` 行证据表、重复 `sample_index`/review rank、verdict/action 合法性，以及 `manual_verdict_note` 是否包含内容或外部证据；如果 note 只引用文件名、路径、目录、hash、`sample_index`、split、review rank、Loop57 分数、模型概率或阈值，就会阻断。真实导入当前为 no-op：`import_ready=true`、`decision=ready_noop_no_actionable_verdicts`、blank verdict `62`、invalid rows `0`、replacement required `0`、training policy rows `0`。因此当前仍不能重抽、不能构建 corrected split、不能训练，也不能进入 Test-10k；只有独立人工/外部 verdict 确认 `label_wrong/feature_broken/out_of_scope` 后，才允许生成非破坏性 fresh redraw 计划。相关记录见 `docs/phase3_loop87_review_evidence_verdict_import.md`。
 
+Loop88 把证据覆盖率量化到 full-error 级别：Loop63/Loop72 已覆盖同一批 `1868` 个 current-best 错误，唯一键 `1868/1868`，但 Loop86 首批证据包只覆盖 `62/1868 = 3.32%`，也只覆盖 best-case 目标缺口 `62/1708 = 3.63%`。Loop87 对这 `62` 行仍是空 verdict no-op，replacement required `0`。这说明当前瓶颈不是再调模型分数，而是证据覆盖规模；若要继续冲 `0.999`，至少还要把 Loop86-style 证据包扩展约 `1646` 行才覆盖 best-case 缺口，或扩展 `1806` 行覆盖全部 current-best 错误。相关记录见 `docs/phase3_loop88_full_error_evidence_coverage.md`。
+
 ## 2026-07-02 补充：命名不是证据，content PE v1 已产品化
 
 最新硬规则已经固定：文件名、路径、扩展名、目录名、`source_sha256`、`cache_path`、`sample_index`、`split` 和行顺序只能用于加载、缓存对齐、覆盖审计、去重、人工复核、以及生成一次性的人工标签清单，不能作为模型特征、二阶段融合特征、阈值捷径、自动改标证据或上线推理依据。原因是实战文件命名和训练集命名完全不是同一个分布，且攻击者改名几乎没有成本；训练集目录只能说明人工当时把样本放进哪个标签桶，不能说明文件本身因名字而恶意或良性。
