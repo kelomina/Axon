@@ -104,7 +104,18 @@ def test_missing_cache_rows_are_reported():
         manifest_path.write_text(json.dumps({"samples": []}), encoding="utf-8")
         split_csv = tmp_path / "split.csv"
         missing_source = tmp_path / "data" / ("b" * 64)
-        _write_split(split_csv, [{"source_path": str(missing_source), "label": "1", "sample_index": "3", "split": "val"}])
+        _write_split(
+            split_csv,
+            [
+                {
+                    "source_path": str(missing_source),
+                    "source_sha256": "b" * 64,
+                    "label": "1",
+                    "sample_index": "3",
+                    "split": "val",
+                }
+            ],
+        )
         missing_csv = tmp_path / "missing.csv"
 
         payload = audit_corrected_split_cache_ready(
@@ -119,6 +130,7 @@ def test_missing_cache_rows_are_reported():
     assert payload["missing_rows"] == 1
     assert payload["missing_label_counts"] == {"1": 1}
     assert payload["missing_split_counts"] == {"val": 1}
+    assert missing_rows[0]["source_sha256"] == "b" * 64
     assert missing_rows[0]["reason"] == "manifest_missing"
 
 

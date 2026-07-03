@@ -217,6 +217,7 @@ def write_missing_rows(path: Path, rows: Sequence[dict]) -> None:
     resolved.parent.mkdir(parents=True, exist_ok=True)
     fieldnames = [
         "source_path",
+        "source_sha256",
         "label",
         "sample_index",
         "split",

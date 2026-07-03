@@ -26,7 +26,7 @@ def _write_missing_csv(path: Path, rows: list[dict]) -> None:
     with path.open("w", encoding="utf-8-sig", newline="") as handle:
         writer = csv.DictWriter(
             handle,
-            fieldnames=["source_path", "label", "sample_index", "split", "reason", "expected_cache_path"],
+            fieldnames=["source_path", "source_sha256", "label", "sample_index", "split", "reason", "expected_cache_path"],
         )
         writer.writeheader()
         writer.writerows(rows)
@@ -60,6 +60,7 @@ def test_missing_rows_are_summarized_and_markdown_is_written():
             [
                 {
                     "source_path": r"E:\data\a.exe",
+                    "source_sha256": "a" * 64,
                     "label": "1",
                     "sample_index": "10",
                     "split": "train",
@@ -68,6 +69,7 @@ def test_missing_rows_are_summarized_and_markdown_is_written():
                 },
                 {
                     "source_path": r"E:\data\b.dll",
+                    "source_sha256": "",
                     "label": "0",
                     "sample_index": "11",
                     "split": "val",
@@ -95,7 +97,43 @@ def test_missing_rows_are_summarized_and_markdown_is_written():
     assert plan["missing_summary"]["label_counts"] == {"0": 1, "1": 1}
     assert plan["missing_summary"]["split_counts"] == {"train": 1, "val": 1}
     assert plan["missing_summary"]["reason_counts"] == {"cache_file_missing": 1, "manifest_missing": 1}
+    assert plan["missing_summary"]["missing_source_sha256_rows"] == 1
+    assert plan["missing_summary"]["invalid_source_sha256_rows"] == 0
+    assert plan["missing_summary"]["unique_source_sha256"] == 1
+    assert plan["recovery_input_ready"] is False
     assert "--workers 2" in plan["commands"]["recover"]
     assert "--backend thread" in plan["commands"]["recover"]
     assert "--storage-format compressed" in plan["commands"]["recover"]
     assert "Post-recovery strict audit" in md_text
+
+
+def test_missing_rows_with_valid_hashes_are_recovery_input_ready():
+    with _case_dir("corrected_cache_recovery_hash_ready") as tmp_path:
+        missing_csv = tmp_path / "missing.csv"
+        _write_missing_csv(
+            missing_csv,
+            [
+                {
+                    "source_path": r"E:\data\a.exe",
+                    "source_sha256": "a" * 64,
+                    "label": "1",
+                    "sample_index": "10",
+                    "split": "train",
+                    "reason": "cache_file_missing",
+                    "expected_cache_path": r"E:\cache\a.npz",
+                }
+            ],
+        )
+
+        plan = build_plan(
+            missing_csv=missing_csv,
+            checkpoint=Path("models/base.pt"),
+            cache_dir=Path("data/.cache"),
+            recovery_output_json=Path("reports/recovery.json"),
+            audit_command="audit again",
+        )
+
+    assert plan["needs_recovery"] is True
+    assert plan["recovery_input_ready"] is True
+    assert plan["missing_summary"]["missing_source_sha256_rows"] == 0
+    assert plan["missing_summary"]["invalid_source_sha256_rows"] == 0

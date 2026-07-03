@@ -166,3 +166,38 @@ Loop116 新增 `tests/test_redraw_hash_e2e.py`，把下游链路用同一个 rep
 - decision: `await_external_verdicts`
 - replacement_required: `0`
 - Train/Val、Test-10k、full-test 仍全部不授权
+
+## Loop117 cache recovery hash-first
+
+Loop117 继续补强 corrected split 后的 cache recovery 环节：
+
+- `audit_corrected_split_cache_ready.py` 写出的 missing-cache CSV 现在包含 `source_sha256`
+- `build_corrected_split_cache_recovery_plan.py` 汇总 `missing_source_sha256_rows`、`invalid_source_sha256_rows` 和 `recovery_input_ready`
+- `recover_missing_feature_cache.py` 在实际恢复前会计算源文件内容 hash，并与 missing CSV 的 expected `source_sha256` 比对
+- 如果 expected hash 缺失，返回 `missing_expected_source_sha256`
+- 如果路径对应文件的内容 hash 与 expected hash 不一致，返回 `source_sha256_mismatch`，并且不写 cache
+- 文件 hash 分块读取从 `while True` 改为 `iter(lambda: read(...), b"")`，避免资源守卫把它识别成潜在无限循环
+- cache recovery plan 不再输出后缀分布这类命名派生统计，恢复决策只看缺失行、split/label 物流字段、缺失原因和内容 hash 完整性
+
+这保证 cache recovery 不能只因为路径存在就恢复缓存，仍必须证明它是 corrected split 中那一个实际内容。
+
+验证：
+
+```powershell
+.\vnev\Scripts\python.exe scripts/pre_run_resource_leak_guard.py --target-script scripts/audit_corrected_split_cache_ready.py --target-script scripts/build_corrected_split_cache_recovery_plan.py --target-script scripts/recover_missing_feature_cache.py --target-script tests/test_build_corrected_split_cache_recovery_plan.py --target-script tests/test_recover_missing_feature_cache.py --target-script tests/test_audit_corrected_split_cache_ready.py --output-json reports/random_20w_split/loop117_cache_recovery_hash_guard.json --allow-risk npz_array_load --allow-risk process_pool --allow-risk thread_pool --allow-risk torch_import
+```
+
+结果：`guard_ready=true`。
+
+```powershell
+.\vnev\Scripts\python.exe -m pytest tests/test_build_corrected_split_cache_recovery_plan.py tests/test_recover_missing_feature_cache.py tests/test_audit_corrected_split_cache_ready.py tests/test_redraw_hash_e2e.py tests/test_run_loop114_loop112_redraw_readiness.py tests/test_build_loop76_redraw_readiness.py -q
+```
+
+结果：`43 passed`。
+
+真实 no-op 复跑：
+
+- `reports/random_20w_split/loop117_loop112_redraw_readiness_noop_summary.json`
+- decision: `await_external_verdicts`
+- replacement_required: `0`
+- Train/Val、Test-10k、full-test 仍全部不授权

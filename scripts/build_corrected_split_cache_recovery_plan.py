@@ -24,12 +24,25 @@ def read_missing_rows(path: Path) -> list[dict]:
 
 
 def summarize_missing_rows(rows: Sequence[dict]) -> dict:
+    missing_source_sha256 = 0
+    invalid_source_sha256 = 0
+    unique_source_sha256: set[str] = set()
+    for row in rows:
+        source_sha256 = str(row.get("source_sha256") or "").strip().casefold()
+        if not source_sha256:
+            missing_source_sha256 += 1
+        elif len(source_sha256) != 64 or any(char not in "0123456789abcdef" for char in source_sha256):
+            invalid_source_sha256 += 1
+        else:
+            unique_source_sha256.add(source_sha256)
     return {
         "rows": len(rows),
         "label_counts": dict(sorted(Counter(str(row.get("label", "")) for row in rows).items())),
         "split_counts": dict(sorted(Counter(str(row.get("split", "")) for row in rows).items())),
         "reason_counts": dict(sorted(Counter(str(row.get("reason", "")) for row in rows).items())),
-        "suffix_counts": dict(sorted(Counter(Path(str(row.get("source_path", ""))).suffix.lower() or "<none>" for row in rows).items())),
+        "missing_source_sha256_rows": missing_source_sha256,
+        "invalid_source_sha256_rows": invalid_source_sha256,
+        "unique_source_sha256": len(unique_source_sha256),
         "examples": list(rows[:10]),
     }
 
@@ -105,6 +118,11 @@ def build_plan(
         "storage_format": storage_format,
         "missing_summary": missing_summary,
         "needs_recovery": missing_summary["rows"] > 0,
+        "recovery_input_ready": (
+            missing_summary["rows"] > 0
+            and missing_summary["missing_source_sha256_rows"] == 0
+            and missing_summary["invalid_source_sha256_rows"] == 0
+        ),
         "commands": {
             "dry_run": dry_run_command,
             "recover": recovery_command,
@@ -115,6 +133,7 @@ def build_plan(
             "Run the dry-run recovery command first.",
             "Only run recovery for rows listed in the bounded missing CSV.",
             "After recovery, rerun the strict corrected split cache readiness audit and require cache_ready=true.",
+            "Every missing-cache row must carry a valid source_sha256 so recovery can verify content hash before writing cache.",
         ],
     }
 
