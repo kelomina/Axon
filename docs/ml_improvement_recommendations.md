@@ -2,6 +2,12 @@
 
 更新时间：2026-07-03
 
+## 2026-07-03 补充：Loop111 focus external annotation import
+
+Loop111 新增 `scripts/import_loop111_focus_external_annotations.py`，把外部/人工 focus verdict 入口收紧成只接受 `blind_review_id/manual_label_verdict/manual_verdict_note/recommended_action` 四列的受控导入器。任何额外列都会被拒绝；如果额外列包含 filename、path、directory、extension、hash、`source_sha256`、`sample_index`、split、probability、score、prediction、threshold、`loop57` 等身份或模型分数字段，会明确记为身份/模型字段违规。导入器不读 private map、不 unblind、不训练、不调阈值、不采样 replacement、不改 split/cache。
+
+导入后会立即复用 Loop109 preflight，因此“filename 证明”“source_path 证明”“loop57 probability 证明”这类 note 即使字段层面没有泄漏，也会被后置证据质量门禁拦截。真实 no-op 复验使用 `reports/random_20w_split/loop111_external_annotations_noop.csv`，输出 `reports/random_20w_split/loop111_focus_external_annotation_import_noop_summary.json`：focus `240` 行、imported `0`、post-preflight actionable `0`、invalid `0`。随后接入 Loop110 的 `reports/random_20w_split/loop111_to_loop110_focus_pipeline_noop_summary.json` 仍为 `ready_noop_no_actionable_verdicts`，Loop87 actionable `0`、replacement required `0`、training/Test-10k/full-test 全部不授权。
+
 ## 2026-07-03 补充：Loop110 focus verdict pipeline
 
 Loop110 把 Loop106 focus 标注后的严格入口串成单命令：`scripts/run_loop110_focus_verdict_pipeline.py` 按顺序执行 Loop109 focus annotation preflight、Loop107 focus merge、Loop96 unblind、Loop87 verdict import。任一阶段出现 blocker 就停止后续阶段，避免绕过盲化预检、直接 merge/unblind 或把无效人工字段送进后续 redraw 链路。这个 pipeline 仍是只读操作，不训练、不调阈值、不加载 checkpoint、不打开 NPZ 数组、不采样 replacement、不改 split/cache。
