@@ -2,6 +2,12 @@
 
 更新时间：2026-07-03
 
+## 2026-07-03 补充：Loop105 main entry authorization
+
+Loop105 在 Loop104 总闸之上增加了 official train/eval 的轻量授权入口：`scripts/authorized_main.py`。它会先读取 `reports/random_20w_split/loop104_ml_authorization_preflight.json`，判断当前命令需要 `train_val`、`threshold_sweep`、`test10k` 还是 `full_test` 授权；若未授权，直接在导入 `scripts/main.py`、torch、模型、checkpoint 或数据之前退出。当前真实阻断验证显示，`eval --split test` 会在 missing checkpoint 检查前被拦截，原因是 `full_test_allowed=false`、`actionable_rows=0`。
+
+同时，`scripts/build_hard_error_finetune_package.py` 和 `scripts/build_hard_family_finetune_package.py` 生成的 official 训练/评估命令已改为走 `scripts\authorized_main.py --ml-preflight "reports\random_20w_split\loop104_ml_authorization_preflight.json" -- ...`，不再直接生成 `scripts\main.py train/eval`。这一步不是放行训练，而是防止旧 README/plan 命令绕过 Loop104；在当前证据下，官方训练、阈值扫、Test-10k 和 full-test 仍然保持 blocked。相关记录见 `docs/phase3_loop105_main_entry_authorization.md`。
+
 ## 2026-07-03 补充：Loop104 ML authorization preflight gate
 
 Loop104 把 `scripts/build_ml_authorization_preflight.py` 从“检查 A/B/C 包输入是否存在”升级为“训练/评估重操作授权总闸”。新版报告读取三类只读证据：`reports/random_20w_split/loop101_identity_safe_route_audit.json`、`reports/random_20w_split/loop101_current_state_gate_metadata.json` 和 `reports/random_20w_split/loop100_cache_ready_metadata.json`。只有 fixed-v2 cache metadata、当前 20w split、路线审计和独立 verdict 状态都满足条件时，才会在 `operation_authorization` 里放行对应操作。

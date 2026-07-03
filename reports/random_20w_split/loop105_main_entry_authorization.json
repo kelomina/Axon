@@ -1,0 +1,86 @@
+{
+  "schema": "axon_loop105_main_entry_authorization_v1",
+  "protocol": "lightweight authorization wrapper; blocks official train/eval before importing scripts/main.py when preflight denies the requested operation",
+  "inputs": {
+    "preflight": "reports/random_20w_split/loop104_ml_authorization_preflight.json"
+  },
+  "added_entrypoints": [
+    "scripts/ml_authorization_runtime.py",
+    "scripts/authorized_main.py"
+  ],
+  "hardened_command_generators": [
+    "scripts/build_hard_error_finetune_package.py",
+    "scripts/build_hard_family_finetune_package.py"
+  ],
+  "operation_mapping": {
+    "train_nonfast_skip_test_eval": [
+      "train_val"
+    ],
+    "train_nonfast_with_test_eval": [
+      "train_val",
+      "full_test"
+    ],
+    "eval_test_full": [
+      "full_test"
+    ],
+    "eval_test_with_max_eval_samples": [
+      "test10k"
+    ],
+    "eval_threshold_sweep_or_decision_threshold": [
+      "threshold_sweep"
+    ],
+    "fast_or_smoke_train": []
+  },
+  "current_loop104_decision": {
+    "train_val_allowed": false,
+    "threshold_sweep_allowed": false,
+    "test10k_allowed": false,
+    "full_test_allowed": false,
+    "blocking_reasons": [
+      "no_actionable_independent_verdicts",
+      "route_audit_awaits_independent_blinded_verdicts"
+    ]
+  },
+  "manual_block_check": {
+    "command": "& \"E:\\Project\\python\\Axon_v2.6Exp\\vnev\\Scripts\\python.exe\" scripts/authorized_main.py --ml-preflight reports/random_20w_split/loop104_ml_authorization_preflight.json -- eval --checkpoint missing.pt --data-dir missing-data --split test",
+    "exit_code": 2,
+    "blocked_before_checkpoint_load": true,
+    "stderr_excerpt": "[ML Authorization Blocked] ML operation is blocked by authorization preflight. required=['full_test']; full_test: no_actionable_independent_verdicts, route_audit_awaits_independent_blinded_verdicts, route_audit_full_test_allowed_now_false"
+  },
+  "verification": {
+    "resource_guard": {
+      "path": "reports/random_20w_split/loop105_entry_authorization_guard_rerun.json",
+      "decision": "pass"
+    },
+    "py_compile": "passed",
+    "pytest": {
+      "command": "python -m pytest tests/test_ml_authorization_runtime.py tests/test_build_ml_authorization_preflight.py tests/test_build_hard_error_finetune_package.py",
+      "result": "16 passed"
+    },
+    "direct_main_command_scan": {
+      "command": "rg -n \"scripts\\\\main.py (train|eval)|scripts/main.py (train|eval)\" scripts/build_hard_error_finetune_package.py scripts/build_hard_family_finetune_package.py tests/test_build_hard_error_finetune_package.py",
+      "result": "no matches"
+    }
+  },
+  "identity_boundary": {
+    "forbidden_as_model_or_verdict_evidence": [
+      "filename",
+      "path",
+      "extension",
+      "directory",
+      "hash",
+      "source_sha256",
+      "sample_index",
+      "split",
+      "row_order",
+      "model_score"
+    ],
+    "allowed_uses": [
+      "loading",
+      "alignment",
+      "cache audit",
+      "duplicate detection",
+      "manual/external review indexing"
+    ]
+  }
+}
