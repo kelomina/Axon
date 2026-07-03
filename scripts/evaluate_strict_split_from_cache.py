@@ -26,6 +26,7 @@ if str(SRC_DIR) not in sys.path:
 
 from config import AxonExperimentConfig  # noqa: E402
 from dataset import _load_cached_feature_npz, _resolve_manifest_cache_path  # noqa: E402
+from feature_mask import apply_feature_mask_to_tensors, load_feature_mask_tensors, summarize_feature_mask  # noqa: E402
 from model import AxonMalwareModel  # noqa: E402
 from security import load_safe_checkpoint  # noqa: E402
 
@@ -278,6 +279,7 @@ def evaluate_strict_split_from_cache(
     max_rows: Optional[int] = None,
     device_name: str = "cuda",
     output_predictions_csv: Optional[Path] = None,
+    feature_mask_path: Optional[Path] = None,
 ) -> dict[str, Any]:
     if split not in VALID_SPLITS:
         raise ValueError(f"split must be one of {sorted(VALID_SPLITS)}")
@@ -313,6 +315,7 @@ def evaluate_strict_split_from_cache(
     model.load_state_dict(checkpoint_payload["model_state_dict"])
     model.to(device)
     model.eval()
+    feature_mask = load_feature_mask_tensors(feature_mask_path, config, device) if feature_mask_path else None
 
     labels: list[int] = []
     probs: list[float] = []
@@ -330,6 +333,7 @@ def evaluate_strict_split_from_cache(
             byte_seq = byte_seq.to(device, non_blocking=True)
             pe_features = pe_features.to(device, non_blocking=True)
             stat_features = stat_features.to(device, non_blocking=True)
+            pe_features, stat_features = apply_feature_mask_to_tensors(pe_features, stat_features, feature_mask)
             logits = model(byte_seq, pe_features, stat_features=stat_features)["logits"]
             batch_probs = torch.softmax(logits, dim=1)[:, 1].detach().cpu().numpy()
             labels.extend(int(value) for value in batch_labels.numpy().tolist())
@@ -349,6 +353,8 @@ def evaluate_strict_split_from_cache(
             "source_sha256 is the only manifest/cache alignment key; path/name/extension/directory are never lookup keys or model evidence."
         ),
         "checkpoint": str(resolve_path(checkpoint)),
+        "feature_mask": str(resolve_path(feature_mask_path)) if feature_mask_path is not None else None,
+        "feature_mask_summary": summarize_feature_mask(feature_mask[2]) if feature_mask is not None else None,
         "checkpoint_config": {
             "max_byte_length": config.max_byte_length,
             "pe_feature_dim": config.pe_feature_dim,
@@ -406,6 +412,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--max-rows", type=int, default=None)
     parser.add_argument("--device", choices=["cuda", "cpu"], default="cuda")
     parser.add_argument("--output-predictions-csv", type=Path, default=None)
+    parser.add_argument("--feature-mask", type=Path, default=None)
     parser.add_argument("--strict", action="store_true")
     return parser
 
@@ -425,6 +432,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         max_rows=args.max_rows,
         device_name=args.device,
         output_predictions_csv=args.output_predictions_csv,
+        feature_mask_path=args.feature_mask,
     )
     print(json.dumps({key: payload.get(key) for key in ["decision", "split", "predicted_samples", "metrics", "best_threshold_by_val_f1"]}, indent=2, ensure_ascii=False))
     if args.strict and payload.get("decision") != "evaluated":

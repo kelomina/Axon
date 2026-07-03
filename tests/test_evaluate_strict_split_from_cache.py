@@ -12,6 +12,7 @@ from evaluate_strict_split_from_cache import (  # noqa: E402
     collect_strict_records,
     compute_metrics,
     select_manifest_sample,
+    evaluate_strict_split_from_cache,
 )
 
 
@@ -196,3 +197,131 @@ def test_collect_strict_records_accepts_locked_test10k_split():
     assert len(records) == 1
     assert records[0]["split"] == "test10k"
     assert summary["manifest_match_counts"] == {"source_sha256": 1}
+
+
+def test_evaluate_strict_split_records_feature_mask_metadata(monkeypatch):
+    with _case_dir("strict_eval_feature_mask") as tmp_path:
+        split_csv = tmp_path / "split.csv"
+        manifest_json = tmp_path / "manifest.json"
+        output_json = tmp_path / "eval.json"
+        mask_json = tmp_path / "mask.json"
+        _write_split(
+            split_csv,
+            [
+                {
+                    "source_path": "anything.exe",
+                    "source_sha256": "e" * 64,
+                    "label": "0",
+                    "sample_index": "1",
+                    "split": "val",
+                }
+            ],
+        )
+        _write_manifest(manifest_json, [])
+        mask_json.write_text("{}", encoding="utf-8")
+
+        def fake_collect_strict_records(**_kwargs):
+            return (
+                [
+                    {
+                        "cache_path": str(tmp_path / "sample.npz"),
+                        "source_path": "anything.exe",
+                        "source_sha256": "e" * 64,
+                        "label": 0,
+                        "split": "val",
+                        "sample_index": "1",
+                    }
+                ],
+                {
+                    "raw_rows": 1,
+                    "records": 1,
+                    "label_counts": {"0": 1},
+                    "manifest_match_counts": {"source_sha256": 1},
+                    "issue_counts": {},
+                    "issue_rows": 0,
+                    "issue_examples": [],
+                },
+            )
+
+        class FakeDataset:
+            def __init__(self, records, _config):
+                self.records = records
+
+            def __len__(self):
+                return 1
+
+            def __getitem__(self, index):
+                import torch
+
+                return (
+                    torch.zeros(4, dtype=torch.long),
+                    torch.ones(2, dtype=torch.float32),
+                    torch.ones(2, dtype=torch.float32),
+                    0,
+                    index,
+                )
+
+        class FakeModel:
+            def __init__(self, _config):
+                pass
+
+            def load_state_dict(self, _state):
+                pass
+
+            def to(self, _device):
+                return self
+
+            def eval(self):
+                return self
+
+            def __call__(self, byte_seq, pe_features, stat_features=None):
+                import torch
+
+                assert float(pe_features.sum()) == 0.0
+                assert float(stat_features.sum()) == 0.0
+                return {"logits": torch.tensor([[2.0, 0.0]], dtype=torch.float32)}
+
+        class FakeConfig:
+            max_byte_length = 4
+            pe_feature_dim = 2
+            stat_feature_dim = 2
+            lightweight_feature_dim = 0
+            pe_schema_version = "fixed_v2"
+            pe_fixed_section_slots = 32
+
+            @classmethod
+            def from_dict(cls, _payload):
+                return cls()
+
+        import evaluate_strict_split_from_cache as module
+        import torch
+
+        monkeypatch.setattr(module, "collect_strict_records", fake_collect_strict_records)
+        monkeypatch.setattr(module, "StrictCachedSplitDataset", FakeDataset)
+        monkeypatch.setattr(module, "AxonMalwareModel", FakeModel)
+        monkeypatch.setattr(module, "AxonExperimentConfig", FakeConfig)
+        monkeypatch.setattr(module, "load_safe_checkpoint", lambda *_args, **_kwargs: {"config": {}, "model_state_dict": {}})
+        monkeypatch.setattr(
+            module,
+            "load_feature_mask_tensors",
+            lambda *_args, **_kwargs: (
+                torch.zeros(2, dtype=torch.float32),
+                torch.zeros(2, dtype=torch.float32),
+                {"kept_total": 0, "kept_pe": 0, "kept_stat": 0},
+            ),
+        )
+
+        payload = evaluate_strict_split_from_cache(
+            checkpoint=tmp_path / "model.pt",
+            split_csv=split_csv,
+            manifest_json=manifest_json,
+            output_json=output_json,
+            split="val",
+            threshold=0.5,
+            batch_size=1,
+            device_name="cpu",
+            feature_mask_path=mask_json,
+        )
+
+    assert payload["feature_mask"] == str(mask_json)
+    assert payload["feature_mask_summary"] == "kept_total=0, kept_pe=0, kept_stat=0"
