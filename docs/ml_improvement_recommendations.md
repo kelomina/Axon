@@ -2,6 +2,18 @@
 
 更新时间：2026-07-03
 
+## 2026-07-03 补充：Loop98 identity-safe route audit
+
+Loop98 已把当前路线做成只读总闸：不训练、不调阈值、不加载模型、不打开 NPZ 数组、不改 split/cache，只汇总 Loop79/80/85/95/96/97 的证据。真实输出是 `reports/random_20w_split/loop98_identity_safe_route_audit.json`，当前决策为 `await_independent_blinded_verdicts`。
+
+关键结论如下：fixed-v2 cache 与 130 个坏特征槽位已经通过严格复核，替换方式是 `130/130` 整批 fresh redraw，`self_replacements=0`，当前 split/cache 为 `200000/200000`、missing `0`，仍保持 `20000/20000/160000`。这满足“坏文件/坏特征不合格就重新抽，而不是让坏样本补齐”的要求。
+
+模型路线方面，当前没有可自动推进的 Test-10k 或 full-test 候选。概率校准器在 16 万 full-test 上为 F1 `0.9686442786`、`5042` errors，明显差于当前 best Loop57 的 F1 `0.9883629658`、`1868` errors；Loop83/84 已关闭当前 Loop57/校准器融合路线；Speakeasy timeout/dynamic triage 只能作为人工/外部复核上下文，因为确认集新增 FN；Loop95/96 full queue 已覆盖 `1868/1868` 个 current-best 错误，但 actionable verdict 仍为 `0`，所以不允许训练、替换、Test-10k 或 full-test。
+
+命名和路径边界继续作为硬约束：filename、path、directory、extension、hash、`source_sha256`、`sample_index`、split、row order、model score 都不是模型证据，也不是 verdict、replacement sampling、threshold、fusion 或生产推理证据。它们只允许用于加载、对齐、cache audit、重复检测和人工/外部复核索引。实战命名与训练集命名不是同一分布，攻击者可以随时改名，因此任何依赖命名的“改进”都必须视为泄漏路线。
+
+下一步唯一合法路线是：填充 Loop96 blinded review 的独立内容/外部 verdict，unblind 后跑 Loop87；若确认 `label_wrong`、`feature_broken` 或 `out_of_scope`，只能 quarantine 并从 locked manifest 的同原始标签池 fresh redraw，随后全量 cache readiness，再回到 Train/Val-only 漏斗。没有独立 verdict 之前，不再继续同一批分数差、命名、路径、hash 或 full-test 错误身份字段驱动的候选。
+
 ## 2026-07-03 补充：Loop61 override-only classifier 未通过 Test-10k
 
 命名问题已收紧为硬约束：训练集目录、文件名、后缀和路径只允许在“人工语料 -> 显式 split/manifest label”这一步充当标签来源或索引，不允许进入任何模型矩阵、二阶段融合、阈值捷径或自动改标规则。实战命名和训练集命名不是同一分布，攻击者也能随时改名；所以当前路线只承认字节、PE 结构、统计特征、证书/overlay 等内容证据。若怀疑原始目录桶标签本身有噪声，只能做人工/外部证据判定；确认坏样本后按同原始标签池 fresh re-draw，重新生成严格 `200000` split 和 cache，而不是让坏行补齐或让模型学习命名。
