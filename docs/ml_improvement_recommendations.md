@@ -52,6 +52,8 @@ Loop79 已把当前 20w 状态收敛成一个只读门禁 `scripts/build_loop79_
 
 Loop80 按漏斗规则把这个概率校准器推进到 16 万 full-test：使用 train-split logistic calibrator、Val 选定阈值 `0.44`、Test-10k 只作确认，full-test 输入为 `random_20w_8192_replaced_test_predictions.csv`，`160000/160000` 行全部保留，missing cache `0`。结果相对 8192 baseline 明显改善：F1 `0.9283588516 -> 0.9686442786`，错误 `11314 -> 5042`，FP/FN 从 `4620/6694` 降到 `2921/2121`。但它不能替代当前全局 best Loop57：Loop57 full-test F1 `0.9883629658`、errors `1868`，比 Loop80 少 `3174` 个错误。按 `F1 >= 0.999` 的最有利 FP-only 容错约 `160` 错误估算，Loop80 还至少要再消掉 `4882` 个错误。因此结论是：概率校准器是有价值的内容/概率修正证据，但不是最终方案；下一步应做 Val-first 融合或新内容证据，不能在 test 上继续调阈值。相关记录见 `docs/phase3_loop80_calibrator_fulltest.md`。
 
+Loop82 已解除 Loop81 暴露的预测文件对齐 blocker：从同一个 corrected 20w Val 输入重新导出 Loop57 和概率校准器预测，`source_sha256` 仅用于审计对齐，严格结果为 `20000/20000` 唯一对齐、重复键 `0`、缺失 `0`、标签不一致 `0`。同一 Val 口径下 Loop57 为 F1 `0.9926635724`、errors `147`，校准器为 F1 `0.9723470101`、errors `554`；oracle choose-correct-if-either 诊断为 F1 `0.9954597615`、errors `91`，说明校准器可补回 `56` 个 Loop57 错误，但也会破坏 `463` 个 Loop57 正确样本。因此当前只允许做保守 Val-only 融合 probe，不能直接替换、盲目混合、进入 Test-10k 或全量 Test。相关记录见 `docs/phase3_loop82_same_manifest_val_complementarity.md`。
+
 ## 2026-07-02 补充：命名不是证据，content PE v1 已产品化
 
 最新硬规则已经固定：文件名、路径、扩展名、目录名、`source_sha256`、`cache_path`、`sample_index`、`split` 和行顺序只能用于加载、缓存对齐、覆盖审计、去重、人工复核、以及生成一次性的人工标签清单，不能作为模型特征、二阶段融合特征、阈值捷径、自动改标证据或上线推理依据。原因是实战文件命名和训练集命名完全不是同一个分布，且攻击者改名几乎没有成本；训练集目录只能说明人工当时把样本放进哪个标签桶，不能说明文件本身因名字而恶意或良性。
@@ -180,7 +182,7 @@ Axon 现在最值得优先改进的地方，不是马上把模型做得更复杂
 | --- | --- | --- |
 | 统一模型评审闸门 | 已完成 | 已从待办建议中移除，只保留完成记录和复用入口 |
 | fixed-v2 20w 未压缩 cache 覆盖 | 已完成 | 旧重建曾暴露 `130` 条 strict PE 失败；已按“坏文件不补齐、整批同标签重抽”替换为 `strict_extracted=130/130`，当前 `loop27_corrected_split.csv` 复验为 `200000/200000` 覆盖、missing `0` |
-| 概率校准 | 已完成 full-test，但不是最终最优 | 相对 8192 baseline 大幅改善，16 万 test F1 `0.9686442786`、errors `5042`；但低于 Loop57 的 F1 `0.9883629658`、errors `1868`，只能作为后续 Val-first 融合证据 |
+| 概率校准 | 已完成 full-test，但不是最终最优 | 相对 8192 baseline 大幅改善，16 万 test F1 `0.9686442786`、errors `5042`；但低于 Loop57 的 F1 `0.9883629658`、errors `1868`。Loop82 已证明它在同一 Val manifest 上可补回 `56` 个 Loop57 错误，但会破坏 `463` 个 Loop57 正确样本，只能作为保守 Val-first 融合证据 |
 | RL 主线扩大 | 实验确认当前不实用 | 显眼保留为“不建议近期主推”，除非奖励设计有新证据 |
 | SWA / EMA / all combined | 实验确认当前不实用 | 显眼保留为“不建议一次性叠加训练技巧” |
 | GA 特征掩码 | 已确认低漏报方向实用，但不适合默认启用 | 保留为高安全模式候选；现有 20k、完整 hard-holdout 和高价值白样本证据都已补齐，白样本 FP 成本仍高 |
@@ -583,6 +585,18 @@ Ordered API sequence 方向也还没有证明“API 顺序本身”能提升 F1�
 - 成功标准：只有在对齐审计完全通过、且校准器能稳定补回足够多 Loop57 错误时，才允许进入 Val-only 融合 probe；仍然不能直接碰 Test/Test-10k。
 - 失败后如何停止：如果同一 manifest 导出后仍出现重复内容或跨标签冲突，先进入 Data-Agent 噪声隔离和重新抽样，不继续做融合。
 
+### Loop82 同 manifest 互补性复验
+
+- 通过观察：Loop82 从同一个 corrected Val manifest 重新导出 Loop57 和校准器预测，严格审计通过：`20000/20000` 唯一 `source_sha256` 对齐，缺失 `0`、重复键 `0`、标签不一致 `0`、split 不一致 `0`。
+- 推理出的含义：Loop81 的 blocker 来自旧预测文件集合不一致，不代表校准器和 Loop57 完全不可比较；只要从同一 corrected manifest 重新导出，Val-only 互补性可以被干净审计。
+- 证据强度：强证据。导出前两个输入 CSV 均为 `20000` 行、黑白各 `10000`、unique SHA `20000`、cache missing `0`，SHA 集合完全一致；导出和审计前均跑 Loop77 guard。
+- 当前互补性：Loop57 Val errors `147`，校准器 errors `554`，oracle choose-correct-if-either errors `91`；校准器能补回 `56` 个 Loop57 错误，但会破坏 `463` 个 Loop57 正确样本。
+- 因此不建议继续：不建议把校准器直接替换 Loop57，也不建议做简单平均/线性混合后进入 Test-10k。
+- 因此建议下一步：只允许做保守 Val-only 融合 probe，目标是识别那 `56` 个 calibrator-only-correct 场景，同时保护 `463` 个 Loop57-only-correct 场景。
+- 最小验证实验：训练/选择必须只用 Train/Val，不得用 Test；融合特征只能来自模型概率、经身份 guard 审计的 PE/stat/content 特征，不得使用 filename/path/directory/hash/sample_index/split/row order。
+- 成功标准：在完整 `20000` Val 上明显低于 Loop57 的 `147` 错误，并且 FP/FN 没有不可接受的单边退化，才允许进入 Test-10k。
+- 失败后如何停止：如果融合只减少少数错误但破坏大量 Loop57 正确样本，停止融合路线，转向噪声审计或新内容证据。
+
 ### byte n-gram 融合
 
 - 失败观察：Loop37 的 byte n-gram SGD 与 Loop28 错误重合很低，Val 从 `162` 错降到 `159` 错，Test-10k 从 `111` 错降到 `110` 错；但 16 万全量测试反转为 `1960` 错，差于 Loop28 的 `1949` 错。
@@ -626,14 +640,14 @@ GA 掩码和概率校准不需要继续重跑来证明方向。当前应该把�
 - 高安全模式候选：允许使用 GA 掩码，但必须明确它会增加高价值白样本误报。
 - hard-example replay：当前配方作为负面记录保留，不进入默认训练。
 
-### 第三步：先修正噪声和对齐，再谈融合
+### 第三步：同 manifest 对齐已通过，下一步只做保守 Val 融合
 
-Loop81 证明当前部分 Val 预测文件之间存在集合不一致、重复内容和跨标签噪声。下一步应先做数据审计，而不是继续叠模型：
+Loop81 证明旧 Val 预测文件之间存在集合不一致、重复内容和跨标签噪声；Loop82 已从同一个 corrected 20w Val manifest 重新导出并通过 `20000/20000` 唯一对齐。因此下一步可以做融合，但只能在 Val 上保守推进：
 
-1. 从同一个 corrected 20w manifest 重新导出 Loop57 和校准器 Val 预测。
-2. 用 `source_sha256` 只做预测文件对齐审计，确认 `20000/20000` 唯一对齐。
-3. 对同哈希跨标签样本做噪声隔离；不合格文件必须重新抽同原始标签样本，不能拿坏样本补齐。
-4. 对齐和噪声审计通过后，才允许 Val-only 融合 probe。
+1. 以 Loop82 的 `loop82_val_complementarity_overlap.csv` 为错误重叠审计输入。
+2. 只在 Train/Val 上尝试保守融合，不碰 Test/Test-10k。
+3. 禁止 filename/path/directory/hash/sample_index/split/row order 进入融合特征。
+4. 目标不是相信校准器整体，而是找出它能补回 Loop57 错误的窄场景。
 
 ### 第四步：决定产品策略阈值
 
