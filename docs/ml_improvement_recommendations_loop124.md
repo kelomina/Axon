@@ -108,12 +108,18 @@ corrected split.
 
 ## Highest-Value Next Work
 
-1. Build a strict content-evidence error audit.
+1. Use the Loop126 strict content-evidence error audit.
 
-   Rank errors by content evidence only: probability confidence, persistent
-   baseline/calibrator disagreement, PE/stat anomalies, entropy, overlay,
-   section layout, import/resource/security directory facts, cache integrity,
-   and duplicate-content conflicts.
+   New artifacts:
+
+   - `reports/random_20w_split/loop126_val_calibrated_error_content_evidence.csv`
+   - `reports/random_20w_split/loop126_test10k_calibrated_error_content_evidence.csv`
+   - `reports/random_20w_split/loop126_val_noise_audit_focus_blinded.csv`
+   - `reports/random_20w_split/loop126_test10k_noise_audit_focus_blinded.csv`
+
+   The public focus files are blinded: they exclude source path, cache path,
+   source hash, sample index, filename, directory, extension, model probability,
+   and threshold fields. Private map files exist only for sample lookup.
 
 2. Separate likely noise from model blind spots.
 
@@ -121,12 +127,45 @@ corrected split.
    error is not an automatic relabel; it is only a priority signal for content
    inspection.
 
+   Loop126 Val calibrated errors:
+
+   - Total errors: 603
+   - FP: 385
+   - FN: 218
+   - Persistent errors: 465
+   - Broken by calibrator: 138
+   - Focus lanes:
+     - feature_or_label_quality_review: 262
+     - model_blindspot_review: 136
+     - calibration_regression_review: 138
+     - boundary_model_review: 67
+
+   Loop126 locked Test-10k calibrated errors:
+
+   - Total errors: 278
+   - FP: 175
+   - FN: 103
+   - Persistent errors: 210
+   - Broken by calibrator: 68
+   - Focus lanes:
+     - feature_or_label_quality_review: 131
+     - model_blindspot_review: 59
+     - calibration_regression_review: 68
+     - boundary_model_review: 20
+
 3. Improve features before another full test.
 
    The current model still misses thousands of samples after calibration. The
    next model work should target content evidence not already captured well by
    PE/stat features, especially overlay/security-boundary and structural
    anomalies.
+
+   Loop126 also corrected the error-evidence extractor to resolve PE features by
+   schema name instead of hard-coded legacy indices. This matters because the
+   active strict cache is `fixed_v2`: legacy overlay/trailing fields are not
+   present in the current 256-dimensional PE input. Those fields must be added as
+   real content features or a stage-2 content feature family; they must not be
+   inferred from filename/path metadata or guessed from old indices.
 
 4. Keep the full test locked.
 
@@ -144,4 +183,3 @@ corrected split.
 - Full test is allowed only after Test-10k confirms the candidate.
 - No path/name/directory/extension evidence is allowed in model, GA, threshold,
   noise, or replacement decisions.
-
