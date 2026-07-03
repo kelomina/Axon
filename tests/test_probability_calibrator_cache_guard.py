@@ -9,7 +9,12 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 
-from evaluate_probability_calibrator import _load_prediction_features, _metrics, _slice_metrics  # noqa: E402
+from evaluate_probability_calibrator import (  # noqa: E402
+    _load_prediction_features,
+    _metrics,
+    _slice_metrics,
+    _write_calibrated_prediction_rows,
+)
 from train_probability_calibrator import _load_prediction_features as _load_train_prediction_features  # noqa: E402
 
 
@@ -240,3 +245,37 @@ def test_calibrator_slice_metrics_do_not_use_path_name_groups():
     assert slices["malicious_label_1"]["baseline"]["false_negative"] == 1
     assert slices["malicious_label_1"]["calibrator_metrics"]["false_negative"] == 0
     assert "baseline_near_threshold_0.40_0.60" not in slices
+
+
+def test_write_calibrated_prediction_rows_records_transitions_without_path_decisions():
+    with _case_dir("calibrated_prediction_rows") as tmp_path:
+        output = tmp_path / "calibrated.csv"
+        rows = [
+            {"source_path": "looks_bad.exe", "source_sha256": SHA_A, "cache_path": "a.npz", "split": "val", "sample_index": "1"},
+            {"source_path": "looks_good.exe", "source_sha256": SHA_B, "cache_path": "b.npz", "split": "val", "sample_index": "2"},
+        ]
+
+        _write_calibrated_prediction_rows(
+            output,
+            rows=rows,
+            labels=np.asarray([0, 1], dtype=np.int64),
+            baseline_scores=np.asarray([0.9, 0.2], dtype=np.float32),
+            calibrator_model_scores=np.asarray([0.1, 0.8], dtype=np.float32),
+            calibrator_scores=np.asarray([0.1, 0.8], dtype=np.float32),
+            baseline_threshold=0.5,
+            calibrator_threshold=0.5,
+            blend_model_weight=1.0,
+        )
+        written = list(csv.DictReader(output.open("r", encoding="utf-8-sig", newline="")))
+
+    assert [row["error_transition"] for row in written] == ["fixed_by_calibrator", "fixed_by_calibrator"]
+    assert "filename" not in written[0]
+    assert "directory" not in written[0]
+    assert "extension" not in written[0]
+    assert written[0]["baseline_threshold"] == "0.5"
+    assert written[0]["calibrated_threshold"] == "0.5"
+    assert written[0]["blend_model_weight"] == "1.0"
+    assert float(written[0]["calibrated_minus_baseline"]) < 0.0
+    assert written[0]["source_path"] == "looks_bad.exe"
+    assert written[0]["calibrated_prediction"] == "0"
+    assert written[1]["calibrated_prediction"] == "1"

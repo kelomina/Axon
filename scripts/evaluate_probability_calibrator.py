@@ -58,6 +58,86 @@ def _write_missing_cache_rows(path: Path, rows: list[dict]) -> None:
         writer.writerows(rows)
 
 
+def _write_calibrated_prediction_rows(
+    path: Path,
+    *,
+    rows: list[dict],
+    labels: np.ndarray,
+    baseline_scores: np.ndarray,
+    calibrator_model_scores: np.ndarray,
+    calibrator_scores: np.ndarray,
+    baseline_threshold: float,
+    calibrator_threshold: float,
+    blend_model_weight: float,
+) -> None:
+    fieldnames = [
+        "source_path",
+        "source_sha256",
+        "cache_path",
+        "label",
+        "split",
+        "sample_index",
+        "baseline_prob_malicious",
+        "baseline_threshold",
+        "baseline_prediction",
+        "baseline_correct",
+        "calibrator_model_prob_malicious",
+        "blend_model_weight",
+        "calibrated_prob_malicious",
+        "calibrated_threshold",
+        "calibrated_minus_baseline",
+        "calibrated_prediction",
+        "calibrated_correct",
+        "error_transition",
+    ]
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8-sig", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fieldnames, extrasaction="ignore", lineterminator="\n")
+        writer.writeheader()
+        for row, label, baseline_score, calibrator_model_score, calibrator_score in zip(
+            rows,
+            labels,
+            baseline_scores,
+            calibrator_model_scores,
+            calibrator_scores,
+        ):
+            label = int(label)
+            baseline_prediction = int(float(baseline_score) >= float(baseline_threshold))
+            calibrator_prediction = int(float(calibrator_score) >= float(calibrator_threshold))
+            baseline_correct = baseline_prediction == label
+            calibrator_correct = calibrator_prediction == label
+            if baseline_correct and calibrator_correct:
+                transition = "both_correct"
+            elif (not baseline_correct) and calibrator_correct:
+                transition = "fixed_by_calibrator"
+            elif baseline_correct and (not calibrator_correct):
+                transition = "broken_by_calibrator"
+            else:
+                transition = "persistent_error"
+            writer.writerow(
+                {
+                    "source_path": row.get("source_path", ""),
+                    "source_sha256": row.get("source_sha256", ""),
+                    "cache_path": row.get("cache_path", ""),
+                    "label": label,
+                    "split": row.get("split", ""),
+                    "sample_index": row.get("sample_index", ""),
+                    "baseline_prob_malicious": float(baseline_score),
+                    "baseline_threshold": float(baseline_threshold),
+                    "baseline_prediction": baseline_prediction,
+                    "baseline_correct": baseline_correct,
+                    "calibrator_model_prob_malicious": float(calibrator_model_score),
+                    "blend_model_weight": float(blend_model_weight),
+                    "calibrated_prob_malicious": float(calibrator_score),
+                    "calibrated_threshold": float(calibrator_threshold),
+                    "calibrated_minus_baseline": float(calibrator_score) - float(baseline_score),
+                    "calibrated_prediction": calibrator_prediction,
+                    "calibrated_correct": calibrator_correct,
+                    "error_transition": transition,
+                }
+            )
+
+
 def _load_prediction_features(
     predictions_path: Path,
     *,
@@ -209,6 +289,7 @@ def main() -> None:
     parser.add_argument("--threshold", type=float, default=None)
     parser.add_argument("--baseline-threshold", type=float, default=0.53)
     parser.add_argument("--output-json", type=Path, required=True)
+    parser.add_argument("--output-predictions-csv", type=Path, default=None)
     parser.add_argument(
         "--allow-missing-cache",
         action="store_true",
@@ -241,6 +322,18 @@ def main() -> None:
 
     baseline_metrics = _metrics(baseline_probs, labels, args.baseline_threshold)
     calibrator_metrics = _metrics(blended_probs, labels, threshold)
+    if args.output_predictions_csv is not None:
+        _write_calibrated_prediction_rows(
+            args.output_predictions_csv,
+            rows=kept_rows,
+            labels=labels,
+            baseline_scores=baseline_probs,
+            calibrator_model_scores=calibrator_probs,
+            calibrator_scores=blended_probs,
+            baseline_threshold=args.baseline_threshold,
+            calibrator_threshold=threshold,
+            blend_model_weight=blend_weight,
+        )
     report = {
         "protocol": (
             "fixed train-split calibrator evaluated on exported predictions; "
@@ -248,6 +341,7 @@ def main() -> None:
             "threshold is provided or stored from val selection"
         ),
         "predictions": str(args.predictions),
+        "calibrated_predictions_csv": str(args.output_predictions_csv) if args.output_predictions_csv else None,
         "rows": counts,
         "calibrator": {
             "model": str(args.model),
