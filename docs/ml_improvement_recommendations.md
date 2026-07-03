@@ -2,6 +2,12 @@
 
 更新时间：2026-07-03
 
+## 2026-07-03 补充：Loop112 external focus verdict pipeline
+
+Loop112 新增 `scripts/run_loop112_external_focus_verdict_pipeline.py`，把 Loop111 外部标注导入和 Loop110 严格 focus verdict pipeline 串成单入口：先导入外部四列标注，再跑导入后 Loop109 preflight，只有通过后才允许 merge、unblind 和 Loop87 import。这样外部文件里只要混入 filename、path、hash、`source_sha256`、`sample_index`、split、probability、score、threshold 或 `loop57` 等身份/模型字段，或者 note 只引用这些伪证据，就会在 Loop110 之前被阻断。
+
+真实 no-op 复验输出 `reports/random_20w_split/loop112_external_focus_pipeline_noop_summary.json`：external rows `0`、imported rows `0`、post-import actionable rows `0`、Loop87 rows `1868`、Loop87 actionable rows `0`、replacement required rows `0`、training policy rows `0`，决策仍为 `ready_noop_no_actionable_verdicts`。因此 Loop112 只是收紧入口顺序，没有创造自动 verdict；Train/Val、Test-10k 和 full-test 仍全部不授权。
+
 ## 2026-07-03 补充：Loop111 focus external annotation import
 
 Loop111 新增 `scripts/import_loop111_focus_external_annotations.py`，把外部/人工 focus verdict 入口收紧成只接受 `blind_review_id/manual_label_verdict/manual_verdict_note/recommended_action` 四列的受控导入器。任何额外列都会被拒绝；如果额外列包含 filename、path、directory、extension、hash、`source_sha256`、`sample_index`、split、probability、score、prediction、threshold、`loop57` 等身份或模型分数字段，会明确记为身份/模型字段违规。导入器不读 private map、不 unblind、不训练、不调阈值、不采样 replacement、不改 split/cache。
