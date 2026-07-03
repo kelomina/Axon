@@ -132,3 +132,37 @@ Loop115 补强了 Loop114 之后的 corrected split 链路：
 - decision: `await_external_verdicts`
 - replacement_required: `0`
 - Train/Val、Test-10k、full-test 仍全部不授权
+
+## Loop116 hash-first redraw e2e
+
+Loop116 新增 `tests/test_redraw_hash_e2e.py`，把下游链路用同一个 replacement candidate 串起来验证：
+
+1. `build_corrected_split_from_plan.py` 从 candidate CSV 选择 fresh replacement，并把 candidate 的 `source_sha256` 写入 corrected split
+2. `audit_corrected_split_replacements.py` 识别该行是 fresh replacement，并在 detail CSV 中保留 `source_sha256`
+3. `audit_corrected_split_cache_ready.py` 通过 `source_sha256` 命中 manifest，并确认 split、manifest、NPZ 三者 hash 一致
+
+同时覆盖两个负例：
+
+- corrected split 的 replacement 行 hash 被清空：即使路径能匹配 manifest，也会因 `split_missing_source_sha256` 阻断
+- corrected split 的 replacement 行 hash 漂移：即使路径能匹配 manifest，也会因 `source_sha256_mismatch_split_manifest` 阻断
+
+验证：
+
+```powershell
+.\vnev\Scripts\python.exe scripts/pre_run_resource_leak_guard.py --target-script tests/test_redraw_hash_e2e.py --target-script scripts/build_corrected_split_from_plan.py --target-script scripts/audit_corrected_split_replacements.py --target-script scripts/audit_corrected_split_cache_ready.py --output-json reports/random_20w_split/loop116_redraw_hash_e2e_guard.json --allow-risk npz_array_load
+```
+
+结果：`guard_ready=true`。
+
+```powershell
+.\vnev\Scripts\python.exe -m pytest tests/test_redraw_hash_e2e.py tests/test_build_corrected_split_from_plan.py tests/test_audit_corrected_split_replacements.py tests/test_audit_corrected_split_cache_ready.py tests/test_run_loop114_loop112_redraw_readiness.py tests/test_build_loop76_redraw_readiness.py -q
+```
+
+结果：`56 passed`。
+
+真实 no-op 复跑：
+
+- `reports/random_20w_split/loop116_loop112_redraw_readiness_noop_summary.json`
+- decision: `await_external_verdicts`
+- replacement_required: `0`
+- Train/Val、Test-10k、full-test 仍全部不授权
