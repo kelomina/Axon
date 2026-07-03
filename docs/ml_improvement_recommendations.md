@@ -50,6 +50,8 @@ Loop78 已把 20w cache 的 1% 抽样完整性审计落成脚本 `scripts/audit_
 
 Loop79 已把当前 20w 状态收敛成一个只读门禁 `scripts/build_loop79_current_state_gate.py`。它明确区分历史失败和当前可训练状态：历史 `199870/200000` 是旧 fixed-v2 strict PE 提取失败证据；当前可信证据是 `random_20w_8192_replace_130_bad_features.json`、`random_20w_8192_replacement_130_strict.csv`、`random_20w_8192_uncompressed_cache_coverage_audit_replaced_130.json` 以及本轮新鲜复验。Loop79 验证 130 个坏特征槽位已按同 label fresh redraw 整批重抽，`selection_status=strict_extracted` 为 `130/130`，自我替换 `0`，替换后 split 和 manifest 均为 `200000`。本轮又重新跑了当前 `loop27_corrected_split.csv` 的全量 cache readiness 和 coverage：`200000/200000` 覆盖、missing `0`，train/val/test 严格为 `20000/20000/160000` 且每个 split 黑白平衡；换 seed `7901` 的 1% NPZ 抽样 `2000/2000` 通过。概率校准仍是可用候选：Val F1 delta `+0.03789303556617796`，Test-10k delta errors `-412`，且 no-test training 与 missing-cache `0` 均通过；GA feature mask 仍只作为高安全候选，不默认启用，因为高价值白样本 FP 增加 `34`。相关记录见 `docs/phase3_loop79_current_state_gate.md`。
 
+Loop80 按漏斗规则把这个概率校准器推进到 16 万 full-test：使用 train-split logistic calibrator、Val 选定阈值 `0.44`、Test-10k 只作确认，full-test 输入为 `random_20w_8192_replaced_test_predictions.csv`，`160000/160000` 行全部保留，missing cache `0`。结果相对 8192 baseline 明显改善：F1 `0.9283588516 -> 0.9686442786`，错误 `11314 -> 5042`，FP/FN 从 `4620/6694` 降到 `2921/2121`。但它不能替代当前全局 best Loop57：Loop57 full-test F1 `0.9883629658`、errors `1868`，比 Loop80 少 `3174` 个错误。按 `F1 >= 0.999` 的最有利 FP-only 容错约 `160` 错误估算，Loop80 还至少要再消掉 `4882` 个错误。因此结论是：概率校准器是有价值的内容/概率修正证据，但不是最终方案；下一步应做 Val-first 融合或新内容证据，不能在 test 上继续调阈值。相关记录见 `docs/phase3_loop80_calibrator_fulltest.md`。
+
 ## 2026-07-02 补充：命名不是证据，content PE v1 已产品化
 
 最新硬规则已经固定：文件名、路径、扩展名、目录名、`source_sha256`、`cache_path`、`sample_index`、`split` 和行顺序只能用于加载、缓存对齐、覆盖审计、去重、人工复核、以及生成一次性的人工标签清单，不能作为模型特征、二阶段融合特征、阈值捷径、自动改标证据或上线推理依据。原因是实战文件命名和训练集命名完全不是同一个分布，且攻击者改名几乎没有成本；训练集目录只能说明人工当时把样本放进哪个标签桶，不能说明文件本身因名字而恶意或良性。
@@ -178,7 +180,7 @@ Axon 现在最值得优先改进的地方，不是马上把模型做得更复杂
 | --- | --- | --- |
 | 统一模型评审闸门 | 已完成 | 已从待办建议中移除，只保留完成记录和复用入口 |
 | fixed-v2 20w 未压缩 cache 覆盖 | 已完成 | 旧重建曾暴露 `130` 条 strict PE 失败；已按“坏文件不补齐、整批同标签重抽”替换为 `strict_extracted=130/130`，当前 `loop27_corrected_split.csv` 复验为 `200000/200000` 覆盖、missing `0` |
-| 概率校准 | 已确认实用且已彻底完成 | 已从待办建议中移除；严格全量 test、hard-FN、hard-error 和高价值白样本都已复验 |
+| 概率校准 | 已完成 full-test，但不是最终最优 | 相对 8192 baseline 大幅改善，16 万 test F1 `0.9686442786`、errors `5042`；但低于 Loop57 的 F1 `0.9883629658`、errors `1868`，只能作为后续 Val-first 融合证据 |
 | RL 主线扩大 | 实验确认当前不实用 | 显眼保留为“不建议近期主推”，除非奖励设计有新证据 |
 | SWA / EMA / all combined | 实验确认当前不实用 | 显眼保留为“不建议一次性叠加训练技巧” |
 | GA 特征掩码 | 已确认低漏报方向实用，但不适合默认启用 | 保留为高安全模式候选；现有 20k、完整 hard-holdout 和高价值白样本证据都已补齐，白样本 FP 成本仍高 |
