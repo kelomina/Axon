@@ -80,6 +80,8 @@ Loop94 已完成最后 Wave10 的 `68` 行证据包，并合并 Waves1-10。Wave
 
 Loop95 已把 Waves1-10 的证据包合并成一个全队列 verdict intake，并用 Loop87 做了 `1868` 行统一导入复验。合并门禁结果为 rows/expected/queue `1868/1868/1868`，十个波次与 Loop72 均 `0` 缺行、`0` 意外行，`duplicate_sample_index_rows=0`，因此没有折叠同 SHA 重复内容样本；仅保留 `2` 个重复 source SHA 组、`4` 行作为成组复核提示。Loop87 全量空 verdict 复验继续为 `ready_noop_no_actionable_verdicts`：blank verdict `1868`、invalid `0`、actionable `0`、replacement required `0`、training policy `0`。结论是：全错误队列现在可以一次性进入严格人工/外部 verdict 闸门，但仍不能训练、不能替换、不能 Test-10k；下一步必须在 `loop95_full_queue_review_evidence_intake.csv` 上填入独立内容/外部证据 verdict 后重新跑 Loop87。相关记录见 `docs/phase3_loop95_full_queue_verdict_intake.md`。
 
+Loop96 又把 Loop95 intake 转成盲化复核包，进一步落实“命名不是证据”。新的 reviewer-facing CSV 只保留 `blind_review_id`、当前标签、PE/content 事实、objective issue 和手填 verdict 字段；路径、文件名、目录、`source_sha256`、cache path、`sample_index`、split、review rank、wave id、Loop57/Loop39 分数和概率全部移入 private map，且 `content_evidence_fields` 里的 hash 项也被剔除。真实 build 为 `1868/1868` 行、blockers `0`、forbidden blinded columns `0`；空盲化表 unblind 后再经 Loop87 复验仍为 `ready_noop_no_actionable_verdicts`，blank verdict `1868`、actionable `0`、replacement `0`、training policy `0`。因此现在应在 `reports/random_20w_split/loop96_full_queue_blinded_review.csv` 上做独立内容/外部证据复核，再走 unblind -> Loop87。相关记录见 `docs/phase3_loop96_blinded_review_package.md`。
+
 ## 2026-07-02 补充：命名不是证据，content PE v1 已产品化
 
 最新硬规则已经固定：文件名、路径、扩展名、目录名、`source_sha256`、`cache_path`、`sample_index`、`split` 和行顺序只能用于加载、缓存对齐、覆盖审计、去重、人工复核、以及生成一次性的人工标签清单，不能作为模型特征、二阶段融合特征、阈值捷径、自动改标证据或上线推理依据。原因是实战文件命名和训练集命名完全不是同一个分布，且攻击者改名几乎没有成本；训练集目录只能说明人工当时把样本放进哪个标签桶，不能说明文件本身因名字而恶意或良性。
