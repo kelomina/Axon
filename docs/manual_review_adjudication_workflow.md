@@ -34,6 +34,14 @@ Use `recommended_action` for the operational recommendation:
 
 The verdict and action should describe the same operational class. For example, `label_wrong` pairs with `relabel_train_only`, while `feature_broken` and `out_of_scope` pair with `replace_sample` or `quarantine_source_group`. If a row conflicts, such as `feature_broken + relabel_train_only`, the safer exclude/replace interpretation wins because a broken sample must be replaced rather than relabeled.
 
+For strict Loop72 imports, `manual_verdict_note` is required for actionable
+verdicts and must summarize content or external evidence. Notes that only cite
+filename, path, directory, extension, hash, `sample_index`, split, review rank,
+Loop57/Loop28 probability, model score, or threshold are rejected. Acceptable
+notes should point to evidence such as PE/section/import/overlay facts, NPZ
+shape or feature extraction failure, sandbox behavior, vendor/multi-engine
+results, Authenticode/publisher context, or provenance evidence.
+
 Important: `label_wrong` does not automatically flip `0` to `1` or `1` to `0`.
 The adjustment plan only creates a relabel action when the reviewer provides a
 clear corrected label. Without that explicit target, the row becomes

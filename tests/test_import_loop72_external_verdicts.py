@@ -293,6 +293,62 @@ def test_actionable_verdict_without_note_blocks_import():
     assert summary["manual_quality"]["actionable_verdict_missing_note_rows"] == 1
 
 
+def test_identity_only_note_blocks_import():
+    with _case_dir("loop75_identity_only_note") as tmp_path:
+        summary = _run_import(
+            tmp_path,
+            [
+                {
+                    "source_path": "data/name-only.exe",
+                    "source_sha256": "4" * 64,
+                    "sample_index": "17",
+                    "split": "test",
+                    "label": "0",
+                    "loop57_error_type": "FP",
+                    "loop57_prediction": "1",
+                    "manual_label_verdict": "label_correct",
+                    "manual_verdict_note": "filename and directory indicate the sample should be benign",
+                    "recommended_action": "keep_label",
+                    "corrected_label": "",
+                }
+            ],
+            [{"source_path": "data/name-only.exe", "source_sha256": "4" * 64, "sample_index": "17", "split": "test", "label": "0"}],
+        )
+
+    assert summary["import_ready"] is False
+    assert summary["row_issue_counts"]["manual_verdict_note_missing_content_or_external_evidence"] == 1
+    assert summary["row_issue_counts"]["manual_verdict_note_identity_or_score_only"] == 1
+    assert summary["manual_quality"]["evidence_note_identity_or_score_only_rows"] == 1
+
+
+def test_model_score_only_note_blocks_import():
+    with _case_dir("loop75_score_only_note") as tmp_path:
+        summary = _run_import(
+            tmp_path,
+            [
+                {
+                    "source_path": "data/score-only.exe",
+                    "source_sha256": "5" * 64,
+                    "sample_index": "18",
+                    "split": "test",
+                    "label": "1",
+                    "loop57_error_type": "FN",
+                    "loop57_prediction": "0",
+                    "manual_label_verdict": "label_correct",
+                    "manual_verdict_note": "loop57 final_prob is below threshold so the dataset label is correct",
+                    "recommended_action": "model_blindspot",
+                    "corrected_label": "",
+                }
+            ],
+            [{"source_path": "data/score-only.exe", "source_sha256": "5" * 64, "sample_index": "18", "split": "test", "label": "1"}],
+        )
+
+    assert summary["import_ready"] is False
+    assert summary["row_issue_counts"]["manual_verdict_note_missing_content_or_external_evidence"] == 1
+    assert summary["row_issue_counts"]["manual_verdict_note_identity_or_score_only"] == 1
+    assert summary["manual_quality"]["evidence_note_missing_content_or_external_rows"] == 1
+
+
 def test_20w_split_gate_blocks_small_splits_when_enabled():
     with _case_dir("loop74_20w_gate") as tmp_path:
         review_csv = tmp_path / "review.csv"

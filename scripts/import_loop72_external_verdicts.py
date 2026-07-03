@@ -73,6 +73,73 @@ VALID_LABEL_TEXT = {
 }
 UNCERTAIN_ACTIONS = {"", "needs_more_evidence"}
 KEEP_STRICT_ACTIONS = {"keep_label", "model_blindspot"}
+IDENTITY_NOTE_TERMS = {
+    "filename",
+    "file name",
+    "path",
+    "directory",
+    "folder",
+    "extension",
+    "source_path",
+    "cache_path",
+    "source_sha256",
+    "sha256",
+    "hash",
+    "sample_index",
+    "split",
+    "row order",
+    "review_rank",
+    "wave",
+}
+MODEL_SCORE_NOTE_TERMS = {
+    "model score",
+    "probability",
+    "prob_malicious",
+    "final_prob",
+    "loop57",
+    "loop28",
+    "prediction",
+    "threshold",
+    "review rank",
+}
+CONTENT_OR_EXTERNAL_EVIDENCE_TERMS = {
+    "api",
+    "authenticode",
+    "behavior",
+    "bytes",
+    "certificate",
+    "content",
+    "corrupt",
+    "dynamic",
+    "entropy",
+    "evidence",
+    "export",
+    "extraction",
+    "feature",
+    "field",
+    "header",
+    "import",
+    "invalid",
+    "mismatch",
+    "multi-engine",
+    "npz",
+    "overlay",
+    "packer",
+    "parse",
+    "pe",
+    "provenance",
+    "publisher",
+    "resource",
+    "sandbox",
+    "section",
+    "signature",
+    "signer",
+    "static",
+    "vendor",
+    "virustotal",
+    "vt",
+    "yara",
+}
 
 
 def resolve_path(path: Path) -> Path:
@@ -215,6 +282,24 @@ def row_has_manual_content(row: dict[str, str]) -> bool:
     )
 
 
+def note_has_any(text: str, terms: set[str]) -> bool:
+    return any(term in text for term in terms)
+
+
+def evidence_note_issues(note: str) -> list[str]:
+    text = normalize_text(note)
+    if not text:
+        return []
+    has_content_or_external = note_has_any(text, CONTENT_OR_EXTERNAL_EVIDENCE_TERMS)
+    has_identity_or_score = note_has_any(text, IDENTITY_NOTE_TERMS) or note_has_any(text, MODEL_SCORE_NOTE_TERMS)
+    issues: list[str] = []
+    if not has_content_or_external:
+        issues.append("manual_verdict_note_missing_content_or_external_evidence")
+    if has_identity_or_score and not has_content_or_external:
+        issues.append("manual_verdict_note_identity_or_score_only")
+    return issues
+
+
 def validate_verdict_pair(row: dict[str, str]) -> tuple[str, str, list[str], Optional[int]]:
     verdict = normalize_text(row.get("manual_label_verdict"))
     action = normalize_text(row.get("recommended_action"))
@@ -242,6 +327,8 @@ def validate_verdict_pair(row: dict[str, str]) -> tuple[str, str, list[str], Opt
 
     if verdict_kind != "uncertain" and not note:
         issues.append("actionable_verdict_requires_manual_verdict_note")
+    elif verdict_kind != "uncertain":
+        issues.extend(evidence_note_issues(note))
 
     if verdict_kind == "uncertain":
         if action_kind not in {"uncertain"}:
@@ -669,6 +756,12 @@ def validate_loop72_external_verdicts(
             ),
             "label_wrong_missing_corrected_label_rows": int(row_issue_counts.get("label_wrong_requires_corrected_label", 0)),
             "actionable_verdict_missing_note_rows": int(row_issue_counts.get("actionable_verdict_requires_manual_verdict_note", 0)),
+            "evidence_note_missing_content_or_external_rows": int(
+                row_issue_counts.get("manual_verdict_note_missing_content_or_external_evidence", 0)
+            ),
+            "evidence_note_identity_or_score_only_rows": int(
+                row_issue_counts.get("manual_verdict_note_identity_or_score_only", 0)
+            ),
         },
         "actionable_counts": {
             "actionable_rows": actionable_rows,

@@ -25,6 +25,7 @@ Loop74 补上 Loop72 review wave plan 和 split adjustment plan 之间的严格�
 - split 必须保持 `200000 = 20000 train + 20000 val + 160000 test`。
 - `label_wrong` 必须提供 `corrected_label`，但在 Loop72 口径下仍触发 replacement/redraw，不进入 training policy relabel。
 - actionable verdict 必须写 `manual_verdict_note`，用于审计外部证据摘要；路径、文件名、hash、split、模型分数不能作为 verdict 证据。
+- `manual_verdict_note` 不能只写 identity 字段或模型分数，例如文件名、目录、hash、`sample_index`、review rank、Loop57/Loop28 概率或阈值。它必须包含内容或外部证据摘要，例如 PE/section/import/overlay/NPZ shape、严格解析失败、沙箱、厂商、多引擎、签名/发布者或来源证明。
 - `feature_broken/out_of_scope` 必须 fresh same-original-label redraw。
 - test verdict 默认只能作为 held-out 噪声审计和目标可行性证据，`training_policy_rows` 必须为 `0`。
 
@@ -89,5 +90,11 @@ Loop74 是噪声治理入口，不是模型候选。它让后续外部复核结�
 ```
 
 结果：`22 passed`。
+
+Loop75 继续补强了 verdict note evidence guard：identity-only 和
+model-score-only 的 `manual_verdict_note` 会被阻断并计入
+`manual_verdict_note_identity_or_score_only` /
+`manual_verdict_note_missing_content_or_external_evidence`。相关测试扩展后为
+`10` 条导入器测试，完整相关套件为 `25 passed`。
 
 Generated reports are not committed.
