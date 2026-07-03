@@ -243,3 +243,42 @@ Loop118 把“不能根据命名训练/判定”先固化为可独立执行的 s
 - decision: `await_external_verdicts`
 - replacement_required: `0`
 - Train/Val、Test-10k、full-test 仍全部不授权
+
+## Loop119 split metadata gate wired into readiness
+
+Loop119 把 Loop118 的独立 split/cache metadata 审计接入 Loop76/Loop114 readiness：
+
+- Loop76 新增可选 `--split-metadata-json`
+- corrected split 和 cache readiness 都通过后，仍必须先提供 `audit_strict_split_metadata.py` 的结果
+- split metadata audit 必须满足：
+  - `audit_ready=true`
+  - `validate_npz=true`
+  - `expect_20w=true`
+  - `row_issue_count=0`
+  - `metadata_issue_counts={}`
+  - `shape_failures=[]`
+- 缺少该审计时，Loop76 返回 `needs_strict_split_metadata_audit`
+- 审计失败时，Loop76 返回 `blocked_split_metadata`
+- 只有 split/cache 显式 label+hash 一致性审计也通过，才允许进入 `ready_for_val_first_reverification`
+- Test-10k 和 full-test 仍保持关闭，必须继续遵守 Val-first 漏斗
+
+验证：
+
+```powershell
+.\vnev\Scripts\python.exe scripts/pre_run_resource_leak_guard.py --target-script scripts/build_loop76_redraw_readiness.py --target-script scripts/run_loop114_loop112_redraw_readiness.py --target-script scripts/audit_strict_split_metadata.py --target-script tests/test_build_loop76_redraw_readiness.py --target-script tests/test_audit_strict_split_metadata.py --output-json reports/random_20w_split/loop119_split_metadata_readiness_guard.json --allow-risk npz_array_load --allow-risk torch_import
+```
+
+结果：`guard_ready=true`。
+
+```powershell
+.\vnev\Scripts\python.exe -m pytest tests/test_run_loop114_loop112_redraw_readiness.py tests/test_build_loop76_redraw_readiness.py tests/test_audit_strict_split_metadata.py tests/test_audit_corrected_split_cache_ready.py tests/test_redraw_hash_e2e.py -q
+```
+
+结果：`42 passed`。
+
+真实 no-op 复跑：
+
+- `reports/random_20w_split/loop119_loop112_redraw_readiness_noop_summary.json`
+- decision: `await_external_verdicts`
+- ready_for.split_metadata_audit: `false`
+- Train/Val、Test-10k、full-test 仍全部不授权

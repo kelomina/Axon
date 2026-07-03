@@ -428,6 +428,7 @@ def run_loop112_redraw_readiness(
     corrected_split_json: Optional[Path] = None,
     replacement_audit_json: Optional[Path] = None,
     cache_ready_json: Optional[Path] = None,
+    split_metadata_json: Optional[Path] = None,
     manifest_json: Optional[Path] = None,
     data_dir: Path = Path("data"),
     output_prefix: Optional[Path] = None,
@@ -516,6 +517,7 @@ def run_loop112_redraw_readiness(
         corrected_split_json=corrected_split_json,
         replacement_audit_json=replacement_audit_json,
         cache_ready_json=cache_ready_json,
+        split_metadata_json=split_metadata_json,
         split_csv=split_csv,
         plan_csv=plan_csv,
         candidate_csv=candidate_csv,
@@ -591,6 +593,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--corrected-split-json", type=Path, default=None)
     parser.add_argument("--replacement-audit-json", type=Path, default=None)
     parser.add_argument("--cache-ready-json", type=Path, default=None)
+    parser.add_argument("--split-metadata-json", type=Path, default=None)
     parser.add_argument("--manifest-json", type=Path, default=None)
     parser.add_argument("--data-dir", type=Path, default=Path("data"))
     parser.add_argument("--output-prefix", type=Path, default=None)
@@ -612,6 +615,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         corrected_split_json=args.corrected_split_json,
         replacement_audit_json=args.replacement_audit_json,
         cache_ready_json=args.cache_ready_json,
+        split_metadata_json=args.split_metadata_json,
         manifest_json=args.manifest_json,
         data_dir=args.data_dir,
         output_prefix=args.output_prefix,

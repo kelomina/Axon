@@ -161,13 +161,39 @@ def _cache_ready_payload(*, ready: bool = True) -> dict:
     }
 
 
-def _build(tmp_path: Path, *, import_payload: dict, adjustment_payload: dict, candidate=None, corrected=None, replacement=None, cache=None):
+def _split_metadata_payload(*, ready: bool = True, validate_npz: bool = True, expect_20w: bool = True) -> dict:
+    return {
+        "schema": "axon_strict_split_metadata_audit_v1",
+        "audit_ready": ready,
+        "rows": 200000,
+        "manifest_samples": 200000,
+        "validate_npz": validate_npz,
+        "expect_20w": expect_20w,
+        "row_issue_count": 0 if ready else 1,
+        "metadata_issue_counts": {} if ready else {"source_sha256_mismatch_split_npz": 1},
+        "shape_failures": [],
+        "match_counts": {"source_sha256": 200000 if ready else 199999},
+    }
+
+
+def _build(
+    tmp_path: Path,
+    *,
+    import_payload: dict,
+    adjustment_payload: dict,
+    candidate=None,
+    corrected=None,
+    replacement=None,
+    cache=None,
+    split_metadata=None,
+):
     import_json = _write_json(tmp_path / "import.json", import_payload)
     adjustment_json = _write_json(tmp_path / "adjustment.json", adjustment_payload)
     candidate_json = _write_json(tmp_path / "candidate.json", candidate) if candidate is not None else None
     corrected_json = _write_json(tmp_path / "corrected.json", corrected) if corrected is not None else None
     replacement_json = _write_json(tmp_path / "replacement.json", replacement) if replacement is not None else None
     cache_json = _write_json(tmp_path / "cache.json", cache) if cache is not None else None
+    split_metadata_json = _write_json(tmp_path / "split_metadata.json", split_metadata) if split_metadata is not None else None
     return build_readiness(
         strict_import_json=import_json,
         adjustment_plan_json=adjustment_json,
@@ -175,6 +201,7 @@ def _build(tmp_path: Path, *, import_payload: dict, adjustment_payload: dict, ca
         corrected_split_json=corrected_json,
         replacement_audit_json=replacement_json,
         cache_ready_json=cache_json,
+        split_metadata_json=split_metadata_json,
         split_csv=tmp_path / "split.csv",
         plan_csv=tmp_path / "plan.csv",
         candidate_csv=tmp_path / "candidate.csv",
@@ -314,6 +341,7 @@ def test_full_clean_chain_is_ready_for_val_first_reverification():
             corrected=_corrected_payload(),
             replacement=_replacement_audit_payload(ok=True),
             cache=_cache_ready_payload(ready=True),
+            split_metadata=_split_metadata_payload(ready=True),
         )
 
     assert payload["decision"] == "ready_for_val_first_reverification"
@@ -322,6 +350,76 @@ def test_full_clean_chain_is_ready_for_val_first_reverification():
     assert payload["cache_ready"]["cache_ready"] is True
     assert payload["ready_for"]["train_val_only"] is True
     assert payload["ready_for"]["full_test"] is False
+
+
+def test_cache_ready_chain_requires_strict_split_metadata_audit_before_training():
+    with _case_dir("loop76_needs_split_metadata") as tmp_path:
+        payload = _build(
+            tmp_path,
+            import_payload=_import_payload(),
+            adjustment_payload=_adjustment_payload(replacement_required=2),
+            candidate=_candidate_payload(enough=True),
+            corrected=_corrected_payload(),
+            replacement=_replacement_audit_payload(ok=True),
+            cache=_cache_ready_payload(ready=True),
+        )
+
+    assert payload["decision"] == "needs_strict_split_metadata_audit"
+    assert payload["next_step"] == "audit_strict_split_metadata"
+    assert "--expect-20w" in payload["commands"]["audit_strict_split_metadata"]
+    assert payload["ready_for"]["train_val_only"] is False
+    assert payload["ready_for"]["split_metadata_audit"] is True
+
+
+def test_split_metadata_audit_without_npz_validation_blocks_training():
+    with _case_dir("loop76_split_metadata_no_npz") as tmp_path:
+        payload = _build(
+            tmp_path,
+            import_payload=_import_payload(),
+            adjustment_payload=_adjustment_payload(replacement_required=2),
+            candidate=_candidate_payload(enough=True),
+            corrected=_corrected_payload(),
+            replacement=_replacement_audit_payload(ok=True),
+            cache=_cache_ready_payload(ready=True),
+            split_metadata=_split_metadata_payload(ready=True, validate_npz=False),
+        )
+
+    assert payload["decision"] == "blocked_split_metadata"
+    assert payload["strict_failures"] == ["split_metadata_npz_validation_not_enabled"]
+
+
+def test_split_metadata_audit_without_20w_shape_check_blocks_training():
+    with _case_dir("loop76_split_metadata_no_shape") as tmp_path:
+        payload = _build(
+            tmp_path,
+            import_payload=_import_payload(),
+            adjustment_payload=_adjustment_payload(replacement_required=2),
+            candidate=_candidate_payload(enough=True),
+            corrected=_corrected_payload(),
+            replacement=_replacement_audit_payload(ok=True),
+            cache=_cache_ready_payload(ready=True),
+            split_metadata=_split_metadata_payload(ready=True, expect_20w=False),
+        )
+
+    assert payload["decision"] == "blocked_split_metadata"
+    assert payload["strict_failures"] == ["split_metadata_20w_shape_not_checked"]
+
+
+def test_failed_split_metadata_audit_blocks_training():
+    with _case_dir("loop76_split_metadata_failed") as tmp_path:
+        payload = _build(
+            tmp_path,
+            import_payload=_import_payload(),
+            adjustment_payload=_adjustment_payload(replacement_required=2),
+            candidate=_candidate_payload(enough=True),
+            corrected=_corrected_payload(),
+            replacement=_replacement_audit_payload(ok=True),
+            cache=_cache_ready_payload(ready=True),
+            split_metadata=_split_metadata_payload(ready=False),
+        )
+
+    assert payload["decision"] == "blocked_split_metadata"
+    assert payload["strict_failures"] == ["split_metadata_audit_failed"]
 
 
 def test_cache_miss_requires_recovery_before_eval():

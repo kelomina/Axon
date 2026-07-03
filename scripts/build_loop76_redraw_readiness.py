@@ -194,6 +194,24 @@ def summarize_cache_ready(cache_payload: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def summarize_split_metadata(split_metadata_payload: dict[str, Any]) -> dict[str, Any]:
+    if not split_metadata_payload:
+        return {"provided": False}
+    return {
+        "provided": True,
+        "schema": split_metadata_payload.get("schema", ""),
+        "audit_ready": bool(split_metadata_payload.get("audit_ready", False)),
+        "rows": _int(split_metadata_payload.get("rows")),
+        "manifest_samples": _int(split_metadata_payload.get("manifest_samples")),
+        "validate_npz": bool(split_metadata_payload.get("validate_npz", False)),
+        "expect_20w": bool(split_metadata_payload.get("expect_20w", False)),
+        "row_issue_count": _int(split_metadata_payload.get("row_issue_count")),
+        "metadata_issue_counts": dict(split_metadata_payload.get("metadata_issue_counts", {})),
+        "shape_failures": list(split_metadata_payload.get("shape_failures", [])),
+        "match_counts": dict(split_metadata_payload.get("match_counts", {})),
+    }
+
+
 def command_for_candidate_pool(
     *,
     data_dir: Path,
@@ -284,6 +302,7 @@ def decide(payload: dict[str, Any]) -> tuple[str, list[str], str]:
     corrected = payload["corrected_split"]
     repl = payload["replacement_audit"]
     cache = payload["cache_ready"]
+    split_meta = payload["split_metadata"]
 
     if not imp["import_ready"]:
         failures.append("strict_import_not_ready")
@@ -356,6 +375,16 @@ def decide(payload: dict[str, Any]) -> tuple[str, list[str], str]:
         return "needs_cache_recovery", [], "recover_missing_cache_then_rerun_cache_ready"
     if not cache["label_balance_enforced"]:
         return "blocked_cache_readiness", ["cache_ready_label_balance_not_enforced"], "rerun_cache_ready_with_label_balance"
+    if not split_meta["provided"]:
+        return "needs_strict_split_metadata_audit", [], "audit_strict_split_metadata"
+    if not split_meta["validate_npz"]:
+        return "blocked_split_metadata", ["split_metadata_npz_validation_not_enabled"], "rerun_split_metadata_audit_with_npz_validation"
+    if not split_meta["expect_20w"]:
+        return "blocked_split_metadata", ["split_metadata_20w_shape_not_checked"], "rerun_split_metadata_audit_with_expect_20w"
+    if split_meta["row_issue_count"] or split_meta["metadata_issue_counts"] or split_meta["shape_failures"]:
+        return "blocked_split_metadata", ["split_metadata_audit_failed"], "fix_split_manifest_npz_metadata_then_rerun"
+    if not split_meta["audit_ready"]:
+        return "blocked_split_metadata", ["split_metadata_not_ready"], "fix_split_manifest_npz_metadata_then_rerun"
     return "ready_for_val_first_reverification", [], "restart_val_first_funnel"
 
 
@@ -363,6 +392,7 @@ def ready_for_matrix(decision: str) -> dict[str, bool]:
     return {
         "fresh_redraw": decision in {"needs_replacement_candidate_pool", "needs_corrected_split"},
         "cache_recovery": decision == "needs_cache_recovery",
+        "split_metadata_audit": decision == "needs_strict_split_metadata_audit",
         "train_val_only": decision == "ready_for_val_first_reverification",
         "test10k": False,
         "full_test": False,
@@ -377,6 +407,7 @@ def build_readiness(
     corrected_split_json: Optional[Path],
     replacement_audit_json: Optional[Path],
     cache_ready_json: Optional[Path],
+    split_metadata_json: Optional[Path],
     split_csv: Path,
     plan_csv: Path,
     candidate_csv: Optional[Path],
@@ -392,6 +423,7 @@ def build_readiness(
     corrected_split = summarize_corrected_split(read_json(corrected_split_json))
     replacement_audit = summarize_replacement_audit(read_json(replacement_audit_json))
     cache_ready = summarize_cache_ready(read_json(cache_ready_json))
+    split_metadata = summarize_split_metadata(read_json(split_metadata_json))
 
     payload = {
         "schema": "axon_loop76_redraw_readiness_orchestration_gate_v1",
@@ -429,6 +461,7 @@ def build_readiness(
         "corrected_split_integrity": replacement_audit,
         "cache_ready": cache_ready,
         "cache_readiness": cache_ready,
+        "split_metadata": split_metadata,
         "val_first_policy": {
             "threshold_selection_allowed_sources": ["train_oof", "val"],
             "forbid_test10k_threshold_selection": True,
@@ -486,8 +519,16 @@ def build_readiness(
             output_prefix=output_prefix,
             enforce_label_balance=enforce_label_balance,
         )
+        commands["audit_strict_split_metadata"] = (
+            ".\\vnev\\Scripts\\python.exe scripts\\audit_strict_split_metadata.py"
+            f" --split-csv {corrected_split_csv_for_command}"
+            f" --manifest-json {manifest_json}"
+            f" --output-json {output_prefix}_strict_split_metadata.json"
+            " --expect-20w --strict"
+        )
     else:
         commands["audit_cache_ready"] = "manifest_json_required_before_cache_readiness_audit"
+        commands["audit_strict_split_metadata"] = "manifest_json_required_before_split_metadata_audit"
     payload["commands"] = commands
     payload["notes"] = [
         "This gate is intentionally read-only. Run only the command named by next_step.",
@@ -533,6 +574,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--corrected-split-json", type=Path, default=None)
     parser.add_argument("--replacement-audit-json", type=Path, default=None)
     parser.add_argument("--cache-ready-json", type=Path, default=None)
+    parser.add_argument("--split-metadata-json", type=Path, default=None)
     parser.add_argument("--split-csv", type=Path, required=True)
     parser.add_argument("--plan-csv", type=Path, required=True)
     parser.add_argument("--candidate-csv", type=Path, default=None)
@@ -559,6 +601,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         corrected_split_json=args.corrected_split_json,
         replacement_audit_json=args.replacement_audit_json,
         cache_ready_json=args.cache_ready_json,
+        split_metadata_json=args.split_metadata_json,
         split_csv=args.split_csv,
         plan_csv=args.plan_csv,
         candidate_csv=args.candidate_csv,
