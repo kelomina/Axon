@@ -58,26 +58,27 @@
     ]
   },
   "recommended_val_first_candidate": {
-    "name": "stage2_content_pe_v2_section_imports_val_only",
-    "rationale": "Loop126 errors are dominated by section permission/entropy/size skew and sparse API surface, which content_pe_v2 already encodes as content-only section/import/API features.",
+    "name": "loop127_content_cross_valonly",
+    "rationale": "Loop126 errors are dominated by content-derived section permission/entropy/size-skew and sparse API signals; train_loop43_content_cross.py already builds explicit content-only PE v1/v2 interactions such as exec+write+high-entropy and packer/RWX combinations.",
+    "script": "scripts/train_loop43_content_cross.py",
+    "checkpoint": "models/random_20w_8192_seed43/best_model.pt",
     "train_predictions": "reports/random_20w_split/loop122_seed43_strict_train_predictions.csv",
     "val_predictions": "reports/random_20w_split/loop121_seed43_strict_val_predictions.csv",
     "locked_test10k_predictions": "reports/random_20w_split/loop123_seed43_strict_test10k_predictions.csv",
+    "content_pe_cache_dir": "reports/random_20w_split/content_pe_cache_v1",
+    "content_pe_v2_cache_dir": "reports/random_20w_split/content_pe_v2_cache",
     "do_not_use_for_iterative_tuning": [
       "reports/random_20w_split/loop124_seed43_probability_calibrator_full_test_eval.json"
     ],
-    "feature_groups": [
-      "section",
-      "imports"
-    ],
-    "identity_boundary": "source_path/cache_path/source_sha256/sample_index only open/cache/align rows; feature names must pass identity_feature_guard; no filename/path/directory/extension slices.",
-    "resource_note": "Run pre_run_resource_leak_guard first. Current system memory was near 89%, so defer heavy training until memory is below guard threshold."
+    "feature_family": "content-only PE v1/v2 cross features",
+    "identity_boundary": "source_path/cache_path/source_sha256/sample_index only open/cache/align rows; feature names must pass identity_feature_guard; no filename/path/directory/extension/hash/score features.",
+    "resource_note": "Run pre_run_resource_leak_guard first. Defer heavy training when system memory is near the 90% guard threshold."
   },
-  "first_command_when_resources_allow": ".\\vnev\\Scripts\\python.exe scripts\\train_stage2_cache_matrix.py --checkpoint models/random_20w_8192_seed43/best_model.pt --train-predictions reports/random_20w_split/loop122_seed43_strict_train_predictions.csv --val-predictions reports/random_20w_split/loop121_seed43_strict_val_predictions.csv --output-dir reports/random_20w_split/loop127_stage2_content_pe_v2_section_imports_valonly --feature-set extended --content-pe-v2-features --content-pe-v2-groups section,imports --noise-modes none,soft_conflict_downweight --model-candidates logreg_l2_balanced,hgb_l2,extratrees_shallow --test-val-f1-gate 0.981",
+  "first_command_when_resources_allow": ".\\vnev\\Scripts\\python.exe scripts\\train_loop43_content_cross.py --checkpoint models/random_20w_8192_seed43/best_model.pt --train-predictions reports/random_20w_split/loop122_seed43_strict_train_predictions.csv --val-predictions reports/random_20w_split/loop121_seed43_strict_val_predictions.csv --output-dir reports/random_20w_split/loop127_content_cross_valonly --content-pe-cache-dir reports/random_20w_split/content_pe_cache_v1 --content-pe-v2-cache-dir reports/random_20w_split/content_pe_v2_cache --feature-set extended --noise-modes none,soft_conflict_downweight --model-candidates logreg_l2_balanced,hgb_l2,extratrees_shallow --baseline-val-f1 0.9700996677740864 --baseline-val-errors 603",
   "gate": {
     "val_required_before_test10k": true,
     "test10k_allowed_only_if_val_f1_exceeds_current_best": 0.9700996677740864,
-    "prefer_practical_gate": "Val F1 >= 0.981 or errors <= 380 before locked Test-10k, because full-test target gap is still large.",
+    "prefer_practical_gate": "Val F1 >= 0.981 or errors <= 380 before any locked Test-10k confirmation; Loop43 itself is Val-only and does not run Test-10k.",
     "full_test_allowed": false
   },
   "data_noise_policy": {
