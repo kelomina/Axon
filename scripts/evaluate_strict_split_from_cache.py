@@ -30,7 +30,7 @@ from model import AxonMalwareModel  # noqa: E402
 from security import load_safe_checkpoint  # noqa: E402
 
 
-VALID_SPLITS = {"train", "val", "test", "all"}
+VALID_SPLITS = {"train", "val", "test", "test10k", "all"}
 
 
 def resolve_path(path: Path) -> Path:

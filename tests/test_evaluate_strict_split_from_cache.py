@@ -153,3 +153,46 @@ def test_compute_metrics_reports_confusion_counts():
     assert metrics["false_positive"] == 1
     assert metrics["false_negative"] == 1
     assert metrics["errors"] == 2
+
+
+def test_collect_strict_records_accepts_locked_test10k_split():
+    with _case_dir("strict_eval_test10k") as tmp_path:
+        cache_dir = tmp_path / ".cache"
+        cache_dir.mkdir()
+        cache_path = cache_dir / "sample.npz"
+        cache_path.write_bytes(b"placeholder")
+        split_csv = tmp_path / "split.csv"
+        manifest_json = cache_dir / "manifest.json"
+        _write_split(
+            split_csv,
+            [
+                {
+                    "source_path": "renamed-anything.exe",
+                    "source_sha256": "d" * 64,
+                    "label": "1",
+                    "sample_index": "10",
+                    "split": "test10k",
+                }
+            ],
+        )
+        _write_manifest(
+            manifest_json,
+            [
+                {
+                    "source_path": "different-name.exe",
+                    "cache_path": str(cache_path),
+                    "label": 1,
+                    "source_sha256": "d" * 64,
+                }
+            ],
+        )
+
+        records, summary = collect_strict_records(
+            split_csv=split_csv,
+            manifest_json=manifest_json,
+            split="test10k",
+        )
+
+    assert len(records) == 1
+    assert records[0]["split"] == "test10k"
+    assert summary["manifest_match_counts"] == {"source_sha256": 1}
