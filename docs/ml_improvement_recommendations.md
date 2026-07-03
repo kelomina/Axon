@@ -2,6 +2,12 @@
 
 更新时间：2026-07-03
 
+## 2026-07-03 补充：Loop110 focus verdict pipeline
+
+Loop110 把 Loop106 focus 标注后的严格入口串成单命令：`scripts/run_loop110_focus_verdict_pipeline.py` 按顺序执行 Loop109 focus annotation preflight、Loop107 focus merge、Loop96 unblind、Loop87 verdict import。任一阶段出现 blocker 就停止后续阶段，避免绕过盲化预检、直接 merge/unblind 或把无效人工字段送进后续 redraw 链路。这个 pipeline 仍是只读操作，不训练、不调阈值、不加载 checkpoint、不打开 NPZ 数组、不采样 replacement、不改 split/cache。
+
+真实 no-op 链路已跑通：`reports/random_20w_split/loop110_focus_verdict_pipeline_noop_summary.json` 显示四个阶段均通过，`preflight_rows=240`、`preflight_annotated_rows=0`、`merged_annotated_rows=0`、`loop87_rows=1868`、`loop87_actionable_rows=0`、`loop87_replacement_required_rows=0`、`loop87_training_policy_rows=0`，最终 `decision=ready_noop_no_actionable_verdicts`。因此当前仍不能 redraw、Train/Val、Test-10k 或 full-test；下一步仍是给 focus 表填入独立内容/外部证据 verdict 后重新跑 Loop110。
+
 ## 2026-07-03 补充：Loop109 focus annotation preflight
 
 Loop109 在 Loop107 focus 合并和 Loop96 unblind 之前新增盲化标注质量预检：`scripts/preflight_loop106_focus_annotations.py`。它只读 `reports/random_20w_split/loop106_content_review_focus_top240.csv`，检查 `manual_label_verdict/manual_verdict_note/recommended_action` 三个手填字段是否合法、是否有重复或缺失 `blind_review_id`、是否混入身份/模型列、actionable verdict 是否有 note，以及 note 是否只引用文件名、路径、目录、hash、`source_sha256`、`sample_index`、split、review rank、模型分数、概率、prediction 或 threshold。它不读 private map、不 unblind、不 merge、不训练、不调阈值、不动 split/cache。

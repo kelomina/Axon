@@ -1,0 +1,55 @@
+{
+  "schema": "axon_loop87_review_evidence_verdict_import_v1",
+  "protocol": "strict manual/external verdict gate for Loop86 evidence package; no model fitting, no threshold selection, no automatic relabeling, no split/cache mutation",
+  "identity_feature_policy": "source_path/cache_path/source_sha256/sample_index/split/review rank/model score columns are loading, alignment, priority, and manual-review fields only; they are not verdict evidence, model evidence, replacement sampling keys, or threshold/fusion inputs",
+  "replacement_rule": "Confirmed label_wrong/feature_broken/out_of_scope rows must be quarantined and replaced by a fresh valid sample from the locked-manifest original-label pool. Never self-fill from the bad row.",
+  "evidence_csv": "reports\\random_20w_split\\loop110_focus_verdict_pipeline_noop\\loop110_unblinded_loop87_input.csv",
+  "rows": 1868,
+  "expected_rows": 1868,
+  "import_ready": true,
+  "decision": "ready_noop_no_actionable_verdicts",
+  "blocking_issues": [],
+  "missing_required_columns": [],
+  "duplicate_sample_index_rows": 0,
+  "duplicate_review_batch_rank_rows": 0,
+  "status_counts": {
+    "no_decision": 1868
+  },
+  "reason_counts": {
+    "blank_manual_fields": 1868
+  },
+  "verdict_counts": {
+    "blank": 1868
+  },
+  "action_counts": {
+    "blank": 1868
+  },
+  "row_issue_counts": {},
+  "invalid_rows": 0,
+  "actionable_rows": 0,
+  "replacement_required_rows": 0,
+  "replacement_counts_by_original_label": {},
+  "training_policy_rows": 0,
+  "manual_quality": {
+    "blank_verdict_rows": 1868,
+    "actionable_verdict_missing_note_rows": 0,
+    "evidence_note_missing_content_or_external_rows": 0,
+    "evidence_note_identity_or_score_only_rows": 0
+  },
+  "decisions": {
+    "automatic_relabel_allowed": false,
+    "automatic_replacement_allowed": false,
+    "training_allowed": false,
+    "test10k_allowed": false,
+    "next_allowed_step": "no-op"
+  },
+  "outputs": {
+    "validated_csv": "reports\\random_20w_split\\loop110_focus_verdict_pipeline_noop\\loop110_loop87_validated.csv",
+    "summary_json": "reports\\random_20w_split\\loop110_focus_verdict_pipeline_noop\\loop110_loop87_import.json"
+  },
+  "notes": [
+    "Manual verdict notes must cite content or external evidence. Identity fields and model scores alone are blocked.",
+    "A confirmed bad row creates a redraw request from the locked-manifest original-label pool; it does not self-fill counts.",
+    "This gate validates verdict ingress only. It does not build a corrected split or authorize Train/Val/Test evaluation."
+  ]
+}

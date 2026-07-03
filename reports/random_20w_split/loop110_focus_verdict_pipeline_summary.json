@@ -1,0 +1,46 @@
+{
+  "schema": "axon_loop110_focus_verdict_pipeline_summary_v1",
+  "date": "2026-07-03",
+  "protocol": "read-only focus verdict ingress pipeline; no training, no threshold tuning, no checkpoint loading, no NPZ array loading, no replacement sampling, no split/cache mutation",
+  "inputs": {
+    "pipeline_summary": "reports/random_20w_split/loop110_focus_verdict_pipeline_noop_summary.json",
+    "pipeline_output_dir": "reports/random_20w_split/loop110_focus_verdict_pipeline_noop",
+    "guard_json": "reports/random_20w_split/loop110_focus_verdict_pipeline_guard.json"
+  },
+  "real_result": {
+    "decision": "ready_noop_no_actionable_verdicts",
+    "blockers": [],
+    "preflight_rows": 240,
+    "preflight_annotated_rows": 0,
+    "preflight_actionable_rows": 0,
+    "merged_annotated_rows": 0,
+    "loop87_rows": 1868,
+    "loop87_actionable_rows": 0,
+    "loop87_replacement_required_rows": 0,
+    "loop87_training_policy_rows": 0,
+    "ready_for_redraw_preflight": false,
+    "training_allowed": false,
+    "test10k_allowed": false,
+    "full_test_allowed": false
+  },
+  "stage_results": {
+    "focus_annotation_preflight": "pass",
+    "focus_merge": "pass",
+    "loop96_unblind": "pass",
+    "loop87_import": "pass_noop"
+  },
+  "identity_feature_policy": {
+    "manual_fields_require": "content_or_external_evidence",
+    "identity_or_model_score_only_notes": "blocked_by_loop109_before_merge_and_by_loop87_after_unblind",
+    "private_map_use": "alignment_only_not_verdict_evidence"
+  },
+  "verification": {
+    "resource_guard": "pass",
+    "py_compile": "pass",
+    "pytest": {
+      "command": "python -m pytest tests/test_run_loop110_focus_verdict_pipeline.py tests/test_preflight_loop106_focus_annotations.py tests/test_merge_loop106_focus_annotations.py tests/test_build_loop96_blinded_review_package.py tests/test_import_loop87_review_evidence_verdicts.py",
+      "result": "21 passed"
+    }
+  },
+  "next_allowed_step": "Fill Loop106 focus manual fields with independent content/external verdicts, rerun Loop110, then only if Loop87 reports actionable bad rows proceed to non-destructive redraw preflight."
+}
