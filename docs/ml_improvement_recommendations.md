@@ -2,6 +2,12 @@
 
 更新时间：2026-07-03
 
+## 2026-07-03 补充：Loop106 content review focus
+
+Loop106 针对当前最大卡点 `actionable_rows=0` 做了只读推进：新增 `scripts/build_loop106_content_review_focus.py`，从 `reports/random_20w_split/loop96_full_queue_blinded_review.csv` 生成内容优先复核批次。排序只使用盲审 CSV 中的 PE/静态内容字段，例如 entropy、overlay、security directory 后附加数据、section 数、import/resource/security directory 形态、重复内容组标记和 objective issue；不读取 private map，不恢复路径/hash/sample_index/split/row order，不使用模型概率或分数。
+
+真实输出为 `reports/random_20w_split/loop106_content_review_focus_top240.csv` 和 `.json`：输入 `1868` 行，选出 `240` 行，`blockers=[]`，禁用字段泄漏扫描为 `0`。Top 复核理由集中在 `overlay_present=240`、`high_overlay_entropy=235`、`benign_label_malware_like_static_shape=207`、`high_file_entropy=184`、`post_security_overlay_present=136`。这只是复核优先级，不是 verdict；仍必须由独立人工/外部引擎填写 `manual_label_verdict/manual_verdict_note/recommended_action`，并经 Loop87 验证内容或外部证据后，才可能进入 quarantine + 同原始标签 fresh redraw。
+
 ## 2026-07-03 补充：Loop105 main entry authorization
 
 Loop105 在 Loop104 总闸之上增加了 official train/eval 的轻量授权入口：`scripts/authorized_main.py`。它会先读取 `reports/random_20w_split/loop104_ml_authorization_preflight.json`，判断当前命令需要 `train_val`、`threshold_sweep`、`test10k` 还是 `full_test` 授权；若未授权，直接在导入 `scripts/main.py`、torch、模型、checkpoint 或数据之前退出。当前真实阻断验证显示，`eval --split test` 会在 missing checkpoint 检查前被拦截，原因是 `full_test_allowed=false`、`actionable_rows=0`。

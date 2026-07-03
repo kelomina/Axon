@@ -1,0 +1,69 @@
+{
+  "schema": "axon_loop106_content_review_focus_v1",
+  "protocol": "read-only Loop106 content focus builder; no model fitting, no threshold selection, no automatic verdict, no private-map read, no split/cache mutation",
+  "identity_policy": "The input must be the Loop96 blinded reviewer CSV. Filename, path, extension, directory, hash, source_sha256, sample_index, split, row order, and model scores are forbidden. Only blinded content fields may drive focus ranking.",
+  "input_csv": "reports\\random_20w_split\\loop96_full_queue_blinded_review.csv",
+  "rows": 1868,
+  "expected_rows": 1868,
+  "selected_rows": 240,
+  "max_rows": 240,
+  "blockers": [],
+  "forbidden_input_columns": [],
+  "label_counts": {
+    "0": 1195,
+    "1": 673
+  },
+  "bucket_counts": {
+    "benign_label_content_review": 1195,
+    "malicious_label_content_review": 673
+  },
+  "selected_bucket_counts": {
+    "benign_label_content_review": 207,
+    "malicious_label_content_review": 33
+  },
+  "reason_counts": {
+    "baseline_content_sample": 638,
+    "benign_label_malware_like_static_shape": 726,
+    "duplicate_content_group": 4,
+    "has_security_directory": 680,
+    "high_file_entropy": 483,
+    "high_overlay_entropy": 751,
+    "high_post_security_overlay_entropy": 132,
+    "large_resource_directory": 47,
+    "malicious_label_benign_like_static_shape": 41,
+    "many_sections": 349,
+    "overlay_present": 858,
+    "post_security_overlay_present": 222,
+    "security_directory_with_extra_overlay": 10
+  },
+  "top_reason_counts": {
+    "benign_label_malware_like_static_shape": 207,
+    "duplicate_content_group": 2,
+    "has_security_directory": 110,
+    "high_file_entropy": 184,
+    "high_overlay_entropy": 235,
+    "high_post_security_overlay_entropy": 130,
+    "large_resource_directory": 23,
+    "many_sections": 66,
+    "overlay_present": 240,
+    "post_security_overlay_present": 136,
+    "security_directory_with_extra_overlay": 6
+  },
+  "decisions": {
+    "automatic_verdict_allowed": false,
+    "automatic_relabel_allowed": false,
+    "automatic_replacement_allowed": false,
+    "training_allowed": false,
+    "test10k_allowed": false,
+    "ready_for_independent_content_review": true
+  },
+  "outputs": {
+    "focus_csv": "reports\\random_20w_split\\loop106_content_review_focus_top240.csv",
+    "summary_json": "reports\\random_20w_split\\loop106_content_review_focus_top240.json"
+  },
+  "notes": [
+    "Ranking uses blinded content fields only. It is a review prioritization aid, not a verdict.",
+    "Reviewers must still cite content or external evidence in manual_verdict_note before Loop87 can accept an actionable row.",
+    "The focus CSV intentionally omits private alignment fields, hashes, paths, model scores, split, and row order."
+  ]
+}

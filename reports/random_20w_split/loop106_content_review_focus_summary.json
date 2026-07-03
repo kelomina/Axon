@@ -1,0 +1,63 @@
+{
+  "schema": "axon_loop106_content_review_focus_summary_v1",
+  "protocol": "read-only content-priority blinded review focus; no model fitting, no threshold selection, no automatic verdict, no private-map read, no split/cache mutation",
+  "inputs": {
+    "blinded_csv": "reports/random_20w_split/loop96_full_queue_blinded_review.csv"
+  },
+  "outputs": {
+    "focus_csv": "reports/random_20w_split/loop106_content_review_focus_top240.csv",
+    "focus_json": "reports/random_20w_split/loop106_content_review_focus_top240.json",
+    "guard_json": "reports/random_20w_split/loop106_content_review_focus_guard.json"
+  },
+  "real_result": {
+    "rows": 1868,
+    "selected_rows": 240,
+    "blockers": [],
+    "forbidden_input_columns": [],
+    "ready_for_independent_content_review": true,
+    "automatic_verdict_allowed": false,
+    "automatic_relabel_allowed": false,
+    "automatic_replacement_allowed": false,
+    "training_allowed": false,
+    "test10k_allowed": false
+  },
+  "selected_bucket_counts": {
+    "benign_label_content_review": 207,
+    "malicious_label_content_review": 33
+  },
+  "top_focus_reasons": {
+    "overlay_present": 240,
+    "high_overlay_entropy": 235,
+    "benign_label_malware_like_static_shape": 207,
+    "high_file_entropy": 184,
+    "post_security_overlay_present": 136,
+    "high_post_security_overlay_entropy": 130
+  },
+  "leak_scan": {
+    "rows": 240,
+    "violations": [],
+    "forbidden_header_or_content_tokens_checked": [
+      "source_sha",
+      "source_path",
+      "cache_path",
+      "sample_index",
+      "split",
+      "row_order",
+      "loop57",
+      "loop39",
+      "prob",
+      "score",
+      "prediction",
+      "threshold"
+    ]
+  },
+  "verification": {
+    "resource_guard": "pass",
+    "py_compile": "pass",
+    "pytest": {
+      "command": "python -m pytest tests/test_build_loop106_content_review_focus.py tests/test_build_loop96_blinded_review_package.py tests/test_import_loop87_review_evidence_verdicts.py",
+      "result": "12 passed"
+    }
+  },
+  "next_allowed_step": "Independent reviewer or external engine annotates the Loop106 focus CSV; unblind via Loop96 and validate via Loop87 before any redraw preflight."
+}
