@@ -2,6 +2,12 @@
 
 更新时间：2026-07-03
 
+## 2026-07-03 补充：Loop109 focus annotation preflight
+
+Loop109 在 Loop107 focus 合并和 Loop96 unblind 之前新增盲化标注质量预检：`scripts/preflight_loop106_focus_annotations.py`。它只读 `reports/random_20w_split/loop106_content_review_focus_top240.csv`，检查 `manual_label_verdict/manual_verdict_note/recommended_action` 三个手填字段是否合法、是否有重复或缺失 `blind_review_id`、是否混入身份/模型列、actionable verdict 是否有 note，以及 note 是否只引用文件名、路径、目录、hash、`source_sha256`、`sample_index`、split、review rank、模型分数、概率、prediction 或 threshold。它不读 private map、不 unblind、不 merge、不训练、不调阈值、不动 split/cache。
+
+真实 240 行 focus 表预检结果为 `ready_noop_no_focus_annotations`：`rows=240`、`blockers=[]`、`annotated_rows=0`、`actionable_rows=0`、`invalid_rows=0`、`identity_or_model_term_mention_rows=0`。这说明当前 focus 表结构可作为 no-op 合并输入，但仍没有任何独立 verdict，不能触发 redraw、Train/Val、Test-10k 或 full-test。该门禁的价值是把伪证据拦截前移：以后外部/人工标注方在提交 focus CSV 前就能发现“只写 filename/source_path/loop57 probability/threshold”这类无效说明，而不是等到 unblind 后才被 Loop87 阻断。
+
 ## 2026-07-03 补充：Loop108 focus-aware route gate
 
 Loop108 把 Loop107 的 focus 合并 no-op 结果接回高层路线审计和 ML 授权预检：`reports/random_20w_split/loop108_focus_aware_route_audit_noop.json` 使用 `reports/random_20w_split/loop107_focus_merged_verdict_import_noop.json` 作为 verdict 输入，随后生成 `reports/random_20w_split/loop108_focus_aware_ml_authorization_preflight_noop.json`。本轮仍然是只读操作，不训练、不调阈值、不加载 checkpoint、不打开 NPZ 数组、不改 split/cache。
