@@ -22,6 +22,12 @@ Loop102 收紧了 fresh redraw 的候选池：`scripts/build_replacement_candida
 
 真实只读候选池报告为 `reports/random_20w_split/loop102_replacement_candidate_pool_content_hash.json`。本轮按历史 130 坏特征替换需求设置 `required-label0=125`、`required-label1=5`，bounded scan 在 16.9 秒完成：候选 `305` 行，label `0=250`、label `1=55`，`source_sha256_origin_counts={"content_hash": 305}`，`unhashed_candidates=0`，`replacement_shortfall={}`，`enough_for_required_replacements=true`。这证明如果后续独立 verdict 确认坏样本，当前原始池足够执行同原始标签 fresh redraw；但仍必须先有独立 verdict，不能把候选池本身当作训练或替换授权。
 
+## 2026-07-03 补充：Loop103 corrected split builder candidate SHA gate
+
+Loop103 把 Loop102 的内容 hash 要求下沉到 corrected split 低层构造器。`scripts/build_corrected_split_from_plan.py` 现在默认拒绝没有合法 64 位 `source_sha256` 的 replacement candidate；只有显式 `--allow-unhashed-candidates-legacy` 才能打开旧兼容模式，并且 summary 会记录 `allow_unhashed_candidates_legacy=true` 与 `candidate_load_summary.require_candidate_sha256=false`。这避免有人绕过 Loop76，直接把旧 candidate CSV 喂给 builder 生成 corrected split。
+
+本轮没有生成新的 20w corrected split，因为 Loop101/98 仍显示 actionable verdict 为 `0`，`training_allowed_now=false`、`test10k_allowed_now=false`。验证重点是入口门禁：未哈希候选默认会被过滤并导致 replacement shortfall；带 legacy 逃生口的小型兼容测试才允许通过。相关测试集合 `69 passed`，覆盖 candidate pool、Loop76、corrected split builder、replacement audit、cache metadata readiness、Loop79/98 route gate 和 Loop87 import。
+
 ## 2026-07-03 补充：Loop98 identity-safe route audit
 
 Loop98 已把当前路线做成只读总闸：不训练、不调阈值、不加载模型、不打开 NPZ 数组、不改 split/cache，只汇总 Loop79/80/85/95/96/97 的证据。真实输出是 `reports/random_20w_split/loop98_identity_safe_route_audit.json`，当前决策为 `await_independent_blinded_verdicts`。

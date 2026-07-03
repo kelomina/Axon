@@ -47,6 +47,10 @@ PLAN_FIELDS = [
 CANDIDATE_FIELDS = ["source_path", "label", "source_sha256"]
 
 
+def _sha(char: str) -> str:
+    return char * 64
+
+
 def test_empty_plan_preserves_split_size_and_labels():
     with _case_dir("corrected_split_empty") as tmp_path:
         split_csv = tmp_path / "split.csv"
@@ -124,8 +128,8 @@ def test_relabel_and_replacement_keep_total_count():
             candidates_csv,
             CANDIDATE_FIELDS,
             [
-                {"source_path": "data/unused-mal.exe", "label": "1", "source_sha256": ""},
-                {"source_path": "data/already-used.exe", "label": "0", "source_sha256": ""},
+                {"source_path": "data/unused-mal.exe", "label": "1", "source_sha256": _sha("b")},
+                {"source_path": "data/already-used.exe", "label": "0", "source_sha256": _sha("c")},
             ],
         )
 
@@ -245,6 +249,84 @@ def test_replacement_shortfall_raises_instead_of_emitting_short_split():
             )
 
 
+def test_unhashed_replacement_candidate_is_rejected_by_default():
+    with _case_dir("corrected_split_unhashed_candidate_default_block") as tmp_path:
+        split_csv = tmp_path / "split.csv"
+        plan_csv = tmp_path / "plan.csv"
+        candidates_csv = tmp_path / "candidates.csv"
+        _write_csv(
+            split_csv,
+            SPLIT_FIELDS,
+            [{"source_path": "data/bad.exe", "label": "0", "sample_index": "0", "split": "train"}],
+        )
+        _write_csv(
+            plan_csv,
+            PLAN_FIELDS,
+            [{
+                "source_path": "data/bad.exe",
+                "source_sha256": "",
+                "sample_index": "0",
+                "split": "train",
+                "original_label": "0",
+                "planned_label": "0",
+                "plan_action": "exclude_and_replace",
+                "replacement_required": "true",
+                "replacement_label": "0",
+                "usable_for_training_policy": "false",
+            }],
+        )
+        _write_csv(candidates_csv, CANDIDATE_FIELDS, [{"source_path": "data/fresh.exe", "label": "0", "source_sha256": ""}])
+
+        with pytest.raises(ValueError, match="Not enough unused same-label replacement candidates"):
+            build_corrected_split(
+                split_csv=split_csv,
+                plan_csv=plan_csv,
+                candidate_csv=candidates_csv,
+                strict_20w=False,
+            )
+
+
+def test_unhashed_replacement_candidate_requires_explicit_legacy_escape_hatch():
+    with _case_dir("corrected_split_unhashed_candidate_legacy") as tmp_path:
+        split_csv = tmp_path / "split.csv"
+        plan_csv = tmp_path / "plan.csv"
+        candidates_csv = tmp_path / "candidates.csv"
+        _write_csv(
+            split_csv,
+            SPLIT_FIELDS,
+            [{"source_path": "data/bad.exe", "label": "0", "sample_index": "0", "split": "train"}],
+        )
+        _write_csv(
+            plan_csv,
+            PLAN_FIELDS,
+            [{
+                "source_path": "data/bad.exe",
+                "source_sha256": "",
+                "sample_index": "0",
+                "split": "train",
+                "original_label": "0",
+                "planned_label": "0",
+                "plan_action": "exclude_and_replace",
+                "replacement_required": "true",
+                "replacement_label": "0",
+                "usable_for_training_policy": "false",
+            }],
+        )
+        _write_csv(candidates_csv, CANDIDATE_FIELDS, [{"source_path": "data/fresh.exe", "label": "0", "source_sha256": ""}])
+
+        rows, summary = build_corrected_split(
+            split_csv=split_csv,
+            plan_csv=plan_csv,
+            candidate_csv=candidates_csv,
+            allow_unhashed_candidates_legacy=True,
+            strict_20w=False,
+        )
+
+    assert rows[0]["source_path"] == "data/fresh.exe"
+    assert summary["allow_unhashed_candidates_legacy"] is True
+    assert summary["candidate_load_summary"]["require_candidate_sha256"] is False
+
+
 def test_unresolved_relabel_target_plan_is_rejected_before_building_split():
     with _case_dir("corrected_split_unresolved_relabel") as tmp_path:
         split_csv = tmp_path / "split.csv"
@@ -345,7 +427,7 @@ def test_test_split_replacement_requires_explicit_override():
                 "usable_for_training_policy": "false",
             }],
         )
-        _write_csv(candidates_csv, CANDIDATE_FIELDS, [{"source_path": "data/test-fresh.exe", "label": "0", "source_sha256": ""}])
+        _write_csv(candidates_csv, CANDIDATE_FIELDS, [{"source_path": "data/test-fresh.exe", "label": "0", "source_sha256": _sha("d")}])
 
         with pytest.raises(ValueError, match="test split plan rows are not accepted"):
             build_corrected_split(
@@ -439,7 +521,7 @@ def test_excluded_sample_cannot_be_selected_as_its_own_replacement_from_candidat
         _write_csv(
             candidates_csv,
             CANDIDATE_FIELDS,
-            [{"source_path": "data/bad.exe", "label": "1", "source_sha256": ""}],
+            [{"source_path": "data/bad.exe", "label": "1", "source_sha256": _sha("e")}],
         )
 
         with pytest.raises(ValueError, match="Not enough unused same-label replacement candidates"):
@@ -486,7 +568,7 @@ def test_exact_sample_index_plan_does_not_exclude_duplicate_sha_canonical_row():
         _write_csv(
             candidates_csv,
             CANDIDATE_FIELDS,
-            [{"source_path": "data/fresh-mal.exe", "label": "1", "source_sha256": "b" * 64}],
+            [{"source_path": "data/fresh-mal.exe", "label": "1", "source_sha256": _sha("b")}],
         )
 
         rows, summary = build_corrected_split(

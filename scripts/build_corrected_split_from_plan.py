@@ -53,6 +53,11 @@ def truthy(value: object) -> bool:
     return str(value or "").strip().casefold() == "true"
 
 
+def is_sha256_text(value: object) -> bool:
+    text = str(value or "").strip().casefold()
+    return len(text) == 64 and all(char in "0123456789abcdef" for char in text)
+
+
 def write_split_csv(path: Path, rows: Sequence[dict]) -> None:
     resolved = resolve_path(path)
     resolved.parent.mkdir(parents=True, exist_ok=True)
@@ -200,7 +205,8 @@ def load_candidate_rows(
     manifest_json: Optional[Path],
     data_dir: Optional[Path],
     max_file_size: int,
-) -> list[dict]:
+    require_candidate_sha256: bool = True,
+) -> tuple[list[dict], dict]:
     if candidate_csv is not None:
         rows = read_csv_rows(candidate_csv)
     elif manifest_json is not None:
@@ -210,13 +216,30 @@ def load_candidate_rows(
     else:
         rows = []
     cleaned = []
+    skipped_missing_sha256 = 0
+    skipped_invalid_sha256 = 0
     for row in rows:
         label = str(row.get("label", "")).strip()
         source_path = str(row.get("source_path", "")).strip()
         if label not in {"0", "1"} or not source_path:
             continue
-        cleaned.append({"source_path": source_path, "label": label, "source_sha256": row.get("source_sha256", "")})
-    return cleaned
+        source_sha256 = str(row.get("source_sha256", "")).strip().casefold()
+        if require_candidate_sha256:
+            if not source_sha256:
+                skipped_missing_sha256 += 1
+                continue
+            if not is_sha256_text(source_sha256):
+                skipped_invalid_sha256 += 1
+                continue
+        cleaned.append({"source_path": source_path, "label": label, "source_sha256": source_sha256})
+    summary = {
+        "input_rows": len(rows),
+        "loaded_rows": len(cleaned),
+        "require_candidate_sha256": bool(require_candidate_sha256),
+        "skipped_missing_sha256": skipped_missing_sha256,
+        "skipped_invalid_sha256": skipped_invalid_sha256,
+    }
+    return cleaned, summary
 
 
 def choose_replacements(
@@ -286,6 +309,7 @@ def build_corrected_split(
     max_file_size: int = 1 * 1024 * 1024 * 1024,
     allow_test_replacements: bool = False,
     allow_relabel_legacy: bool = False,
+    allow_unhashed_candidates_legacy: bool = False,
     strict_20w: bool = True,
 ) -> tuple[list[dict], dict]:
     original_rows = read_csv_rows(split_csv)
@@ -346,11 +370,12 @@ def build_corrected_split(
             replacement_requests.append(row)
             forbidden_replacement_keys.update(key_set(row))
 
-    candidate_rows = load_candidate_rows(
+    candidate_rows, candidate_load_summary = load_candidate_rows(
         candidate_csv=candidate_csv,
         manifest_json=manifest_json,
         data_dir=data_dir,
         max_file_size=max_file_size,
+        require_candidate_sha256=not bool(allow_unhashed_candidates_legacy),
     )
     replacements, replacement_summary = choose_replacements(
         candidate_rows=candidate_rows,
@@ -394,16 +419,19 @@ def build_corrected_split(
         "seed": int(seed),
         "allow_test_replacements": bool(allow_test_replacements),
         "allow_relabel_legacy": bool(allow_relabel_legacy),
+        "allow_unhashed_candidates_legacy": bool(allow_unhashed_candidates_legacy),
         "strict_20w": bool(strict_20w),
         "original_summary": summarize_split(original_rows),
         "corrected_summary": summarize_split(corrected_rows),
         "plan_rows": len(plan_rows),
         "excluded_rows": len(excluded_rows),
         "relabeled_rows": len(relabeled_rows),
+        "candidate_load_summary": candidate_load_summary,
         "replacement_summary": replacement_summary,
         "notes": [
             "The original split is not modified.",
             "Excluded rows are replaced with unused same-label candidates.",
+            "Replacement candidates require a valid content SHA-256 by default.",
             "Replacement candidates that match an excluded row are skipped, even if they appear in the candidate source.",
             "The script refuses to emit a split with fewer rows than the original.",
         ],
@@ -434,6 +462,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="Allow legacy train/val relabel plan rows. Forbidden for the Loop87/Loop96 full-error redraw workflow.",
     )
     parser.add_argument(
+        "--allow-unhashed-candidates-legacy",
+        action="store_true",
+        help="Allow replacement candidates without valid source_sha256. Forbidden for the strict 20w redraw workflow.",
+    )
+    parser.add_argument(
         "--no-strict-20w",
         action="store_true",
         help="Disable strict 200000-row and per-split label-balance checks. Not allowed for the 20w protocol.",
@@ -453,6 +486,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         max_file_size=args.max_file_size,
         allow_test_replacements=bool(args.allow_test_replacements),
         allow_relabel_legacy=bool(args.allow_relabel_legacy),
+        allow_unhashed_candidates_legacy=bool(args.allow_unhashed_candidates_legacy),
         strict_20w=not bool(args.no_strict_20w),
     )
     write_split_csv(args.output_csv, rows)
