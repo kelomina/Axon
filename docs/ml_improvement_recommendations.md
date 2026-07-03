@@ -60,6 +60,8 @@ Loop84 继续验证“用非身份内容特征识别什么时候该信校准器�
 
 Loop85 已把当前路线收敛成噪声策略门：Loop57 仍是当前 best full-test reference，16 万 test F1 `0.9883629658`、errors `1868`、FP/FN `1195/673`；要挑战 `0.999`，仍需大约减少 `1708` 个错误。Loop63 队列覆盖全部 `1868` 个错误，Loop65 已准备 `62` 行小批量人工/外部证据复核；Loop83/84 已拒绝当前校准器融合，不允许进入 Test-10k。下一阶段应先做 evidence-grade 噪声复核：确认 `label_wrong`、`feature_broken` 或 `out_of_scope` 后隔离坏行，并从锁定 manifest 的同原始标签池 fresh redraw；不能按文件名、路径、目录、扩展名、hash、`sample_index`、split 或行顺序选择替换样本，也不能把这些身份字段当模型证据。相关记录见 `docs/phase3_loop85_noise_strategy_gate.md`。
 
+Loop86 已把 Loop65 的 `62` 行高优先级复核批次扩展成内容证据包，输出 `reports/random_20w_split/loop86_review_evidence_package.csv` 和 summary JSON。资源 guard 首次拦截了脚本中的 `while True` 分块读取风险，已改为哨兵迭代后复跑通过；单测 `2 passed`。真实证据包结果：源文件存在 `62/62`、cache 存在 `62/62`、source SHA mismatch `0`、PE parse `ok=62`、manual fields 仍为空。内容标签中 `overlay_present=40`、`high_overlay_entropy=34`、`has_security_directory=29`、`overlay_after_security_present=14`。这些是人工/外部复核用的内容事实，不是自动改标证据；Loop86 明确禁止从该包训练、融合、调阈值、自动替换或进入 Test-10k。相关记录见 `docs/phase3_loop86_review_evidence_package.md`。
+
 ## 2026-07-02 补充：命名不是证据，content PE v1 已产品化
 
 最新硬规则已经固定：文件名、路径、扩展名、目录名、`source_sha256`、`cache_path`、`sample_index`、`split` 和行顺序只能用于加载、缓存对齐、覆盖审计、去重、人工复核、以及生成一次性的人工标签清单，不能作为模型特征、二阶段融合特征、阈值捷径、自动改标证据或上线推理依据。原因是实战文件命名和训练集命名完全不是同一个分布，且攻击者改名几乎没有成本；训练集目录只能说明人工当时把样本放进哪个标签桶，不能说明文件本身因名字而恶意或良性。
