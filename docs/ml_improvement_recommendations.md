@@ -48,6 +48,8 @@ Loop77 已把“任何重操作前先检查内存泄漏/资源风险”固化为
 
 Loop78 已把 20w cache 的 1% 抽样完整性审计落成脚本 `scripts/audit_loop78_cache_sample_integrity.py`。本轮使用 Loop77 guard 显式允许 `npz_array_load` 后，对 `reports/random_20w_split/loop27_corrected_split.csv` 和 `data/.cache/manifest_38672ba0.json` 以 seed `7801` 抽样 `2000` 行，分布为 train/val/test `200/200/1600`、label `0/1=1000/1000`。结果 `2000/2000` sampled cache 通过，字段完整、shape 正确、label/source SHA 一致、数值 finite，`audit_ready=true`。这证明 sampled cache 内部完整性，但不替代全量 coverage：历史 fixed-v2 manifest 仍是 `199870/200000`，剩余 `130` 行来自严格 PE 提取失败；训练或 corrected split 前仍必须跑全量 cache readiness gate。相关记录见 `docs/phase3_loop78_cache_sample_integrity.md`。
 
+Loop79 已把当前 20w 状态收敛成一个只读门禁 `scripts/build_loop79_current_state_gate.py`。它明确区分历史失败和当前可训练状态：历史 `199870/200000` 是旧 fixed-v2 strict PE 提取失败证据；当前可信证据是 `random_20w_8192_replace_130_bad_features.json`、`random_20w_8192_replacement_130_strict.csv`、`random_20w_8192_uncompressed_cache_coverage_audit_replaced_130.json` 以及本轮新鲜复验。Loop79 验证 130 个坏特征槽位已按同 label fresh redraw 整批重抽，`selection_status=strict_extracted` 为 `130/130`，自我替换 `0`，替换后 split 和 manifest 均为 `200000`。本轮又重新跑了当前 `loop27_corrected_split.csv` 的全量 cache readiness 和 coverage：`200000/200000` 覆盖、missing `0`，train/val/test 严格为 `20000/20000/160000` 且每个 split 黑白平衡；换 seed `7901` 的 1% NPZ 抽样 `2000/2000` 通过。概率校准仍是可用候选：Val F1 delta `+0.03789303556617796`，Test-10k delta errors `-412`，且 no-test training 与 missing-cache `0` 均通过；GA feature mask 仍只作为高安全候选，不默认启用，因为高价值白样本 FP 增加 `34`。相关记录见 `docs/phase3_loop79_current_state_gate.md`。
+
 ## 2026-07-02 补充：命名不是证据，content PE v1 已产品化
 
 最新硬规则已经固定：文件名、路径、扩展名、目录名、`source_sha256`、`cache_path`、`sample_index`、`split` 和行顺序只能用于加载、缓存对齐、覆盖审计、去重、人工复核、以及生成一次性的人工标签清单，不能作为模型特征、二阶段融合特征、阈值捷径、自动改标证据或上线推理依据。原因是实战文件命名和训练集命名完全不是同一个分布，且攻击者改名几乎没有成本；训练集目录只能说明人工当时把样本放进哪个标签桶，不能说明文件本身因名字而恶意或良性。
@@ -175,7 +177,7 @@ Axon 现在最值得优先改进的地方，不是马上把模型做得更复杂
 | 建议项 | 当前状态 | 处理方式 |
 | --- | --- | --- |
 | 统一模型评审闸门 | 已完成 | 已从待办建议中移除，只保留完成记录和复用入口 |
-| fixed-v2 20w 未压缩 cache 覆盖 | 已完成 | 已按授权清空 `data\.cache` 并重建未压缩 cache；覆盖 `199870/200000`，剩余 `130` 条为严格 PE 提取失败 |
+| fixed-v2 20w 未压缩 cache 覆盖 | 已完成 | 旧重建曾暴露 `130` 条 strict PE 失败；已按“坏文件不补齐、整批同标签重抽”替换为 `strict_extracted=130/130`，当前 `loop27_corrected_split.csv` 复验为 `200000/200000` 覆盖、missing `0` |
 | 概率校准 | 已确认实用且已彻底完成 | 已从待办建议中移除；严格全量 test、hard-FN、hard-error 和高价值白样本都已复验 |
 | RL 主线扩大 | 实验确认当前不实用 | 显眼保留为“不建议近期主推”，除非奖励设计有新证据 |
 | SWA / EMA / all combined | 实验确认当前不实用 | 显眼保留为“不建议一次性叠加训练技巧” |
