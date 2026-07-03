@@ -10,6 +10,12 @@ Loop100 把 corrected split 的 cache readiness 从“文件存在”升级成�
 
 这次补强直接回应“坏文件/坏特征不能拿来补齐”的要求：若以后发现 NPZ 内部 label/hash/shape 错位，Loop76 不再把它当作普通 missing cache 去补，而是阻断为 `cache_metadata_failures_present`，下一步只能 quarantine 这些坏行，并从 locked manifest 的同原始标签池 fresh redraw，重新生成严格 `200000` split/cache 后再走 Val-first。路径、文件名、目录、后缀和 hash 仍然只允许用于加载、对齐、cache audit、重复检测和复核索引，不能作为恶意/良性证据，也不能作为模型、阈值、融合、GA feature mask 或自动 verdict 的输入。
 
+## 2026-07-03 补充：Loop101 metadata-ready route gate
+
+Loop101 把 Loop100 的全量 metadata readiness 接入高层总闸，防止后续流程继续引用旧的“只证明文件存在”的 cache_ready 报告。`scripts/build_loop79_current_state_gate.py` 默认 `--current-cache-ready` 已切到 `reports/random_20w_split/loop100_cache_ready_metadata.json`，并强制要求 `cache_metadata_validation_enabled=true`、`metadata_checked_rows=200000`、`metadata_failure_rows=0`、label balance enforced、missing `0`。`scripts/build_loop98_route_audit.py` 也会读取并验证这些字段；如果 Loop79 传入旧报告或 metadata failure，不再允许 fixed-v2 route 通过。
+
+真实复验输出为 `reports/random_20w_split/loop101_current_state_gate_metadata.json` 和 `reports/random_20w_split/loop101_identity_safe_route_audit.json`。Loop101 版 Loop79 决策为 `pass`，固定数据口径确认：130 个坏特征槽位为 `strict_extracted=130/130`、`self_replacements=0`；当前 split/cache 为 `200000/200000`、missing `0`、metadata checked `200000`、metadata failure `0`；1% 抽样仍为 `2000/2000` 通过。Loop101 版 Loop98 仍然给出 `await_independent_blinded_verdicts`，并明确 `training_allowed_now=false`、`test10k_allowed_now=false`、`full_test_allowed_now=false`。也就是说，数据门禁健康只是训练前提，不是继续拿 Test-10k 或 full-test 试错的授权。
+
 ## 2026-07-03 补充：Loop98 identity-safe route audit
 
 Loop98 已把当前路线做成只读总闸：不训练、不调阈值、不加载模型、不打开 NPZ 数组、不改 split/cache，只汇总 Loop79/80/85/95/96/97 的证据。真实输出是 `reports/random_20w_split/loop98_identity_safe_route_audit.json`，当前决策为 `await_independent_blinded_verdicts`。

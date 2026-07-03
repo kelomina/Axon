@@ -133,6 +133,9 @@ def verify_current_split(
     _add_block(blockers, int(ready.get("missing_rows", -1)) != 0, "current corrected split has missing cache rows")
     _add_block(blockers, ready.get("label_balance_enforced") is not True, "current corrected split did not enforce label balance")
     _add_block(blockers, bool(ready.get("shape_failures")), "current corrected split has shape failures")
+    _add_block(blockers, ready.get("cache_metadata_validation_enabled") is not True, "current corrected split cache metadata validation is not enabled")
+    _add_block(blockers, int(ready.get("metadata_checked_rows", -1)) != EXPECTED_TOTAL, "current corrected split metadata check did not cover 200000 rows")
+    _add_block(blockers, int(ready.get("metadata_failure_rows", -1)) != 0, "current corrected split cache metadata has failures")
     _add_block(blockers, int(coverage.get("covered_rows", -1)) != EXPECTED_TOTAL, "current coverage reaudit is not fully covered")
     _add_block(blockers, int(coverage.get("missing_rows", -1)) != 0, "current coverage reaudit has missing rows")
     _add_block(blockers, sample.get("audit_ready") is not True, "Loop78 sample integrity audit is not ready")
@@ -150,6 +153,10 @@ def verify_current_split(
         "covered_rows": ready.get("covered_rows"),
         "missing_rows": ready.get("missing_rows"),
         "label_balance_enforced": ready.get("label_balance_enforced"),
+        "cache_metadata_validation_enabled": ready.get("cache_metadata_validation_enabled"),
+        "metadata_checked_rows": ready.get("metadata_checked_rows"),
+        "metadata_failure_rows": ready.get("metadata_failure_rows"),
+        "metadata_issue_counts": ready.get("metadata_issue_counts"),
         "sampled_rows": sample.get("sampled_rows"),
         "sample_failed_rows": sample.get("failed_rows"),
         "sampled_split_counts": sample.get("sampled_split_counts"),
@@ -337,7 +344,10 @@ def render_markdown(report: dict[str, Any]) -> str:
         if name == "fixed_v2_replacement_130":
             evidence = f"{section['replacement_rows']} replacements, missing after={section['missing_rows_after']}"
         elif name == "current_split_cache":
-            evidence = f"{section['covered_rows']}/{section['total_rows']} covered, sampled={section['sampled_rows']}"
+            evidence = (
+                f"{section['covered_rows']}/{section['total_rows']} covered, "
+                f"metadata failures={section['metadata_failure_rows']}, sampled={section['sampled_rows']}"
+            )
         elif name == "probability_calibration":
             evidence = (
                 f"Val delta F1={section['current_val_delta_f1']}, "
@@ -382,7 +392,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--replacement-report", type=Path, default=Path("reports/random_20w_split/random_20w_8192_replace_130_bad_features.json"))
     parser.add_argument("--replacement-csv", type=Path, default=Path("reports/random_20w_split/random_20w_8192_replacement_130_strict.csv"))
     parser.add_argument("--replaced-coverage", type=Path, default=Path("reports/random_20w_split/random_20w_8192_uncompressed_cache_coverage_audit_replaced_130.json"))
-    parser.add_argument("--current-cache-ready", type=Path, default=Path("reports/random_20w_split/loop27_cache_ready_after_recovery.json"))
+    parser.add_argument("--current-cache-ready", type=Path, default=Path("reports/random_20w_split/loop100_cache_ready_metadata.json"))
     parser.add_argument("--current-coverage", type=Path, default=Path("reports/random_20w_split/current_split_cache_coverage_reaudit.json"))
     parser.add_argument("--sample-integrity", type=Path, default=Path("reports/random_20w_split/loop78_cache_sample_integrity_1pct.json"))
     parser.add_argument("--ab-report", type=Path, default=Path("reports/model_review/final_model_selection/ab_strict_reverification_report.json"))

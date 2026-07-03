@@ -101,6 +101,10 @@ def _write_good_artifacts(tmp_path: Path) -> dict[str, Path]:
             "missing_rows": 0,
             "label_balance_enforced": True,
             "shape_failures": [],
+            "cache_metadata_validation_enabled": True,
+            "metadata_checked_rows": 200000,
+            "metadata_failure_rows": 0,
+            "metadata_issue_counts": {},
         },
     )
     current_coverage = _write_json(
@@ -190,6 +194,8 @@ def test_loop79_gate_passes_when_all_current_state_evidence_is_strict():
     assert report["decision"] == "pass"
     assert report["sections"]["fixed_v2_replacement_130"]["replacement_rows"] == 130
     assert report["sections"]["current_split_cache"]["covered_rows"] == 200000
+    assert report["sections"]["current_split_cache"]["metadata_checked_rows"] == 200000
+    assert report["sections"]["current_split_cache"]["metadata_failure_rows"] == 0
     assert report["sections"]["probability_calibration"]["current_test10k_delta_errors"] == -100
     assert report["sections"]["ga_feature_mask"]["operational_verdict"] == "not_default_because_high_value_benign_fp_increases"
     assert "Loop79 Current State Gate" in markdown
@@ -212,3 +218,35 @@ def test_loop79_gate_blocks_bad_self_replacement_and_missing_current_cache():
     assert report["decision"] == "block"
     assert "at least one replacement reuses its old source path" in report["blockers"]["fixed_v2_replacement_130"]
     assert "current corrected split cache_ready is false" in report["blockers"]["current_split_cache"]
+
+
+def test_loop79_gate_blocks_legacy_cache_ready_without_metadata_validation():
+    with _case_dir("loop79_legacy_cache_ready") as tmp_path:
+        paths = _write_good_artifacts(tmp_path)
+        current_ready = json.loads(paths["current_cache_ready"].read_text(encoding="utf-8"))
+        current_ready.pop("cache_metadata_validation_enabled")
+        current_ready.pop("metadata_checked_rows")
+        current_ready.pop("metadata_failure_rows")
+        _write_json(paths["current_cache_ready"], current_ready)
+
+        report = build_gate(**paths)
+
+    assert report["decision"] == "block"
+    assert "current corrected split cache metadata validation is not enabled" in report["blockers"]["current_split_cache"]
+    assert "current corrected split metadata check did not cover 200000 rows" in report["blockers"]["current_split_cache"]
+    assert "current corrected split cache metadata has failures" in report["blockers"]["current_split_cache"]
+
+
+def test_loop79_gate_blocks_cache_metadata_failures():
+    with _case_dir("loop79_cache_metadata_failures") as tmp_path:
+        paths = _write_good_artifacts(tmp_path)
+        current_ready = json.loads(paths["current_cache_ready"].read_text(encoding="utf-8"))
+        current_ready["cache_ready"] = False
+        current_ready["metadata_failure_rows"] = 2
+        current_ready["metadata_issue_counts"] = {"label_mismatch": 1, "shape_mismatch": 1}
+        _write_json(paths["current_cache_ready"], current_ready)
+
+        report = build_gate(**paths)
+
+    assert report["decision"] == "block"
+    assert "current corrected split cache metadata has failures" in report["blockers"]["current_split_cache"]

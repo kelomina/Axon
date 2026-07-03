@@ -24,6 +24,10 @@ def _loop79() -> dict:
                 "total_rows": 200000,
                 "covered_rows": 200000,
                 "missing_rows": 0,
+                "label_balance_enforced": True,
+                "cache_metadata_validation_enabled": True,
+                "metadata_checked_rows": 200000,
+                "metadata_failure_rows": 0,
                 "sampled_rows": 2000,
                 "sample_failed_rows": 0,
             },
@@ -144,6 +148,9 @@ def test_loop98_awaits_independent_verdicts_when_full_queue_is_blank(tmp_path: P
     assert report["decisions"]["test10k_allowed_now"] is False
     assert report["decisions"]["current_automatic_model_route_open"] is False
     assert report["route_sections"]["fixed_v2_cache_and_redraw"]["status"] == "pass"
+    assert report["route_sections"]["fixed_v2_cache_and_redraw"]["evidence"]["label_balance_enforced"] is True
+    assert report["route_sections"]["fixed_v2_cache_and_redraw"]["evidence"]["metadata_checked_rows"] == 200000
+    assert report["route_sections"]["fixed_v2_cache_and_redraw"]["evidence"]["metadata_failure_rows"] == 0
     assert report["route_sections"]["probability_calibrator"]["status"] == "closed_as_final_candidate"
     assert report["route_sections"]["current_calibrator_fusion"]["status"] == "closed"
     assert report["route_sections"]["speakeasy_dynamic_triage"]["status"] == "manual_context_only"
@@ -165,3 +172,43 @@ def test_loop98_blocks_training_policy_rows_from_verdict_import(tmp_path: Path):
     assert report["decision"] == "await_independent_blinded_verdicts"
     assert "loop96_training_policy_rows_present" in report["route_sections"]["full_queue_review"]["blockers"]
     assert report["decisions"]["ready_for_redraw_preflight"] is False
+
+
+def test_loop98_blocks_loop79_without_cache_metadata_readiness(tmp_path: Path):
+    paths = _case(tmp_path)
+    loop79 = _loop79()
+    loop79["sections"]["current_split_cache"].pop("cache_metadata_validation_enabled")
+    loop79["sections"]["current_split_cache"].pop("metadata_checked_rows")
+    loop79["sections"]["current_split_cache"].pop("metadata_failure_rows")
+    paths["loop79_current_state"] = _write_json(tmp_path / "loop79_legacy.json", loop79)
+
+    report = build_audit(**paths)
+
+    assert report["route_sections"]["fixed_v2_cache_and_redraw"]["status"] == "block"
+    assert "current_cache_metadata_validation_not_enabled" in report["route_sections"]["fixed_v2_cache_and_redraw"]["blockers"]
+    assert "current_cache_metadata_not_fully_checked" in report["route_sections"]["fixed_v2_cache_and_redraw"]["blockers"]
+    assert "current_cache_metadata_failures_present" in report["route_sections"]["fixed_v2_cache_and_redraw"]["blockers"]
+
+
+def test_loop98_blocks_loop79_without_label_balance_enforced(tmp_path: Path):
+    paths = _case(tmp_path)
+    loop79 = _loop79()
+    loop79["sections"]["current_split_cache"]["label_balance_enforced"] = False
+    paths["loop79_current_state"] = _write_json(tmp_path / "loop79_unbalanced.json", loop79)
+
+    report = build_audit(**paths)
+
+    assert report["route_sections"]["fixed_v2_cache_and_redraw"]["status"] == "block"
+    assert "current_cache_label_balance_not_enforced" in report["route_sections"]["fixed_v2_cache_and_redraw"]["blockers"]
+
+
+def test_loop98_blocks_loop79_with_cache_metadata_failures(tmp_path: Path):
+    paths = _case(tmp_path)
+    loop79 = _loop79()
+    loop79["sections"]["current_split_cache"]["metadata_failure_rows"] = 1
+    paths["loop79_current_state"] = _write_json(tmp_path / "loop79_bad_metadata.json", loop79)
+
+    report = build_audit(**paths)
+
+    assert report["route_sections"]["fixed_v2_cache_and_redraw"]["status"] == "block"
+    assert "current_cache_metadata_failures_present" in report["route_sections"]["fixed_v2_cache_and_redraw"]["blockers"]

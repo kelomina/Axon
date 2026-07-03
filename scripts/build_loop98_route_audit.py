@@ -103,6 +103,14 @@ def build_audit(
         fixed_v2_blockers.append("current_cache_not_fully_covered")
     if _int(_get(loop79, "sections", "current_split_cache", "missing_rows"), -1) != 0:
         fixed_v2_blockers.append("current_cache_missing_rows")
+    if _get(loop79, "sections", "current_split_cache", "label_balance_enforced") is not True:
+        fixed_v2_blockers.append("current_cache_label_balance_not_enforced")
+    if _get(loop79, "sections", "current_split_cache", "cache_metadata_validation_enabled") is not True:
+        fixed_v2_blockers.append("current_cache_metadata_validation_not_enabled")
+    if _int(_get(loop79, "sections", "current_split_cache", "metadata_checked_rows"), -1) != 200000:
+        fixed_v2_blockers.append("current_cache_metadata_not_fully_checked")
+    if _int(_get(loop79, "sections", "current_split_cache", "metadata_failure_rows"), -1) != 0:
+        fixed_v2_blockers.append("current_cache_metadata_failures_present")
 
     current_best = _get(loop85, "current_best", default={}) or {}
     target_gap = _get(loop85, "target_gap", default={}) or {}
@@ -165,6 +173,10 @@ def build_audit(
                 "current_total_rows": _get(loop79, "sections", "current_split_cache", "total_rows"),
                 "current_covered_rows": _get(loop79, "sections", "current_split_cache", "covered_rows"),
                 "current_missing_rows": _get(loop79, "sections", "current_split_cache", "missing_rows"),
+                "label_balance_enforced": _get(loop79, "sections", "current_split_cache", "label_balance_enforced"),
+                "cache_metadata_validation_enabled": _get(loop79, "sections", "current_split_cache", "cache_metadata_validation_enabled"),
+                "metadata_checked_rows": _get(loop79, "sections", "current_split_cache", "metadata_checked_rows"),
+                "metadata_failure_rows": _get(loop79, "sections", "current_split_cache", "metadata_failure_rows"),
                 "sampled_rows": _get(loop79, "sections", "current_split_cache", "sampled_rows"),
                 "sample_failed_rows": _get(loop79, "sections", "current_split_cache", "sample_failed_rows"),
             },
