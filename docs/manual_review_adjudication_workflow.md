@@ -41,6 +41,25 @@ clear corrected label. Without that explicit target, the row becomes
 
 ## Run
 
+For Loop72 full-test error waves, run the strict import gate before building
+an adjustment plan:
+
+```powershell
+.\vnev\Scripts\python.exe scripts\import_loop72_external_verdicts.py `
+  --review-csv reports\random_20w_split\loop72_full_error_review_wave_plan.csv `
+  --split-csv reports\random_20w_split\loop27_corrected_split.csv `
+  --target-gap-json reports\random_20w_split\loop71_target_gap_noise_roi.json `
+  --output-csv reports\random_20w_split\loop74_external_verdict_import.csv `
+  --output-json reports\random_20w_split\loop74_external_verdict_import.json `
+  --plan-csv reports\random_20w_split\loop74_external_adjustment_plan.csv `
+  --plan-json reports\random_20w_split\loop74_external_adjustment_plan.json
+```
+
+Loop72 strict profile differs from the generic train/val workflow: confirmed
+`label_wrong`, `feature_broken`, and `out_of_scope` rows all require fresh
+same-original-label redraw. A `corrected_label` on a Loop72 row is target-gap
+evidence, not permission to use a held-out test verdict as training policy.
+
 ```powershell
 .\vnev\Scripts\python.exe scripts\apply_manual_review_verdicts.py `
   --review-csv reports\random_20w_split\stage2_knn_model_supported_p0_p1_manual_review.csv `
@@ -67,6 +86,9 @@ clear corrected label. Without that explicit target, the row becomes
 - `label_wrong` rows without an explicit corrected label produce
   `needs_manual_target_label`; they are not auto-flipped and are not eligible
   for training policy.
+- In the Loop72 strict full-test importer, `label_wrong` rows also require
+  fresh same-original-label redraw and are not turned into training-policy
+  relabels.
 - `out_of_scope` and `feature_broken` rows become `exclude_and_replace`.
 - Excluded rows require fresh replacement sampling from valid unused candidates with the same intended label. They are not used to fill their own slots.
 - The corrected split builder also rejects candidate rows that match an excluded sample, so a manually edited candidate CSV cannot accidentally put the bad file back into the 20w split.

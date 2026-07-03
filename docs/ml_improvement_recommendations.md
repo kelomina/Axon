@@ -38,6 +38,8 @@ Loop72 已把 `1868` 个 current-best full-test 错误全部生成 review wave p
 
 Loop73 尝试了一个真正不同的信息源：Windows Authenticode 签名/信任状态。它只在 Loop57 Val 上运行，只对 `prediction=1` 的 `10037` 行读取签名状态，路径只用于打开文件，不执行样本，不碰 Test。结果显示：预测恶意行中 `Valid` 签名只有 `69` 行；如果全部降级为良性，能修复 `20` 个 FP，但会新增 `49` 个 FN，Val 错误从 `147` 升到 `176`。加入 Val 分数阈值后最佳规则是 `Valid and final_prob <= 0.65 -> benign`，错误降到 `143`，只净少 `4` 个，低于进入 Test-10k 的 `10` 错误门槛。因此 Authenticode 只能作为人工复核上下文，不适合作为自动 FP guard 或模型特征。相关记录见 `docs/phase3_loop73_authenticode_val_probe.md`。
 
+Loop74 已补上 Loop72 full-error review wave plan 和 split adjustment plan 之间的严格外部 verdict 导入闸门。新增 `scripts/import_loop72_external_verdicts.py` 会验证 `1868` 行 Loop72 复核表、`sample_index` 行级对齐、严格 `200000 = 20000/20000/160000` split、verdict/action 合法性、manual note 留痕、target-gap coverage 和 test-held-out training policy。真实空 verdict no-op 复验为 `import_ready=true`、`sample_index_match_count=1868`、`invalid_rows=0`、`training_policy_rows=0`、`decision=ready_noop_no_actionable_verdicts`。Loop72 严格口径下，确认 `label_wrong`、`feature_broken` 或 `out_of_scope` 都只能触发 fresh same-original-label redraw；`corrected_label` 是目标可行性证据，不是把 full-test verdict 直接喂给训练或阈值选择的许可。相关记录见 `docs/phase3_loop74_external_verdict_import.md`。
+
 ## 2026-07-02 补充：命名不是证据，content PE v1 已产品化
 
 最新硬规则已经固定：文件名、路径、扩展名、目录名、`source_sha256`、`cache_path`、`sample_index`、`split` 和行顺序只能用于加载、缓存对齐、覆盖审计、去重、人工复核、以及生成一次性的人工标签清单，不能作为模型特征、二阶段融合特征、阈值捷径、自动改标证据或上线推理依据。原因是实战文件命名和训练集命名完全不是同一个分布，且攻击者改名几乎没有成本；训练集目录只能说明人工当时把样本放进哪个标签桶，不能说明文件本身因名字而恶意或良性。

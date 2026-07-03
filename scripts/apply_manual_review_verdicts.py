@@ -275,7 +275,7 @@ def build_plan(
     ][:10]
     notes = [
         "This plan is non-destructive; it does not edit the original split, cache, or raw files.",
-        "Excluded or feature-broken rows require fresh replacement sampling; they are not used to fill their own slots.",
+        "Excluded, label-wrong replacement, or feature-broken rows require fresh replacement sampling; they are not used to fill their own slots.",
         "Test split verdicts are withheld from train/val policy unless --allow-test-actions is explicitly set.",
     ]
     if duplicate_review_rows:
