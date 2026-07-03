@@ -137,6 +137,18 @@ read-only orchestration gate and will say which single next command is allowed:
 Loop76 defaults the final replacement and cache audits to
 `--enforce-label-balance`. Do not relax that for the strict 20w protocol.
 
+Before running the command selected by Loop76, run the pre-run resource and
+static leak guard against that target script:
+
+```powershell
+.\vnev\Scripts\python.exe scripts\pre_run_resource_leak_guard.py `
+  --target-script scripts\build_replacement_candidate_pool.py `
+  --output-json reports\random_20w_split\loop77_pre_run_guard.json
+```
+
+If `guard_ready=false`, stop and resolve the resource/static-risk failure
+before executing the target command.
+
 ```powershell
 .\vnev\Scripts\python.exe scripts\build_replacement_candidate_pool.py `
   --data-dir data `
