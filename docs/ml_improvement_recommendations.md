@@ -82,6 +82,8 @@ Loop95 已把 Waves1-10 的证据包合并成一个全队列 verdict intake，�
 
 Loop96 又把 Loop95 intake 转成盲化复核包，进一步落实“命名不是证据”。新的 reviewer-facing CSV 只保留 `blind_review_id`、当前标签、PE/content 事实、objective issue 和手填 verdict 字段；路径、文件名、目录、`source_sha256`、cache path、`sample_index`、split、review rank、wave id、Loop57/Loop39 分数和概率全部移入 private map，且 `content_evidence_fields` 里的 hash 项也被剔除。真实 build 为 `1868/1868` 行、blockers `0`、forbidden blinded columns `0`；空盲化表 unblind 后再经 Loop87 复验仍为 `ready_noop_no_actionable_verdicts`，blank verdict `1868`、actionable `0`、replacement `0`、training policy `0`。因此现在应在 `reports/random_20w_split/loop96_full_queue_blinded_review.csv` 上做独立内容/外部证据复核，再走 unblind -> Loop87。相关记录见 `docs/phase3_loop96_blinded_review_package.md`。
 
+Loop97 已把 SpeakeasyX P2 方向收敛成明确结论：它可以作为人工/外部复核上下文，但不能自动并入分类器或阈值覆盖。Loop97 没有重跑外部模拟器，而是只读既有 Val expanded、Test confirmation 和 random-Val sanity summary；原 Speakeasy runner 的 preflight guard 默认拦截 `np.load()` 风险，因此本轮没有绕过资源门禁。固定规则 `timeout_filter_score_lt_0.95` 在 Val expanded subset 上把错误 `36 -> 16`、FP `31 -> 10`，但 FN `5 -> 6`；在 confirmation subset 上把 FP `122 -> 0`，同时 FN `120 -> 168`，新增 `48` 个 baseline TP 变 FN，new-FN rate `6.857%`，且 timeout 命中真实恶意行 `20 + 6 + 27`。因此自动 merge / threshold override / training / Test-10k 全部阻断；Speakeasy 只允许作为 Loop96 盲化复核表中的动态行为证据补充。相关记录见 `docs/phase3_loop97_speakeasy_triage_decision.md`。
+
 ## 2026-07-02 补充：命名不是证据，content PE v1 已产品化
 
 最新硬规则已经固定：文件名、路径、扩展名、目录名、`source_sha256`、`cache_path`、`sample_index`、`split` 和行顺序只能用于加载、缓存对齐、覆盖审计、去重、人工复核、以及生成一次性的人工标签清单，不能作为模型特征、二阶段融合特征、阈值捷径、自动改标证据或上线推理依据。原因是实战文件命名和训练集命名完全不是同一个分布，且攻击者改名几乎没有成本；训练集目录只能说明人工当时把样本放进哪个标签桶，不能说明文件本身因名字而恶意或良性。
