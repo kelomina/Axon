@@ -9,6 +9,7 @@ import dataclasses
 import hashlib
 import json
 import sys
+import tomllib
 from collections import Counter
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
 from pathlib import Path
@@ -36,6 +37,36 @@ def load_checkpoint_config(checkpoint_path: Path) -> AxonExperimentConfig:
 
     checkpoint = load_safe_checkpoint(checkpoint_path, map_location="cpu")
     return AxonExperimentConfig.from_dict(dict(checkpoint["config"]))
+
+
+def load_toml_config(config_path: Path) -> AxonExperimentConfig:
+    with resolve_path(config_path).open("rb") as handle:
+        raw_config = tomllib.load(handle)
+
+    merged = {}
+    for section_name in ["experiment", "model", "data", "device"]:
+        section = raw_config.get(section_name, {})
+        if isinstance(section, dict):
+            merged.update(section)
+    field_names = {field.name for field in dataclasses.fields(AxonExperimentConfig)}
+    config = AxonExperimentConfig(**{key: value for key, value in merged.items() if key in field_names})
+    if "name" in raw_config.get("experiment", {}):
+        config.experiment_name = raw_config["experiment"]["name"]
+    if "output_dir" in raw_config.get("data", {}):
+        config.model_save_dir = Path(raw_config["data"]["output_dir"])
+    if "log_dir" in raw_config.get("data", {}):
+        config.log_dir = Path(raw_config["data"]["log_dir"])
+    return config
+
+
+def load_recovery_config(*, checkpoint: Optional[Path], config_path: Optional[Path]) -> AxonExperimentConfig:
+    if checkpoint is not None and config_path is not None:
+        raise ValueError("Use either --checkpoint or --config, not both")
+    if checkpoint is not None:
+        return load_checkpoint_config(resolve_path(checkpoint))
+    if config_path is not None:
+        return load_toml_config(resolve_path(config_path))
+    raise ValueError("Either --checkpoint or --config is required")
 
 
 def _feature_cache_signature(
@@ -467,7 +498,8 @@ def update_manifest(
 def recover_rows(
     *,
     missing_csvs: Sequence[Path],
-    checkpoint: Path,
+    checkpoint: Optional[Path] = None,
+    config_path: Optional[Path] = None,
     cache_dir: Path,
     workers: int,
     backend: str,
@@ -476,7 +508,7 @@ def recover_rows(
     storage_format: str = "compressed",
     progress_interval: int = 1000,
 ) -> dict:
-    config = load_checkpoint_config(resolve_path(checkpoint))
+    config = load_recovery_config(checkpoint=checkpoint, config_path=config_path)
     config_hash = cache_config_hash(config)
     cache_dir = resolve_path(cache_dir)
     manifest_path = cache_dir / f"manifest_{config_hash}.json"
@@ -501,7 +533,8 @@ def recover_rows(
         return {
             "schema": "axon_missing_feature_cache_recovery_v1",
             "dry_run": True,
-            "checkpoint": str(resolve_path(checkpoint)),
+            "checkpoint": str(resolve_path(checkpoint)) if checkpoint is not None else None,
+            "config_path": str(resolve_path(config_path)) if config_path is not None else None,
             "cache_config_hash": config_hash,
             "manifest_path": str(manifest_path),
             "storage_format": storage_format,
@@ -552,7 +585,8 @@ def recover_rows(
     return {
         "schema": "axon_missing_feature_cache_recovery_v1",
         "dry_run": False,
-        "checkpoint": str(resolve_path(checkpoint)),
+        "checkpoint": str(resolve_path(checkpoint)) if checkpoint is not None else None,
+        "config_path": str(resolve_path(config_path)) if config_path is not None else None,
         "cache_config_hash": config_hash,
         "manifest_path": str(manifest_path),
         "storage_format": storage_format,
@@ -566,7 +600,9 @@ def recover_rows(
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Recover missing feature cache rows from bounded CSV files.")
     parser.add_argument("--missing-csv", type=Path, action="append", required=True)
-    parser.add_argument("--checkpoint", type=Path, required=True)
+    source_group = parser.add_mutually_exclusive_group(required=True)
+    source_group.add_argument("--checkpoint", type=Path)
+    source_group.add_argument("--config", type=Path)
     parser.add_argument("--cache-dir", type=Path, default=Path("data/.cache"))
     parser.add_argument("--workers", type=int, default=1)
     parser.add_argument("--backend", choices=["thread", "process"], default="process")
@@ -583,6 +619,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     report = recover_rows(
         missing_csvs=args.missing_csv,
         checkpoint=args.checkpoint,
+        config_path=args.config,
         cache_dir=args.cache_dir,
         workers=max(1, int(args.workers)),
         backend=args.backend,

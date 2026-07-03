@@ -109,6 +109,30 @@ def test_strict_split_metadata_audit_rejects_manifest_label_mismatch():
     assert payload["metadata_issue_counts"]["label_mismatch_split_manifest"] == 1
 
 
+def test_strict_split_metadata_audit_rejects_manifest_conflicting_labels_for_same_hash():
+    with _case_dir("strict_split_metadata_conflicting_manifest_labels") as tmp_path:
+        split_csv = tmp_path / "split.csv"
+        manifest_json = tmp_path / "manifest.json"
+        cache_path = tmp_path / "cache" / "a.npz"
+        _write_npz(cache_path, label=1, source_sha256="a" * 64)
+        _write_split(
+            split_csv,
+            [{"source_path": "renamed.exe", "source_sha256": "a" * 64, "label": "1", "sample_index": "1", "split": "val"}],
+        )
+        _write_manifest(
+            manifest_json,
+            [
+                {"source_path": "one.exe", "cache_path": str(cache_path), "label": 1, "source_sha256": "a" * 64},
+                {"source_path": "two.exe", "cache_path": str(cache_path), "label": 0, "source_sha256": "a" * 64},
+            ],
+        )
+
+        payload = audit_strict_split_metadata(split_csv=split_csv, manifest_json=manifest_json)
+
+    assert payload["audit_ready"] is False
+    assert payload["metadata_issue_counts"]["manifest_conflicting_labels_for_source_sha256"] == 1
+
+
 def test_strict_split_metadata_audit_rejects_npz_hash_drift():
     with _case_dir("strict_split_metadata_npz_hash_drift") as tmp_path:
         split_csv = tmp_path / "split.csv"

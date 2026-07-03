@@ -11,7 +11,14 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 
-from recover_missing_feature_cache import read_missing_rows, recover_one, save_feature_cache_npz, update_manifest  # noqa: E402
+from recover_missing_feature_cache import (  # noqa: E402
+    cache_config_hash,
+    load_toml_config,
+    read_missing_rows,
+    recover_one,
+    save_feature_cache_npz,
+    update_manifest,
+)
 
 
 @contextmanager
@@ -152,6 +159,37 @@ def test_save_feature_cache_npz_can_write_uncompressed_npz():
             compression_types = {item.compress_type for item in archive.infolist()}
 
     assert compression_types == {zipfile.ZIP_STORED}
+
+
+def test_load_toml_config_supports_fixed_v2_8192_cache_signature():
+    with _case_dir("recover_toml_config") as tmp_path:
+        config_path = tmp_path / "config.toml"
+        config_path.write_text(
+            """
+[experiment]
+name = "recover-test"
+
+[model]
+max_byte_length = 8192
+pe_feature_dim = 256
+
+[data]
+strict_pe_parsing = true
+allow_pe_fallback = false
+pe_schema_version = "fixed_v2"
+pe_fixed_section_slots = 32
+output_dir = "models/test"
+log_dir = "reports/logs/test"
+""".strip(),
+            encoding="utf-8",
+        )
+
+        config = load_toml_config(config_path)
+
+    assert config.max_byte_length == 8192
+    assert config.pe_feature_dim == 256
+    assert config.pe_schema_version == "fixed_v2"
+    assert cache_config_hash(config) == "38672ba0"
 
 
 def test_recover_one_rejects_source_sha256_mismatch_before_writing_cache():

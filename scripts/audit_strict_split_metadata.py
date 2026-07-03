@@ -165,6 +165,8 @@ def audit_strict_split_metadata(
             issues.append("manifest_missing_source_sha256")
         else:
             manifest_labels = {int(sample["label"]) for sample in manifest_matches}
+            if len(manifest_labels) > 1:
+                issues.append("manifest_conflicting_labels_for_source_sha256")
             if label is not None and label not in manifest_labels:
                 issues.append("label_mismatch_split_manifest")
             else:
