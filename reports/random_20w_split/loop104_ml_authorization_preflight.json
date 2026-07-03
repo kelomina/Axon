@@ -1,0 +1,290 @@
+{
+  "schema": "axon_ml_authorization_preflight_v2",
+  "authorization_plan": "E:\\Project\\python\\Axon_v2.6Exp\\reports\\model_review\\final_model_selection\\ml_experiment_authorization_plan.json",
+  "status": "E:\\Project\\python\\Axon_v2.6Exp\\reports\\model_review\\final_model_selection\\ml_recommendation_status.json",
+  "status_summary": {
+    "completed_removed": 3,
+    "negative_retained": 5,
+    "open": 2
+  },
+  "evidence_inputs": {
+    "route_audit": {
+      "path": "reports\\random_20w_split\\loop101_identity_safe_route_audit.json",
+      "resolved_path": "E:\\Project\\python\\Axon_v2.6Exp\\reports\\random_20w_split\\loop101_identity_safe_route_audit.json",
+      "exists": true,
+      "loaded": true,
+      "schema": "axon_loop98_identity_safe_route_audit_v1"
+    },
+    "current_state_gate": {
+      "path": "reports\\random_20w_split\\loop101_current_state_gate_metadata.json",
+      "resolved_path": "E:\\Project\\python\\Axon_v2.6Exp\\reports\\random_20w_split\\loop101_current_state_gate_metadata.json",
+      "exists": true,
+      "loaded": true,
+      "schema": "axon_loop79_current_state_gate_v1"
+    },
+    "cache_ready": {
+      "path": "reports\\random_20w_split\\loop100_cache_ready_metadata.json",
+      "resolved_path": "E:\\Project\\python\\Axon_v2.6Exp\\reports\\random_20w_split\\loop100_cache_ready_metadata.json",
+      "exists": true,
+      "loaded": true,
+      "schema": "axon_corrected_split_cache_ready_v1"
+    }
+  },
+  "package_checks": [
+    {
+      "id": "A_probability_calibration_strict_productization",
+      "recommendation_id": "probability_calibration",
+      "heavy_authorization_required": false,
+      "completed": true,
+      "ready_for_authorization": false,
+      "missing_inputs": [],
+      "acceptance_criteria": [
+        "Completed strict full test, hard-FN, hard-error, and high-value benign evaluation.",
+        "Keep as reusable completed record; do not re-add to pending advice."
+      ]
+    },
+    {
+      "id": "B_ga_feature_mask_full_hard_whitelist_validation",
+      "recommendation_id": "ga_feature_mask",
+      "heavy_authorization_required": false,
+      "completed": true,
+      "ready_for_authorization": false,
+      "missing_inputs": [],
+      "acceptance_criteria": [
+        "Completed full hard-FN, hard-error, and high-value benign validation.",
+        "Retain visibly as not suitable for default enablement; note high-security mode only."
+      ]
+    },
+    {
+      "id": "C_byte_noise_near_threshold_multiseed",
+      "recommendation_id": "byte_noise_near_threshold",
+      "heavy_authorization_required": false,
+      "completed": true,
+      "ready_for_authorization": false,
+      "missing_inputs": [],
+      "acceptance_criteria": [
+        "Completed same split, same cache manifest, seeds 42/43/44 comparison.",
+        "Report includes mean/std and same-seed baseline deltas.",
+        "Retain as negative record; do not enable by default."
+      ]
+    },
+    {
+      "id": "D_hard_example_balanced_replay",
+      "recommendation_id": "hard_example_replay",
+      "heavy_authorization_required": true,
+      "completed": true,
+      "ready_for_authorization": false,
+      "missing_inputs": [],
+      "acceptance_criteria": [
+        "Train the prepared replay package only after explicit authorization.",
+        "Original test, hard-FN holdout, hard-error holdout, and high-value benign samples are all reviewed.",
+        "Reject if one error type improves by causing unacceptable regression in another."
+      ]
+    },
+    {
+      "id": "E_speakeasyx_conservative_second_stage_probe",
+      "recommendation_id": "speakeasyx_dynamic_features",
+      "heavy_authorization_required": true,
+      "bounded_recovery_inputs": {},
+      "ready_for_authorization": true,
+      "missing_inputs": [],
+      "acceptance_criteria": [
+        "Rules are selected on val first, not tuned on test.",
+        "No automatic downgrade rule is accepted if added FN is material.",
+        ".NET unsupported is never treated as benign by default."
+      ]
+    }
+  ],
+  "package_scope_audit": {
+    "included_package_ids": [
+      "A_probability_calibration_strict_productization",
+      "B_ga_feature_mask_full_hard_whitelist_validation",
+      "C_byte_noise_near_threshold_multiseed",
+      "D_hard_example_balanced_replay",
+      "E_speakeasyx_conservative_second_stage_probe"
+    ],
+    "ignored_package_ids": [],
+    "completed_records": [
+      "A_probability_calibration_strict_productization",
+      "B_ga_feature_mask_full_hard_whitelist_validation",
+      "C_byte_noise_near_threshold_multiseed",
+      "D_hard_example_balanced_replay"
+    ],
+    "open_heavy_packages": [
+      "E_speakeasyx_conservative_second_stage_probe"
+    ],
+    "open_light_or_review_packages": [],
+    "completed_records_do_not_authorize_operations": true
+  },
+  "all_bounded_inputs_present": true,
+  "ml_gate_result": {
+    "passed": false,
+    "allowed_operations": [],
+    "blocking_reasons": [
+      "no_actionable_independent_verdicts",
+      "route_audit_awaits_independent_blinded_verdicts"
+    ],
+    "required_for_commands": [
+      "train",
+      "eval",
+      "test10k",
+      "full_test"
+    ],
+    "read_only_review_allowed": true
+  },
+  "route_gate": {
+    "status": "block",
+    "blockers": [
+      "route_audit_awaits_independent_blinded_verdicts",
+      "no_actionable_independent_verdicts"
+    ],
+    "evidence": {
+      "decision": "await_independent_blinded_verdicts",
+      "blockers": [],
+      "actionable_rows": 0,
+      "replacement_required_rows": 0,
+      "training_policy_rows": 0,
+      "training_allowed_now": false,
+      "test10k_allowed_now": false,
+      "full_test_allowed_now": false,
+      "ready_for_redraw_preflight": false,
+      "next_allowed_step": "Fill Loop96 blinded review with independent content/external verdicts, unblind, run Loop87, then build non-destructive fresh same-original-label redraw preflight.",
+      "missing_forbidden_identity_fields": [],
+      "missing_allowed_identity_uses": []
+    }
+  },
+  "current_state_gate": {
+    "status": "pass",
+    "blockers": [],
+    "evidence": {
+      "decision": "pass",
+      "replacement_rows": 130,
+      "self_replacements": 0,
+      "selection_status_counts": {
+        "strict_extracted": 130
+      },
+      "total_rows": 200000,
+      "covered_rows": 200000,
+      "missing_rows": 0,
+      "label_balance_enforced": true,
+      "cache_metadata_validation_enabled": true,
+      "metadata_checked_rows": 200000,
+      "metadata_failure_rows": 0,
+      "sampled_rows": 2000,
+      "sample_failed_rows": 0
+    }
+  },
+  "cache_ready_gate": {
+    "status": "pass",
+    "blockers": [],
+    "evidence": {
+      "cache_ready": true,
+      "total_rows": 200000,
+      "covered_rows": 200000,
+      "missing_rows": 0,
+      "label_balance_enforced": true,
+      "cache_metadata_validation_enabled": true,
+      "metadata_checked_rows": 200000,
+      "metadata_failure_rows": 0,
+      "split_counts": {
+        "test": 160000,
+        "train": 20000,
+        "val": 20000
+      },
+      "label_split_counts": {
+        "train": {
+          "0": 10000,
+          "1": 10000
+        },
+        "val": {
+          "0": 10000,
+          "1": 10000
+        },
+        "test": {
+          "0": 80000,
+          "1": 80000
+        }
+      }
+    }
+  },
+  "operation_authorization": {
+    "source_of_truth": {
+      "route_audit": "Loop98/101 identity-safe route audit decisions",
+      "current_state_gate": "Loop79/101 fixed-v2 current-state metadata gate",
+      "cache_ready": "Loop100 full cache metadata readiness",
+      "completed_authorization_packages": "records only; not heavy-operation authorization"
+    },
+    "decisions": {
+      "read_only_review_allowed": true,
+      "package_completion_grants_operations": false,
+      "train_val_allowed": false,
+      "threshold_sweep_allowed": false,
+      "test10k_allowed": false,
+      "full_test_allowed": false,
+      "redraw_preflight_allowed": false,
+      "cache_mutation_allowed": false
+    },
+    "shared_blockers": [
+      "no_actionable_independent_verdicts",
+      "route_audit_awaits_independent_blinded_verdicts"
+    ],
+    "operation_blockers": {
+      "train_val": [
+        "no_actionable_independent_verdicts",
+        "route_audit_awaits_independent_blinded_verdicts",
+        "route_audit_training_allowed_now_false"
+      ],
+      "threshold_sweep": [
+        "no_actionable_independent_verdicts",
+        "route_audit_awaits_independent_blinded_verdicts",
+        "route_audit_training_allowed_now_false"
+      ],
+      "test10k": [
+        "no_actionable_independent_verdicts",
+        "route_audit_awaits_independent_blinded_verdicts",
+        "route_audit_test10k_allowed_now_false"
+      ],
+      "full_test": [
+        "no_actionable_independent_verdicts",
+        "route_audit_awaits_independent_blinded_verdicts",
+        "route_audit_full_test_allowed_now_false"
+      ],
+      "redraw_preflight": [
+        "no_actionable_independent_verdicts",
+        "route_audit_awaits_independent_blinded_verdicts",
+        "route_audit_ready_for_redraw_preflight_false"
+      ]
+    },
+    "identity_feature_policy": {
+      "forbidden_as_model_or_verdict_evidence": [
+        "filename",
+        "path",
+        "extension",
+        "directory",
+        "hash",
+        "source_sha256",
+        "sample_index",
+        "split",
+        "row_order",
+        "model_score"
+      ],
+      "allowed_uses": [
+        "loading",
+        "alignment",
+        "cache audit",
+        "duplicate detection",
+        "manual/external review indexing"
+      ],
+      "strict_boundary": "Filename, path, extension, directory, hash, source_sha256, sample_index, split, row_order, and model_score are logistics metadata only. They must not drive training, feature masks, threshold tuning, fusion, relabeling, replacement sampling, or production inference.",
+      "label_boundary": "If original labels were bootstrapped from curated directories, that step ends at the locked manifest/split label. Redraws use the locked manifest label pool, never fresh name/path inference."
+    },
+    "next_allowed_step": "Fill Loop96 blinded review with independent content/external verdicts, unblind, run Loop87, then build non-destructive fresh same-original-label redraw preflight."
+  },
+  "guardrails": [
+    "This preflight does not rebuild cache, train models, evaluate checkpoints, or delete files.",
+    "Completed A/B/C package records do not authorize training, threshold sweeps, Test-10k, or full-test.",
+    "Heavy operations require this preflight to allow the exact operation, not just user intent.",
+    "Do not use scripts/rebuild_cache_64.py or scripts/rebuild_cache_8192.py for current fixed-v2 cache recovery.",
+    "Filename/path/directory/extension/hash/source_sha256/sample_index/split/row order/model score fields are not malware evidence."
+  ]
+}

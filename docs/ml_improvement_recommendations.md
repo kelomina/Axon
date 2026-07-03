@@ -2,6 +2,14 @@
 
 更新时间：2026-07-03
 
+## 2026-07-03 补充：Loop104 ML authorization preflight gate
+
+Loop104 把 `scripts/build_ml_authorization_preflight.py` 从“检查 A/B/C 包输入是否存在”升级为“训练/评估重操作授权总闸”。新版报告读取三类只读证据：`reports/random_20w_split/loop101_identity_safe_route_audit.json`、`reports/random_20w_split/loop101_current_state_gate_metadata.json` 和 `reports/random_20w_split/loop100_cache_ready_metadata.json`。只有 fixed-v2 cache metadata、当前 20w split、路线审计和独立 verdict 状态都满足条件时，才会在 `operation_authorization` 里放行对应操作。
+
+真实输出是 `reports/random_20w_split/loop104_ml_authorization_preflight.json`。当前结论为 `ml_gate_result.passed=false`，`allowed_operations=[]`，只允许 read-only review；`train_val_allowed=false`、`threshold_sweep_allowed=false`、`test10k_allowed=false`、`full_test_allowed=false`、`redraw_preflight_allowed=false`。阻断原因不是 cache 不健康，而是 Loop96/98 仍然 `actionable_rows=0`、`await_independent_blinded_verdicts`。A/B/C/D 完成记录和 E 的 open heavy package 现在都会显示在 `package_scope_audit`，但 completed package 只作为记录，不再被误读成训练、阈值扫描、Test-10k 或 full-test 授权。
+
+本轮也把“不能根据命名来”落成机器可读边界：filename、path、extension、directory、hash、`source_sha256`、`sample_index`、split、row order、model score 都只能用于 loading、alignment、cache audit、duplicate detection、manual/external review indexing，不能作为模型特征、判定证据、阈值/融合输入、GA feature mask 输入、自动改标依据、replacement sampling 依据或生产推理依据。训练集最初如果靠人工目录整理得到标签，这一步也必须止步于 locked manifest/split label；后续 fresh redraw 只能从 locked manifest 的同原始标签池抽，不能重新按名字或路径推断。
+
 ## 2026-07-03 补充：Loop100 full cache metadata readiness
 
 Loop100 把 corrected split 的 cache readiness 从“文件存在”升级成“文件存在且内部元数据一致”。`scripts/audit_corrected_split_cache_ready.py` 现在默认打开每个 NPZ 的轻量元数据，检查必需字段、`label`、`source_sha256`，并用 `.npy` 头信息核对 `byte_sequence / pe_features / stat_features / lightweight_features` 的原始 shape，不做完整数值数组扫描、不加载模型、不使用 CUDA。显式跳过只能通过 `--no-validate-cache-metadata`，Loop76 会把未启用 metadata 校验的 cache readiness 视为阻断项。
