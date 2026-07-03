@@ -54,6 +54,8 @@ Loop80 按漏斗规则把这个概率校准器推进到 16 万 full-test：使�
 
 Loop82 已解除 Loop81 暴露的预测文件对齐 blocker：从同一个 corrected 20w Val 输入重新导出 Loop57 和概率校准器预测，`source_sha256` 仅用于审计对齐，严格结果为 `20000/20000` 唯一对齐、重复键 `0`、缺失 `0`、标签不一致 `0`。同一 Val 口径下 Loop57 为 F1 `0.9926635724`、errors `147`，校准器为 F1 `0.9723470101`、errors `554`；oracle choose-correct-if-either 诊断为 F1 `0.9954597615`、errors `91`，说明校准器可补回 `56` 个 Loop57 错误，但也会破坏 `463` 个 Loop57 正确样本。因此当前只允许做保守 Val-only 融合 probe，不能直接替换、盲目混合、进入 Test-10k 或全量 Test。相关记录见 `docs/phase3_loop82_same_manifest_val_complementarity.md`。
 
+Loop83 对 Loop82 的 2 万 Val overlap 做了一个不训练模型的 rescue profile，只扫描 `abs_score_delta` 这一类非身份分数差规则。结论是负面的：最佳阈值 `0.90` 的错误数为 `181`，比 Loop57 的 `147` 多 `34`，并且捕获 `0/56` 个 calibrator-only-correct rescue rows；阈值降低后虽然能抓到少量 rescue rows，但会伤害更多 Loop57-only-correct rows。因此“校准器和 Loop57 分数差很大就信校准器”这条路停止，后续融合若继续，必须引入通过 identity guard 的 PE/stat/content 特征，而不是只看分数差或简单平均。相关记录见 `docs/phase3_loop83_calibrator_rescue_profile.md`。
+
 ## 2026-07-02 补充：命名不是证据，content PE v1 已产品化
 
 最新硬规则已经固定：文件名、路径、扩展名、目录名、`source_sha256`、`cache_path`、`sample_index`、`split` 和行顺序只能用于加载、缓存对齐、覆盖审计、去重、人工复核、以及生成一次性的人工标签清单，不能作为模型特征、二阶段融合特征、阈值捷径、自动改标证据或上线推理依据。原因是实战文件命名和训练集命名完全不是同一个分布，且攻击者改名几乎没有成本；训练集目录只能说明人工当时把样本放进哪个标签桶，不能说明文件本身因名字而恶意或良性。
@@ -597,6 +599,17 @@ Ordered API sequence 方向也还没有证明“API 顺序本身”能提升 F1�
 - 成功标准：在完整 `20000` Val 上明显低于 Loop57 的 `147` 错误，并且 FP/FN 没有不可接受的单边退化，才允许进入 Test-10k。
 - 失败后如何停止：如果融合只减少少数错误但破坏大量 Loop57 正确样本，停止融合路线，转向噪声审计或新内容证据。
 
+### Loop83 分数差 rescue profile
+
+- 失败观察：只用 `abs_score_delta` 判断“什么时候信校准器”不能改善 Loop57。最佳阈值 `0.90` 下错误 `181`，比 Loop57 的 `147` 多 `34`，且捕获 `0/56` 个 calibrator-only-correct rows。
+- 推理出的可能原因：校准器 rescue 和 regression 都可能表现为大分数差。分数差只能说明两个模型意见不同，不能说明谁更可信。
+- 证据强度：中到强证据。它是完整 `20000` Val、Loop82 严格对齐后的只读诊断，脚本 guard 通过，单测 `2 passed`。
+- 因此不建议继续：不建议做简单 score delta 规则、简单平均、或“强分歧时信校准器”的 Test-10k。
+- 因此建议下一步：如继续融合，只能做带 PE/stat/content 特征的 Val-only selector，并且所有 feature names 必须通过 identity guard。
+- 最小验证实验：把 `56` 个 calibrator-only-correct 与 `463` 个 Loop57-only-correct 作为核心对比集，先看非身份内容特征是否有可解释分离。
+- 成功标准：完整 Val 错误显著低于 `147`，且不是靠牺牲大量 Loop57-only-correct 样本换来的。
+- 失败后如何停止：如果内容特征也无法分开 rescue/regression，停止校准器融合路线，转向噪声审计和新外部证据。
+
 ### byte n-gram 融合
 
 - 失败观察：Loop37 的 byte n-gram SGD 与 Loop28 错误重合很低，Val 从 `162` 错降到 `159` 错，Test-10k 从 `111` 错降到 `110` 错；但 16 万全量测试反转为 `1960` 错，差于 Loop28 的 `1949` 错。
@@ -618,6 +631,7 @@ Ordered API sequence 方向也还没有证明“API 顺序本身”能提升 F1�
 - 不把 GA mask 默认启用；除非产品明确接受更高白样本误报。
 - 不把 SpeakeasyX timeout filter 直接接进生产自动降级；除非新增 FN 在 val 和固定 holdout 上都可控。
 - 不用当前 Loop57/校准器 Val 预测文件做融合；必须先从同一个 corrected 20w manifest 重新导出并通过唯一 `source_sha256` 对齐审计。
+- 不做 score-delta/simple-average 校准器融合；Loop83 已证明强分歧规则在 Val 上比 Loop57 更差。
 - 不重复跑当前 byte n-gram SGD 小权重线性融合；除非先显著增强 byte n-gram 独立模型或改为严格 OOF 栈。
 
 ## 推荐的下一阶段路线图
@@ -647,7 +661,8 @@ Loop81 证明旧 Val 预测文件之间存在集合不一致、重复内容和�
 1. 以 Loop82 的 `loop82_val_complementarity_overlap.csv` 为错误重叠审计输入。
 2. 只在 Train/Val 上尝试保守融合，不碰 Test/Test-10k。
 3. 禁止 filename/path/directory/hash/sample_index/split/row order 进入融合特征。
-4. 目标不是相信校准器整体，而是找出它能补回 Loop57 错误的窄场景。
+4. 不再尝试简单分数差或平均；Loop83 已经证明这会退化。
+5. 目标不是相信校准器整体，而是找出它能补回 Loop57 错误的窄场景。
 
 ### 第四步：决定产品策略阈值
 
