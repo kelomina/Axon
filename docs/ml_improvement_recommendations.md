@@ -14,6 +14,14 @@ Loop98 已把当前路线做成只读总闸：不训练、不调阈值、不加�
 
 下一步唯一合法路线是：填充 Loop96 blinded review 的独立内容/外部 verdict，unblind 后跑 Loop87；若确认 `label_wrong`、`feature_broken` 或 `out_of_scope`，只能 quarantine 并从 locked manifest 的同原始标签池 fresh redraw，随后全量 cache readiness，再回到 Train/Val-only 漏斗。没有独立 verdict 之前，不再继续同一批分数差、命名、路径、hash 或 full-test 错误身份字段驱动的候选。
 
+## 2026-07-03 补充：Loop99 verdict-redraw chain hardening
+
+Loop99 补强了 Loop76 redraw readiness gate，专门堵住 full-error 数据治理链里的 direct relabel 绕路。通用人工计划工具为了兼容早期 Train/Val 工作流，仍能表达 `label_wrong + corrected_label -> relabel`；但在当前 20w full-error / held-out 复核口径下，这不允许进入数据修复链。Loop76 现在会阻断任何非 `exclude_and_replace` 的 adjustment plan 行，包括 `relabel` 和 `held_out_test_verdict_only`，错误码为 `adjustment_plan_contains_non_replacement_actions` 或 `adjustment_plan_contains_non_replacement_rows`。
+
+同时 Loop76 已兼容 Loop87 full-queue verdict import 的 schema：Loop87 输出的 `rows/expected_rows/duplicate_sample_index_rows` 会映射为通用 import 摘要，真实 no-op 复验 `reports/random_20w_split/loop99_noop_redraw_readiness.json` 回到正确状态：`decision=await_external_verdicts`、`review_rows=1868`、`sample_index_match_count=1868`、`strict_failures=[]`、`replacement_required=0`、`training_policy_rows=0`。这保证当前空 verdict 不会误触发重抽或训练，同时一旦出现 actionable bad-row verdict，也只能进入 quarantine + fresh same-original-label redraw，而不是直接改标。
+
+进一步补强后，`scripts/build_corrected_split_from_plan.py` 默认也会拒绝 `relabel` plan rows，并默认强制严格 20w 形状；旧 Train/Val relabel 兼容能力只能通过显式 `--allow-relabel-legacy` 打开，非 20w 小型测试才允许显式 `--no-strict-20w`。也就是说，即使有人绕过 Loop76 直接调用低层 corrected split builder，默认也不能把 full-error verdict 变成训练标签修改，且不能产出非 `200000 = 20000/20000/160000` 的 split。
+
 ## 2026-07-03 补充：Loop61 override-only classifier 未通过 Test-10k
 
 命名问题已收紧为硬约束：训练集目录、文件名、后缀和路径只允许在“人工语料 -> 显式 split/manifest label”这一步充当标签来源或索引，不允许进入任何模型矩阵、二阶段融合、阈值捷径或自动改标规则。实战命名和训练集命名不是同一分布，攻击者也能随时改名；所以当前路线只承认字节、PE 结构、统计特征、证书/overlay 等内容证据。若怀疑原始目录桶标签本身有噪声，只能做人工/外部证据判定；确认坏样本后按同原始标签池 fresh re-draw，重新生成严格 `200000` split 和 cache，而不是让坏行补齐或让模型学习命名。

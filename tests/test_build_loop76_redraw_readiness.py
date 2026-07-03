@@ -61,6 +61,26 @@ def _import_payload(*, ready: bool = True, training_policy_rows: int = 0) -> dic
     }
 
 
+def _loop87_import_payload(*, rows: int = 1868) -> dict:
+    return {
+        "schema": "axon_loop87_review_evidence_verdict_import_v1",
+        "decision": "ready_noop_no_actionable_verdicts",
+        "import_ready": True,
+        "rows": rows,
+        "expected_rows": 1868,
+        "invalid_rows": 0,
+        "training_policy_rows": 0,
+        "blocking_issues": [],
+        "duplicate_sample_index_rows": 0,
+        "manual_quality": {
+            "blank_verdict_rows": rows,
+            "actionable_verdict_missing_note_rows": 0,
+            "evidence_note_missing_content_or_external_rows": 0,
+            "evidence_note_identity_or_score_only_rows": 0,
+        },
+    }
+
+
 def _adjustment_payload(*, replacement_required: int = 0, training_policy_rows: int = 0) -> dict:
     return {
         "schema": "axon_manual_review_adjustment_plan_v1",
@@ -74,6 +94,8 @@ def _adjustment_payload(*, replacement_required: int = 0, training_policy_rows: 
         "replacement_counts_by_original_label": {"0": replacement_required, "1": 0} if replacement_required else {},
         "training_policy_rows": training_policy_rows,
         "review_rows_in_test_split": 1868,
+        "action_counts": {"exclude_and_replace": replacement_required} if replacement_required else {},
+        "split_action_counts": {"test:exclude_and_replace": replacement_required} if replacement_required else {},
         "split_summary": _split_summary(),
     }
 
@@ -167,6 +189,20 @@ def test_noop_import_waits_for_external_verdicts():
     assert payload["ready_for"]["test10k"] is False
 
 
+def test_loop87_noop_import_schema_is_accepted_when_adjustment_plan_proves_split_shape():
+    with _case_dir("loop76_loop87_noop") as tmp_path:
+        payload = _build(
+            tmp_path,
+            import_payload=_loop87_import_payload(),
+            adjustment_payload=_adjustment_payload(),
+        )
+
+    assert payload["decision"] == "await_external_verdicts"
+    assert payload["strict_import"]["review_rows"] == 1868
+    assert payload["strict_import"]["sample_index_match_count"] == 1868
+    assert payload["strict_failures"] == []
+
+
 def test_invalid_import_blocks_before_redraw():
     with _case_dir("loop76_invalid_import") as tmp_path:
         payload = _build(tmp_path, import_payload=_import_payload(ready=False), adjustment_payload=_adjustment_payload())
@@ -174,6 +210,31 @@ def test_invalid_import_blocks_before_redraw():
     assert payload["decision"] == "blocked_before_redraw"
     assert "strict_import_not_ready" in payload["strict_failures"]
     assert payload["next_step"] == "fix_strict_import_or_adjustment_plan"
+
+
+def test_relabel_action_in_adjustment_plan_blocks_full_error_redraw_path():
+    with _case_dir("loop76_blocks_relabel_action") as tmp_path:
+        adjustment = _adjustment_payload(replacement_required=0, training_policy_rows=0)
+        adjustment["planned_rows"] = 1
+        adjustment["action_counts"] = {"relabel": 1}
+        adjustment["split_action_counts"] = {"train:relabel": 1}
+        payload = _build(tmp_path, import_payload=_import_payload(), adjustment_payload=adjustment)
+
+    assert payload["decision"] == "blocked_before_redraw"
+    assert "adjustment_plan_contains_non_replacement_actions" in payload["strict_failures"]
+    assert "adjustment_plan_contains_non_replacement_rows" in payload["strict_failures"]
+
+
+def test_held_out_test_verdict_only_action_blocks_until_import_is_regenerated_as_redraw():
+    with _case_dir("loop76_blocks_held_out_test_action") as tmp_path:
+        adjustment = _adjustment_payload(replacement_required=0, training_policy_rows=0)
+        adjustment["planned_rows"] = 1
+        adjustment["action_counts"] = {"held_out_test_verdict_only": 1}
+        adjustment["split_action_counts"] = {"test:held_out_test_verdict_only": 1}
+        payload = _build(tmp_path, import_payload=_import_payload(), adjustment_payload=adjustment)
+
+    assert payload["decision"] == "blocked_before_redraw"
+    assert "adjustment_plan_contains_non_replacement_actions" in payload["strict_failures"]
 
 
 def test_replacement_plan_requires_candidate_pool_first():

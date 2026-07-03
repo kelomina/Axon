@@ -62,20 +62,32 @@ def split_counts_ok(summary: dict[str, Any]) -> bool:
 def summarize_import(import_payload: dict[str, Any]) -> dict[str, Any]:
     split_summary = import_payload.get("split_summary", {})
     input_alignment = import_payload.get("input_alignment", {})
+    review_rows = _int(import_payload.get("review_rows"), default=-1)
+    if review_rows < 0:
+        review_rows = _int(import_payload.get("rows"))
+    expected_rows = import_payload.get("expected_rows")
+    duplicate_rows = _int(input_alignment.get("duplicate_review_rows"))
+    duplicate_rows += _int(import_payload.get("duplicate_sample_index_rows"))
+    sample_index_match_count = _int(input_alignment.get("sample_index_match_count"), default=-1)
+    if sample_index_match_count < 0 and expected_rows is not None and review_rows == _int(expected_rows) and duplicate_rows == 0:
+        sample_index_match_count = review_rows
+    elif sample_index_match_count < 0:
+        sample_index_match_count = 0
     return {
         "schema": import_payload.get("schema", ""),
         "decision": import_payload.get("decision", ""),
         "import_ready": bool(import_payload.get("import_ready", False)),
-        "review_rows": _int(import_payload.get("review_rows")),
-        "expected_rows": import_payload.get("expected_rows"),
-        "sample_index_match_count": _int(input_alignment.get("sample_index_match_count")),
+        "review_rows": review_rows,
+        "expected_rows": expected_rows,
+        "sample_index_match_count": sample_index_match_count,
         "missing_split_rows": _int(input_alignment.get("missing_split_rows")),
-        "duplicate_review_rows": _int(input_alignment.get("duplicate_review_rows")),
+        "duplicate_review_rows": duplicate_rows,
         "invalid_rows": _int(import_payload.get("invalid_rows")),
         "training_policy_rows": _int(import_payload.get("training_policy_rows")),
         "blocking_issues": list(import_payload.get("blocking_issues", [])),
         "split_summary": split_summary,
-        "split_counts_ok": split_counts_ok(split_summary),
+        "split_counts_checked": bool(split_summary),
+        "split_counts_ok": True if not split_summary else split_counts_ok(split_summary),
         "target_feasibility": import_payload.get("target_feasibility", {}),
         "confirmed_bad_rows": import_payload.get("confirmed_bad_rows", {}),
         "manual_quality": import_payload.get("manual_quality", {}),
@@ -96,6 +108,8 @@ def summarize_adjustment(adjustment_payload: dict[str, Any]) -> dict[str, Any]:
         "replacement_counts_by_original_label": dict(adjustment_payload.get("replacement_counts_by_original_label", {})),
         "training_policy_rows": _int(adjustment_payload.get("training_policy_rows")),
         "review_rows_in_test_split": _int(adjustment_payload.get("review_rows_in_test_split")),
+        "action_counts": dict(adjustment_payload.get("action_counts", {})),
+        "split_action_counts": dict(adjustment_payload.get("split_action_counts", {})),
         "split_summary": split_summary,
         "split_counts_ok": split_counts_ok(split_summary),
     }
@@ -275,7 +289,7 @@ def decide(payload: dict[str, Any]) -> tuple[str, list[str], str]:
         failures.append("strict_import_row_identity_unresolved")
     if imp["training_policy_rows"] != 0:
         failures.append("strict_import_training_policy_rows_nonzero")
-    if not imp["split_counts_ok"]:
+    if imp["split_counts_checked"] and not imp["split_counts_ok"]:
         failures.append("strict_import_split_shape_invalid")
     manual_quality = imp.get("manual_quality", {})
     if _int(manual_quality.get("actionable_verdict_missing_note_rows")):
@@ -288,6 +302,15 @@ def decide(payload: dict[str, Any]) -> tuple[str, list[str], str]:
         failures.append("adjustment_plan_has_unresolved_rows")
     if adj["training_policy_rows"] != 0:
         failures.append("adjustment_plan_training_policy_rows_nonzero")
+    disallowed_action_counts = {
+        action: count
+        for action, count in adj.get("action_counts", {}).items()
+        if action != "exclude_and_replace" and _int(count) > 0
+    }
+    if disallowed_action_counts:
+        failures.append("adjustment_plan_contains_non_replacement_actions")
+    if adj["planned_rows"] > adj["replacement_required"]:
+        failures.append("adjustment_plan_contains_non_replacement_rows")
     if not adj["split_counts_ok"]:
         failures.append("adjustment_plan_split_shape_invalid")
     if failures:

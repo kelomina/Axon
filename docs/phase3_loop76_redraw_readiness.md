@@ -69,6 +69,8 @@ Loop76 的 `memory_leak_profile` 明确为低风险只读元数据脚本：不�
 - Loop75 必须完整 `1868` 行，`sample_index_match_count=1868`。
 - `manual_verdict_note` 不能是 identity-only 或 score-only 伪证据。
 - adjustment plan 不能有 unresolved rows、duplicate review rows、unknown verdict rows 或 training-policy rows。
+- Loop99 补强后，full-error redraw workflow 只接受 `exclude_and_replace` 计划行；任何 `relabel`、`held_out_test_verdict_only` 或其它非 replacement action 都会被 `adjustment_plan_contains_non_replacement_actions` 阻断。
+- Loop76 现在兼容 Loop87 full-queue verdict import schema：Loop87 的 `rows/expected_rows/duplicate_sample_index_rows` 会映射为通用 import 摘要，split 形状仍由 adjustment plan 证明，避免把缺失字段误判成行数缺失。
 - replacement required 大于 `0` 时，必须先构建 candidate pool，且 `replacement_shortfall={}`。
 - corrected split 必须仍是严格 `200000 = 20000/20000/160000`。
 - replacement audit 和 cache readiness 的最终命令默认带 `--enforce-label-balance`。

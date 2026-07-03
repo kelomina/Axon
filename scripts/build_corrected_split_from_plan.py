@@ -21,6 +21,13 @@ from typing import Iterable, Optional, Sequence
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+EXPECTED_TOTAL = 200000
+EXPECTED_SPLIT_COUNTS = {"train": 20000, "val": 20000, "test": 160000}
+EXPECTED_LABEL_SPLIT_COUNTS = {
+    "train": {"0": 10000, "1": 10000},
+    "val": {"0": 10000, "1": 10000},
+    "test": {"0": 80000, "1": 80000},
+}
 SPLIT_ORDER = {"train": 0, "val": 1, "test": 2}
 OUTPUT_FIELDNAMES = ["source_path", "label", "sample_index", "split"]
 ALLOWED_PLAN_ACTIONS = {"keep_label", "relabel", "exclude_and_replace"}
@@ -108,7 +115,24 @@ def summarize_split(rows: Sequence[dict]) -> dict:
     }
 
 
-def validate_plan_rows(plan_rows: Sequence[dict], *, allow_test_replacements: bool = False) -> list[str]:
+def validate_strict_20w_rows(rows: Sequence[dict], *, context: str) -> list[str]:
+    summary = summarize_split(rows)
+    failures: list[str] = []
+    if summary["rows"] != EXPECTED_TOTAL:
+        failures.append(f"{context}: expected {EXPECTED_TOTAL} rows, got {summary['rows']}")
+    if summary["split_counts"] != EXPECTED_SPLIT_COUNTS:
+        failures.append(f"{context}: split_counts mismatch: {summary['split_counts']}")
+    if summary["label_split_counts"] != EXPECTED_LABEL_SPLIT_COUNTS:
+        failures.append(f"{context}: label_split_counts mismatch: {summary['label_split_counts']}")
+    return failures
+
+
+def validate_plan_rows(
+    plan_rows: Sequence[dict],
+    *,
+    allow_test_replacements: bool = False,
+    allow_relabel_legacy: bool = False,
+) -> list[str]:
     failures = []
     for index, row in enumerate(plan_rows, start=1):
         action = str(row.get("plan_action", "")).strip()
@@ -132,6 +156,8 @@ def validate_plan_rows(plan_rows: Sequence[dict], *, allow_test_replacements: bo
             failures.append(f"{row_id}: unsupported plan action {action or '<blank>'}")
 
         if action == "relabel":
+            if not allow_relabel_legacy:
+                failures.append(f"{row_id}: relabel plan rows require --allow-relabel-legacy")
             if not usable_for_training:
                 failures.append(f"{row_id}: relabel plan is not marked usable for training policy")
             if planned_label not in {"0", "1"}:
@@ -259,10 +285,18 @@ def build_corrected_split(
     seed: int = 42,
     max_file_size: int = 1 * 1024 * 1024 * 1024,
     allow_test_replacements: bool = False,
+    allow_relabel_legacy: bool = False,
+    strict_20w: bool = True,
 ) -> tuple[list[dict], dict]:
     original_rows = read_csv_rows(split_csv)
     plan_rows = read_csv_rows(plan_csv)
-    plan_failures = validate_plan_rows(plan_rows, allow_test_replacements=allow_test_replacements)
+    plan_failures = validate_plan_rows(
+        plan_rows,
+        allow_test_replacements=allow_test_replacements,
+        allow_relabel_legacy=allow_relabel_legacy,
+    )
+    if strict_20w:
+        plan_failures.extend(validate_strict_20w_rows(original_rows, context="original_split"))
     if plan_failures:
         raise ValueError(
             "Unsafe manual adjustment plan; fix the plan before building a corrected split: "
@@ -346,6 +380,12 @@ def build_corrected_split(
 
     if len(corrected_rows) != len(original_rows):
         raise ValueError(f"Corrected split row count changed: {len(corrected_rows)} != {len(original_rows)}")
+    corrected_strict_failures = validate_strict_20w_rows(corrected_rows, context="corrected_split") if strict_20w else []
+    if corrected_strict_failures:
+        raise ValueError(
+            "Corrected split violates strict 20w shape: "
+            + json.dumps(corrected_strict_failures, ensure_ascii=False)
+        )
 
     summary = {
         "schema": "axon_corrected_split_from_manual_plan_v1",
@@ -353,6 +393,8 @@ def build_corrected_split(
         "plan_csv": str(resolve_path(plan_csv)),
         "seed": int(seed),
         "allow_test_replacements": bool(allow_test_replacements),
+        "allow_relabel_legacy": bool(allow_relabel_legacy),
+        "strict_20w": bool(strict_20w),
         "original_summary": summarize_split(original_rows),
         "corrected_summary": summarize_split(corrected_rows),
         "plan_rows": len(plan_rows),
@@ -386,6 +428,16 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Allow explicit exclude-and-replace rows in the test split for data hygiene only.",
     )
+    parser.add_argument(
+        "--allow-relabel-legacy",
+        action="store_true",
+        help="Allow legacy train/val relabel plan rows. Forbidden for the Loop87/Loop96 full-error redraw workflow.",
+    )
+    parser.add_argument(
+        "--no-strict-20w",
+        action="store_true",
+        help="Disable strict 200000-row and per-split label-balance checks. Not allowed for the 20w protocol.",
+    )
     return parser
 
 
@@ -400,6 +452,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         seed=args.seed,
         max_file_size=args.max_file_size,
         allow_test_replacements=bool(args.allow_test_replacements),
+        allow_relabel_legacy=bool(args.allow_relabel_legacy),
+        strict_20w=not bool(args.no_strict_20w),
     )
     write_split_csv(args.output_csv, rows)
     output_json = resolve_path(args.output_json)
