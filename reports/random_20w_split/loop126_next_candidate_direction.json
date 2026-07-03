@@ -1,0 +1,88 @@
+{
+  "schema": "axon_loop126_next_candidate_direction_v1",
+  "decision": "return_to_phase3_val_first_candidate_generation_after_phase2_content_audit",
+  "current_best_confirmed": {
+    "candidate": "seed43_probability_calibrator",
+    "val_f1": 0.9700996677740864,
+    "val_errors": 603,
+    "test10k_f1": 0.9723987291501192,
+    "test10k_errors": 278,
+    "full_test_f1": 0.9702929778,
+    "full_test_errors": 4791,
+    "full_test_reuse_allowed_for_tuning": false
+  },
+  "loop126_content_audit": {
+    "val_focus_rows": 603,
+    "test10k_focus_rows": 278,
+    "stable_tags": [
+      {
+        "tag": "mixed_executable_writable_sections",
+        "val_rate": 0.7761,
+        "test10k_rate": 0.8309
+      },
+      {
+        "tag": "large_section_size_skew",
+        "val_rate": 0.3051,
+        "test10k_rate": 0.2662
+      },
+      {
+        "tag": "sparse_api_category_surface",
+        "val_rate": 0.2985,
+        "test10k_rate": 0.2698
+      },
+      {
+        "tag": "high_section_entropy",
+        "val_rate": 0.0978,
+        "test10k_rate": 0.0827
+      },
+      {
+        "tag": "rwx_section_present",
+        "val_rate": 0.0779,
+        "test10k_rate": 0.0827
+      },
+      {
+        "tag": "high_byte_entropy",
+        "val_rate": 0.0879,
+        "test10k_rate": 0.0935
+      }
+    ],
+    "weak_or_non_discriminative_tags": [
+      {
+        "tag": "unsigned_pe",
+        "reason": "present in every Loop126 error row; useful context but weak separator"
+      },
+      {
+        "tag": "low_byte_entropy",
+        "reason": "rare and absent in locked Test-10k focus rows"
+      }
+    ]
+  },
+  "recommended_val_first_candidate": {
+    "name": "stage2_content_pe_v2_section_imports_val_only",
+    "rationale": "Loop126 errors are dominated by section permission/entropy/size skew and sparse API surface, which content_pe_v2 already encodes as content-only section/import/API features.",
+    "train_predictions": "reports/random_20w_split/loop122_seed43_strict_train_predictions.csv",
+    "val_predictions": "reports/random_20w_split/loop121_seed43_strict_val_predictions.csv",
+    "locked_test10k_predictions": "reports/random_20w_split/loop123_seed43_strict_test10k_predictions.csv",
+    "do_not_use_for_iterative_tuning": [
+      "reports/random_20w_split/loop124_seed43_probability_calibrator_full_test_eval.json"
+    ],
+    "feature_groups": [
+      "section",
+      "imports"
+    ],
+    "identity_boundary": "source_path/cache_path/source_sha256/sample_index only open/cache/align rows; feature names must pass identity_feature_guard; no filename/path/directory/extension slices.",
+    "resource_note": "Run pre_run_resource_leak_guard first. Current system memory was near 89%, so defer heavy training until memory is below guard threshold."
+  },
+  "first_command_when_resources_allow": ".\\vnev\\Scripts\\python.exe scripts\\train_stage2_cache_matrix.py --checkpoint models/random_20w_8192_seed43/best_model.pt --train-predictions reports/random_20w_split/loop122_seed43_strict_train_predictions.csv --val-predictions reports/random_20w_split/loop121_seed43_strict_val_predictions.csv --output-dir reports/random_20w_split/loop127_stage2_content_pe_v2_section_imports_valonly --feature-set extended --content-pe-v2-features --content-pe-v2-groups section,imports --noise-modes none,soft_conflict_downweight --model-candidates logreg_l2_balanced,hgb_l2,extratrees_shallow --test-val-f1-gate 0.981",
+  "gate": {
+    "val_required_before_test10k": true,
+    "test10k_allowed_only_if_val_f1_exceeds_current_best": 0.9700996677740864,
+    "prefer_practical_gate": "Val F1 >= 0.981 or errors <= 380 before locked Test-10k, because full-test target gap is still large.",
+    "full_test_allowed": false
+  },
+  "data_noise_policy": {
+    "automatic_relabel_allowed": false,
+    "focus_files_are_review_priorities_only": true,
+    "feature_broken_or_invalid_rows": "must become fresh same-original-label redraw requests with exact 200000 split-count preservation"
+  }
+}

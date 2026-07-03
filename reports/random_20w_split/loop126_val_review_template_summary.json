@@ -1,0 +1,35 @@
+{
+  "schema": "axon_loop126_review_template_v1",
+  "protocol": "build blinded Loop126 review annotation template; no private-map read, no unblind, no split/cache mutation",
+  "identity_policy": "The template is public/blinded. It excludes source_path/source_sha256/cache_path/sample_index and filename/path/directory/extension-derived fields. Manual verdicts must cite content or external evidence.",
+  "focus_blinded_csv": "E:\\Project\\python\\Axon_v2.6Exp\\reports\\random_20w_split\\loop126_val_noise_audit_focus_blinded.csv",
+  "output_annotations_csv": "E:\\Project\\python\\Axon_v2.6Exp\\reports\\random_20w_split\\loop126_val_review_annotations_template.csv",
+  "expected_rows": 603,
+  "rows": 603,
+  "blockers": [],
+  "template_ready": true,
+  "forbidden_columns": [],
+  "manual_fields": [
+    "manual_label_verdict",
+    "manual_verdict_note",
+    "recommended_action"
+  ],
+  "allowed_manual_label_verdicts": [
+    "label_correct",
+    "label_wrong",
+    "feature_broken",
+    "invalid_pe",
+    "out_of_scope",
+    "uncertain",
+    "needs_more_evidence"
+  ],
+  "allowed_recommended_actions": [
+    "keep_label",
+    "model_blindspot",
+    "replace_with_fresh_same_label_candidate",
+    "quarantine_for_more_evidence",
+    "needs_more_evidence"
+  ],
+  "automatic_relabel_allowed": false,
+  "automatic_replacement_allowed": false
+}

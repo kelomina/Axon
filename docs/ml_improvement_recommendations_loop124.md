@@ -153,6 +153,17 @@ corrected split.
      - calibration_regression_review: 68
      - boundary_model_review: 20
 
+   Loop126 review templates have been generated:
+
+   - `reports/random_20w_split/loop126_val_review_annotations_template.csv`
+   - `reports/random_20w_split/loop126_test10k_review_annotations_template.csv`
+
+   The empty templates pass schema checks but are not ready for private mapping:
+   Val has 603 blank decisions, and Test-10k has 278 blank decisions. This is
+   intentional. No cleaning, relabeling, replacement, Test-10k tuning, or
+   full-test action is allowed until independent content/external verdict notes
+   pass the Loop126 preflight gate.
+
 3. Improve features before another full test.
 
    The current model still misses thousands of samples after calibration. The
@@ -166,6 +177,25 @@ corrected split.
    present in the current 256-dimensional PE input. Those fields must be added as
    real content features or a stage-2 content feature family; they must not be
    inferred from filename/path metadata or guessed from old indices.
+
+   Recommended next Val-first model candidate:
+
+   - `loop127_content_cross_valonly`
+   - Inputs:
+     - `reports/random_20w_split/loop122_seed43_strict_train_predictions.csv`
+     - `reports/random_20w_split/loop121_seed43_strict_val_predictions.csv`
+     - locked Test-10k only after Val gate:
+       `reports/random_20w_split/loop123_seed43_strict_test10k_predictions.csv`
+   - Script: `scripts/train_loop43_content_cross.py`
+   - Feature family: content-only PE v1/v2 cross features
+   - Rationale: Loop126 Val/Test-10k errors consistently show mixed
+     executable+writable sections, section size skew, sparse API surfaces,
+     high section entropy, RWX sections, packer section names, and high byte
+     entropy. Loop43 already contains content-derived interactions such as
+     exec+write+high-entropy and packer/RWX combinations.
+   - Gate: do not run Test-10k unless Val exceeds the current calibrator by a
+     meaningful margin; practical first gate is Val F1 >= 0.981 or Val errors
+     <= 380.
 
 4. Keep the full test locked.
 
