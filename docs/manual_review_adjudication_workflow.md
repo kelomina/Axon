@@ -119,6 +119,24 @@ If `replacement_required > 0`, the next data step is to regenerate a corrected s
 
 If replacements are required, first build an unused raw-PE candidate pool. The pool must contain valid fresh files, not the excluded files being replaced:
 
+Before running any redraw step, build the Loop76 readiness report. It is a
+read-only orchestration gate and will say which single next command is allowed:
+
+```powershell
+.\vnev\Scripts\python.exe scripts\build_loop76_redraw_readiness.py `
+  --strict-import-json reports\random_20w_split\loop75_external_verdict_import.json `
+  --adjustment-plan-json reports\random_20w_split\loop75_external_adjustment_plan.json `
+  --split-csv reports\random_20w_split\loop27_corrected_split.csv `
+  --plan-csv reports\random_20w_split\loop75_external_adjustment_plan.csv `
+  --manifest-json data\.cache\manifest_38672ba0.json `
+  --output-prefix reports\random_20w_split\loop76_redraw `
+  --output-json reports\random_20w_split\loop76_redraw_readiness.json `
+  --output-md reports\random_20w_split\loop76_redraw_readiness.md
+```
+
+Loop76 defaults the final replacement and cache audits to
+`--enforce-label-balance`. Do not relax that for the strict 20w protocol.
+
 ```powershell
 .\vnev\Scripts\python.exe scripts\build_replacement_candidate_pool.py `
   --data-dir data `

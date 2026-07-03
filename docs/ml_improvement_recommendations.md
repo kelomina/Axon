@@ -42,6 +42,8 @@ Loop74 已补上 Loop72 full-error review wave plan 和 split adjustment plan �
 
 Loop75 继续把 `manual_verdict_note` 从“非空”升级为“不能是伪证据”：如果 note 只引用文件名、路径、目录、后缀、hash、`sample_index`、split、review rank、Loop57/Loop28 分数、模型概率或阈值，strict importer 会阻断导入；只有包含内容证据或外部证据摘要的 actionable verdict 才能进入后续 replacement plan。这个改动不训练模型、不改变 test 指标，但能防止噪声清洗阶段把命名或模型后验当成事实证据，从而保护后续 fresh redraw 和 Val-first 复验的可信度。
 
+Loop76 已把 strict import、adjustment plan、fresh same-original-label redraw、replacement integrity、cache readiness 和 Val-first 漏斗串成只读 orchestration gate。真实 Loop75 空 verdict no-op 复验输出 `decision=await_external_verdicts`、`replacement_required=0`、`training_policy_rows=0`、`ready_for.train_val_only=false`、`ready_for.test10k=false`、`ready_for.full_test=false`。这说明当前没有外部证据时不会误触发重抽或训练。Loop76 还把最终 replacement/cache audit 命令默认升级为 `--enforce-label-balance`，防止 20w split 形状正确但类别平衡悄悄漂移。相关记录见 `docs/phase3_loop76_redraw_readiness.md`。
+
 ## 2026-07-02 补充：命名不是证据，content PE v1 已产品化
 
 最新硬规则已经固定：文件名、路径、扩展名、目录名、`source_sha256`、`cache_path`、`sample_index`、`split` 和行顺序只能用于加载、缓存对齐、覆盖审计、去重、人工复核、以及生成一次性的人工标签清单，不能作为模型特征、二阶段融合特征、阈值捷径、自动改标证据或上线推理依据。原因是实战文件命名和训练集命名完全不是同一个分布，且攻击者改名几乎没有成本；训练集目录只能说明人工当时把样本放进哪个标签桶，不能说明文件本身因名字而恶意或良性。
