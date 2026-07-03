@@ -125,6 +125,8 @@ def summarize_candidate_pool(candidate_payload: dict[str, Any]) -> dict[str, Any
         "label_counts": dict(candidate_payload.get("label_counts", {})),
         "required_replacements": dict(candidate_payload.get("required_replacements", {})),
         "replacement_shortfall": dict(candidate_payload.get("replacement_shortfall", {})),
+        "content_hash_required_for_strict_redraw": bool(candidate_payload.get("content_hash_required_for_strict_redraw", False)),
+        "source_sha256_origin_counts": dict(candidate_payload.get("source_sha256_origin_counts", {})),
         "enough_for_required_replacements": bool(candidate_payload.get("enough_for_required_replacements", False)),
     }
 
@@ -328,6 +330,10 @@ def decide(payload: dict[str, Any]) -> tuple[str, list[str], str]:
 
     if not cand["provided"]:
         return "needs_replacement_candidate_pool", [], "build_replacement_candidate_pool"
+    if not cand["content_hash_required_for_strict_redraw"]:
+        return "blocked_candidate_pool", ["candidate_pool_content_hash_not_required"], "rebuild_candidate_pool_with_content_hashing"
+    if _int(cand["source_sha256_origin_counts"].get("missing")) > 0:
+        return "blocked_candidate_pool", ["candidate_pool_contains_unhashed_rows"], "rebuild_candidate_pool_with_content_hashing"
     if not cand["enough_for_required_replacements"]:
         return "blocked_candidate_shortfall", ["replacement_candidate_shortfall"], "collect_more_valid_same_label_candidates"
     if not corrected["provided"]:

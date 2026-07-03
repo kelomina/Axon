@@ -107,6 +107,8 @@ def _candidate_payload(*, enough: bool = True) -> dict:
         "label_counts": {"0": 3} if enough else {},
         "required_replacements": {"0": 2, "1": 0},
         "replacement_shortfall": {} if enough else {"0": 2},
+        "content_hash_required_for_strict_redraw": True,
+        "source_sha256_origin_counts": {"content_hash": 3} if enough else {},
         "enough_for_required_replacements": enough,
     }
 
@@ -270,6 +272,36 @@ def test_candidate_shortfall_blocks_redraw():
     assert payload["decision"] == "blocked_candidate_shortfall"
     assert payload["strict_failures"] == ["replacement_candidate_shortfall"]
     assert payload["next_step"] == "collect_more_valid_same_label_candidates"
+
+
+def test_candidate_pool_without_content_hash_blocks_redraw():
+    with _case_dir("loop76_candidate_pool_no_hash") as tmp_path:
+        candidate = _candidate_payload(enough=True)
+        candidate["content_hash_required_for_strict_redraw"] = False
+        payload = _build(
+            tmp_path,
+            import_payload=_import_payload(),
+            adjustment_payload=_adjustment_payload(replacement_required=2),
+            candidate=candidate,
+        )
+
+    assert payload["decision"] == "blocked_candidate_pool"
+    assert payload["strict_failures"] == ["candidate_pool_content_hash_not_required"]
+
+
+def test_candidate_pool_with_unhashed_rows_blocks_redraw():
+    with _case_dir("loop76_candidate_pool_unhashed") as tmp_path:
+        candidate = _candidate_payload(enough=True)
+        candidate["source_sha256_origin_counts"] = {"content_hash": 2, "missing": 1}
+        payload = _build(
+            tmp_path,
+            import_payload=_import_payload(),
+            adjustment_payload=_adjustment_payload(replacement_required=2),
+            candidate=candidate,
+        )
+
+    assert payload["decision"] == "blocked_candidate_pool"
+    assert payload["strict_failures"] == ["candidate_pool_contains_unhashed_rows"]
 
 
 def test_full_clean_chain_is_ready_for_val_first_reverification():

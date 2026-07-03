@@ -16,6 +16,12 @@ Loop101 把 Loop100 的全量 metadata readiness 接入高层总闸，防止后�
 
 真实复验输出为 `reports/random_20w_split/loop101_current_state_gate_metadata.json` 和 `reports/random_20w_split/loop101_identity_safe_route_audit.json`。Loop101 版 Loop79 决策为 `pass`，固定数据口径确认：130 个坏特征槽位为 `strict_extracted=130/130`、`self_replacements=0`；当前 split/cache 为 `200000/200000`、missing `0`、metadata checked `200000`、metadata failure `0`；1% 抽样仍为 `2000/2000` 通过。Loop101 版 Loop98 仍然给出 `await_independent_blinded_verdicts`，并明确 `training_allowed_now=false`、`test10k_allowed_now=false`、`full_test_allowed_now=false`。也就是说，数据门禁健康只是训练前提，不是继续拿 Test-10k 或 full-test 试错的授权。
 
+## 2026-07-03 补充：Loop102 content-hash replacement candidate pool
+
+Loop102 收紧了 fresh redraw 的候选池：`scripts/build_replacement_candidate_pool.py` 现在默认对候选原始文件计算真实内容 SHA，而不是把 SHA-like 文件名当作充分身份；只有显式 `--no-hash-files` 才允许旧兼容模式。Loop76 也会阻断没有启用 strict content hash 或存在 unhashed rows 的 candidate pool，防止同一内容换名后被当成 fresh replacement。这里的 hash 只用于“是否重复/是否已经在 split 或 manifest 里/是否可追溯”的物流审计，不是恶意性证据，也不允许进入模型。
+
+真实只读候选池报告为 `reports/random_20w_split/loop102_replacement_candidate_pool_content_hash.json`。本轮按历史 130 坏特征替换需求设置 `required-label0=125`、`required-label1=5`，bounded scan 在 16.9 秒完成：候选 `305` 行，label `0=250`、label `1=55`，`source_sha256_origin_counts={"content_hash": 305}`，`unhashed_candidates=0`，`replacement_shortfall={}`，`enough_for_required_replacements=true`。这证明如果后续独立 verdict 确认坏样本，当前原始池足够执行同原始标签 fresh redraw；但仍必须先有独立 verdict，不能把候选池本身当作训练或替换授权。
+
 ## 2026-07-03 补充：Loop98 identity-safe route audit
 
 Loop98 已把当前路线做成只读总闸：不训练、不调阈值、不加载模型、不打开 NPZ 数组、不改 split/cache，只汇总 Loop79/80/85/95/96/97 的证据。真实输出是 `reports/random_20w_split/loop98_identity_safe_route_audit.json`，当前决策为 `await_independent_blinded_verdicts`。
