@@ -74,6 +74,8 @@ Loop91 已继续打包 Loop72 Wave3 的 `200` 行证据包。Wave3 source/cache 
 
 Loop92 已继续打包 Loop72 Wave4 的 `200` 行证据包。Wave4 source/cache `200/200`、source SHA mismatch `0`、PE parse `ok=200`，FN/FP 为 `157/43`，其中 persistent FN `157`、high-conflict persistent error `43`；这波偏漏报侧，是冲击 `0.999` 目标时必须重点复核的风险段。Wave1-4 合并后共 `800` 行，覆盖 current-best full-error queue `800/1868 = 42.83%`，覆盖 best-case 目标缺口 `800/1708 = 46.84%`；仍有 `908` 个 best-case 目标缺口行未打包证据。四波 verdict 仍全部为空：blank verdict `800`、actionable rows `0`、replacement required `0`、training policy rows `0`。因此当前仍不能训练、不能替换、不能进 Test-10k；下一步只能继续打包 Wave5，或把 Waves1-4 交给独立人工/外部证据系统并通过 Loop87 导入。确认坏行后也只能隔离并从同原始标签池 fresh redraw，坏行不能自我补位。相关记录见 `docs/phase3_loop92_wave4_evidence_expansion.md`。
 
+Loop93 一次性把 Loop72 Wave5-Wave9 的 `1000` 行继续打包成证据包，并合并 Waves1-9。五个新增波次 source/cache 均为 `200/200`，source SHA mismatch 均为 `0`，PE parse 均为 `ok=200`；Wave5-Wave9 的 FN/FP 分别为 `18/182`、`184/16`、`87/113`、`0/200`、`0/200`。合并后 Waves1-9 共 `1800` 行，覆盖 current-best full-error queue `1800/1868 = 96.36%`，覆盖 best-case 目标缺口 `1800/1708 = 105.39%`，只剩 Wave10 的 `68` 个 current-best 错误未打包证据。这是关键里程碑：复核材料覆盖已经超过理论达标所需的最小修复量；但它仍然不是修复结果。九波 verdict 仍全部为空：blank verdict `1800`、actionable rows `0`、replacement required `0`、training policy rows `0`。因此当前仍不能训练、不能替换、不能进 Test-10k；下一步应优先把 Waves1-9 交给独立人工/外部证据系统并通过 Loop87 导入 verdict，或继续打包 Wave10 完成全错误队列覆盖。相关记录见 `docs/phase3_loop93_waves5_9_evidence_expansion.md`。
+
 ## 2026-07-02 补充：命名不是证据，content PE v1 已产品化
 
 最新硬规则已经固定：文件名、路径、扩展名、目录名、`source_sha256`、`cache_path`、`sample_index`、`split` 和行顺序只能用于加载、缓存对齐、覆盖审计、去重、人工复核、以及生成一次性的人工标签清单，不能作为模型特征、二阶段融合特征、阈值捷径、自动改标证据或上线推理依据。原因是实战文件命名和训练集命名完全不是同一个分布，且攻击者改名几乎没有成本；训练集目录只能说明人工当时把样本放进哪个标签桶，不能说明文件本身因名字而恶意或良性。
