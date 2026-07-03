@@ -201,3 +201,45 @@ Loop117 继续补强 corrected split 后的 cache recovery 环节：
 - decision: `await_external_verdicts`
 - replacement_required: `0`
 - Train/Val、Test-10k、full-test 仍全部不授权
+
+## Loop118 strict split metadata gate
+
+Loop118 把“不能根据命名训练/判定”先固化为可独立执行的 split/cache metadata 审计 gate：
+
+- 新增 `scripts/audit_strict_split_metadata.py`
+- split CSV 必须同时包含 `label` 和 `source_sha256`
+- split CSV 的 `label` 必须与 cache manifest 中的显式标签一致
+- split CSV 的 `source_sha256` 必须与 cache manifest 中的内容 hash 一致
+- 默认校验 NPZ metadata，要求 NPZ 中的 `label/source_sha256` 与 split/manifest 一致
+- `source_path` 只用于定位和报告，不作为通过条件；hash 也只用于内容身份一致性，不是恶意/良性证据
+
+路径仍只用于“split 行和 dataset 行的对齐”，不是标签证据。文件名、目录、后缀、路径文本不参与模型输入、verdict、阈值、feature mask 或训练标签决策。
+
+当前工作树中还验证了训练/评估入口 strict gate，但 `scripts/main.py` 和 `src/dataset.py` 在本轮前已有大量历史未提交改动；为避免混入无关改动，本次先提交独立审计 gate。入口层 gate 后续应在清洁基线中单独提交。
+
+验证：
+
+```powershell
+.\vnev\Scripts\python.exe scripts/pre_run_resource_leak_guard.py --target-script src/dataset.py --target-script scripts/main.py --target-script tests/test_split_file_dataset.py --target-script tests/test_security_hardening.py --target-script tests/test_training_seed.py --target-script tests/test_audit_corrected_split_cache_ready.py --target-script tests/test_redraw_hash_e2e.py --output-json reports/random_20w_split/loop118_strict_split_metadata_guard.json --allow-risk npz_array_load --allow-risk process_pool --allow-risk thread_pool --allow-risk torch_import --allow-risk torch_dataloader --allow-risk cuda_usage
+```
+
+结果：`guard_ready=true`。
+
+```powershell
+.\vnev\Scripts\python.exe scripts/pre_run_resource_leak_guard.py --target-script scripts/audit_strict_split_metadata.py --target-script tests/test_audit_strict_split_metadata.py --output-json reports/random_20w_split/loop118_strict_split_metadata_tool_guard.json --allow-risk npz_array_load --allow-risk torch_import
+```
+
+结果：`guard_ready=true`。
+
+```powershell
+.\vnev\Scripts\python.exe -m pytest tests/test_audit_strict_split_metadata.py tests/test_split_file_dataset.py tests/test_security_hardening.py tests/test_training_seed.py tests/test_audit_corrected_split_cache_ready.py tests/test_redraw_hash_e2e.py tests/test_run_loop114_loop112_redraw_readiness.py tests/test_build_loop76_redraw_readiness.py -q
+```
+
+结果：`62 passed`。
+
+真实 no-op 复跑：
+
+- `reports/random_20w_split/loop118_loop112_redraw_readiness_noop_summary.json`
+- decision: `await_external_verdicts`
+- replacement_required: `0`
+- Train/Val、Test-10k、full-test 仍全部不授权
