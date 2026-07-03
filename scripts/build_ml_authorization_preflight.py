@@ -426,6 +426,12 @@ def build_preflight(
     }
     return {
         "schema": "axon_ml_authorization_preflight_v2",
+        "evidence_semantics": (
+            "Fields named evidence in this preflight report are authorization audit summaries "
+            "only. They are not model features, verdict evidence, threshold signals, fusion "
+            "inputs, relabel evidence, replacement-sampling evidence, or production inference "
+            "evidence."
+        ),
         "authorization_plan": str(authorization_plan),
         "status": str(status_path),
         "status_summary": status.get("summary", {}),

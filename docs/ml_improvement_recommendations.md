@@ -2,6 +2,14 @@
 
 更新时间：2026-07-03
 
+## 2026-07-03 补充：Loop108 focus-aware route gate
+
+Loop108 把 Loop107 的 focus 合并 no-op 结果接回高层路线审计和 ML 授权预检：`reports/random_20w_split/loop108_focus_aware_route_audit_noop.json` 使用 `reports/random_20w_split/loop107_focus_merged_verdict_import_noop.json` 作为 verdict 输入，随后生成 `reports/random_20w_split/loop108_focus_aware_ml_authorization_preflight_noop.json`。本轮仍然是只读操作，不训练、不调阈值、不加载 checkpoint、不打开 NPZ 数组、不改 split/cache。
+
+真实结果保持严格阻断：fixed-v2 cache 与当前 20w split 通过，`total_rows=200000`、`covered_rows=200000`、`missing_rows=0`、`metadata_checked_rows=200000`、`metadata_failure_rows=0`，130 个历史坏特征槽位仍是 `replacement_rows=130`、`self_replacements=0`。但 focus 合并后的 Loop87 verdict 仍为 `ready_noop_no_actionable_verdicts`，`actionable_rows=0`、`replacement_required_rows=0`、`training_policy_rows=0`，所以 `allowed_operations=[]`，Train/Val、threshold sweep、Test-10k、full-test 和 redraw preflight 全部为 `false`。
+
+这里再次明确“不能根据命名来”的业务边界：目录名或文件名最多只能解释早期人工语料怎样被转成 locked manifest/split label，不能解释模型为何判黑/判白。真实部署命名和训练集命名不是同一分布，且攻击者可以随时改名；因此 filename、path、extension、directory、hash、`source_sha256`、`sample_index`、split、row order、model score 只能做 loading、alignment、cache audit、duplicate detection、manual/external review indexing，不能进入模型特征、verdict 证据、GA feature mask、阈值/融合、自动改标、replacement sampling 或生产推理。若怀疑标签噪声，只能依靠独立内容/外部证据复核，确认坏行后 quarantine，并从 locked manifest 的同原始标签池 fresh redraw。
+
 ## 2026-07-03 补充：Loop107 focus annotation merge
 
 Loop107 补上了 Loop106 到 Loop87 的回流链路：新增 `scripts/merge_loop106_focus_annotations.py`，允许人工或外部引擎只标注 `reports/random_20w_split/loop106_content_review_focus_top240.csv`，再按 `blind_review_id` 把三个字段 `manual_label_verdict/manual_verdict_note/recommended_action` 合回完整 `1868` 行盲审 CSV。合并脚本不读 private map，不恢复路径/hash/sample_index/split，不使用模型分数，只把人工字段回填到原始 Loop96 full blinded CSV；focus rank/score/reasons 不会进入下游 Loop87。
@@ -158,7 +166,7 @@ Loop97 已把 SpeakeasyX P2 方向收敛成明确结论：它可以作为人工/
 
 ## 2026-07-02 补充：命名不是证据，content PE v1 已产品化
 
-最新硬规则已经固定：文件名、路径、扩展名、目录名、`source_sha256`、`cache_path`、`sample_index`、`split` 和行顺序只能用于加载、缓存对齐、覆盖审计、去重、人工复核、以及生成一次性的人工标签清单，不能作为模型特征、二阶段融合特征、阈值捷径、自动改标证据或上线推理依据。原因是实战文件命名和训练集命名完全不是同一个分布，且攻击者改名几乎没有成本；训练集目录只能说明人工当时把样本放进哪个标签桶，不能说明文件本身因名字而恶意或良性。
+最新硬规则已经固定：文件名、路径、扩展名、目录名、`source_sha256`、`cache_path`、`sample_index`、`split` 和行顺序只能用于加载、缓存对齐、覆盖审计、去重和人工复核索引，不能作为模型特征、二阶段融合特征、阈值捷径、自动改标证据或上线推理依据。历史上可以用人工整理目录生成初始标签清单，但这是 locked split 形成前的 bootstrap 例外；当前 20w、redraw、verdict、训练、评估和生产推理都不能再按名字或路径推断标签。原因是实战文件命名和训练集命名完全不是同一个分布，且攻击者改名几乎没有成本；训练集目录只能说明人工当时把样本放进哪个标签桶，不能说明文件本身因名字而恶意或良性。
 
 当前 `docs/identity_feature_policy.md` 已把这条写成策略文档，`scripts/identity_feature_guard.py` 已接入 Stage-2 cache matrix 和 OOF stacker。后续如果新增类似 filename/path/extension/hash/split/row-id 的派生特征，训练脚本应直接失败，而不是让这类身份线索进入模型。
 
@@ -196,7 +204,7 @@ Loop51 已把“语义区域字节交给神经模型”推进到可训练状态�
 
 在 20 万完整 split 上，当前最强可复现实验是 Loop28 的 Stage-2 content PE metadata 模型。它严格保持 `20000 train / 20000 val / 160000 test`，每个 split 内黑白样本平衡不变，fixed-v2 uncompressed cache 覆盖 `200000/200000`。Val 只用于选模型和阈值；Test-10k 只做确认；full-test 只做一次冻结评估。Loop28 新增的 100 维 PE metadata 只来自文件内容和 PE 结构，不包含 filename、extension、目录名或路径文本。
 
-补充硬规则：文件名、路径、扩展名、目录名、`source_sha256`、`sample_index`、`split` 和行顺序只能用于装载、对齐、审计、去重、人工复核或生成一次性的标签清单，不能作为模型特征或调参依据。原因很简单：实战文件名和训练集命名通常完全不同，而且攻击者可以随时改名。训练集目录最多表示“人工把这批样本放在哪个标签桶里”，不是“这个文件因为叫某个名字所以恶意/良性”的证据。本轮已新增 `scripts/identity_feature_guard.py`，并接入 Stage-2 cache matrix 与 OOF stacker，后续训练矩阵若出现路径/命名/扩展名/hash/split/row-id 派生特征会直接失败。
+补充硬规则：文件名、路径、扩展名、目录名、`source_sha256`、`sample_index`、`split` 和行顺序只能用于装载、对齐、审计、去重和人工复核索引，不能作为模型特征或调参依据。历史上可以用人工整理目录生成初始标签清单，但这是 locked split 形成前的 bootstrap 例外；当前 20w、redraw、verdict、训练、评估和生产推理都不能再按名字或路径推断标签。原因很简单：实战文件名和训练集命名通常完全不同，而且攻击者可以随时改名。训练集目录最多表示“人工把这批样本放在哪个标签桶里”，不是“这个文件因为叫某个名字所以恶意/良性”的证据。本轮已新增 `scripts/identity_feature_guard.py`，并接入 Stage-2 cache matrix 与 OOF stacker，后续训练矩阵若出现路径/命名/扩展名/hash/split/row-id 派生特征会直接失败。
 
 最新结果如下：
 
@@ -269,14 +277,14 @@ Loop47 对现有 `models/` 做了 checkpoint provenance 审计，用来判断是
 
 Axon 现在最值得优先改进的地方，不是马上把模型做得更复杂，而是把“模型到底好不好”的判断流程固定下来。当前项目已经有很多有价值的能力：DSRA 字节分支、PE 结构特征、stat 统计特征、相似族群隔离切分、小族群加权、阈值扫描、hard-example 微调、GA 特征筛选、错误分析、概率校准脚本。问题在于这些能力目前像一套工具箱，工具很多，但每次评估时使用的样本口径、阈值、checkpoint、hard holdout 和报告格式并不完全统一。对产品决策来说，这会带来一个风险：某个实验看起来 F1 更高，但可能只是换了更容易的测试口径，或者它减少了漏报，却悄悄增加了很多误报。
 
-用业务语言说，下一阶段的核心目标应该是：让每个候选模型都经过同一套“考试”。这套考试要同时看总体测试集、相似族群隔离后的泛化能力、hard false negative 样本、hard false positive 样本、阈值选择，以及不同恶意来源目录或家族代理上的表现。只有这样，我们才知道一个模型是真的更稳，还是只是对某一批样本背得更熟。
+用业务语言说，下一阶段的核心目标应该是：让每个候选模型都经过同一套“考试”。这套考试要同时看总体测试集、相似族群隔离后的泛化能力、hard false negative 样本、hard false positive 样本、阈值选择，以及不同历史数据来源分层或家族代理上的表现。这里的历史数据来源分层只用于报告切片、泄漏审计和人工复核索引，不是模型输入、verdict 证据、阈值依据、feature mask 依据或 replacement sampling 依据。只有这样，我们才知道一个模型是真的更稳，还是只是对某一批样本背得更熟。
 
 我建议把改进优先级分成三层：
 
 1. **P1：先把评估链路和产品闸门固定住。** GA 特征掩码的定位已经明确为“高安全模式候选，不默认启用”；hard-example replay 当前配方已经严格复验证明不实用。近期 P1 不应继续重复这些重实验，而应优先解决大样本评估吞吐、阈值/校准流程固化、以及 cache 覆盖审计自动化。
 2. **P2：再考虑更重的模型和数据升级。** 包括更长字节序列、SpeakeasyX 动态行为特征、家族级分类器、主动学习式样本采集。
 
-已完成并从待办建议中移除：原 P0“统一模型评审闸门”。本轮已新增 `scripts/build_model_review_report.py`、`tests/test_build_model_review_report.py`，并生成 `reports/model_review/final_model_selection/model_review_summary.md` 与 `model_review_report.json`；真实 artifact 评审状态为 `usable`，核心 gate 均 PASS。当前统一报告已经覆盖最终模型选择、val-selected threshold、错误分析、group evaluation、概率校准正式全量 test 结果、完整 hard-FN/hard-error/high-value benign 结果，以及 GA 特征掩码的 20k 阈值、来源目录 trade-off、完整 hard-holdout 和高价值白样本证据。
+已完成并从待办建议中移除：原 P0“统一模型评审闸门”。本轮已新增 `scripts/build_model_review_report.py`、`tests/test_build_model_review_report.py`，并生成 `reports/model_review/final_model_selection/model_review_summary.md` 与 `model_review_report.json`；真实 artifact 评审状态为 `usable`，核心 gate 均 PASS。当前统一报告已经覆盖最终模型选择、val-selected threshold、错误分析、group evaluation、概率校准正式全量 test 结果、完整 hard-FN/hard-error/high-value benign 结果，以及 GA 特征掩码的 20k 阈值、历史数据来源分层 trade-off、完整 hard-holdout 和高价值白样本证据。历史数据来源分层只用于报告切片、泄漏审计和人工复核索引，不是模型输入、verdict 证据、阈值依据、feature mask 依据或 replacement sampling 依据。
 
 ## 本轮执行状态台账
 
@@ -443,7 +451,7 @@ stat 分支的双刃剑问题仍然存在，只是当前 gate 不是好解法。
 - hard FN：模型漏掉的恶意样本。
 - hard FP：模型误报的白样本。
 - clean replay：普通 train/val 中的稳定样本，用来防止模型忘掉原有能力。
-- family/group 限制：避免某一个来源目录或相似族群占比过高。
+- family/group 限制：避免某一个历史数据来源分层或相似族群占比过高；这些分层只用于报告切片、泄漏审计和人工复核索引，不是模型输入、verdict 证据、阈值依据、feature mask 依据或 replacement sampling 依据。
 
 ### 为什么值得做
 
@@ -496,11 +504,11 @@ stat 分支的双刃剑问题仍然存在，只是当前 gate 不是好解法。
 
 ### 要做什么
 
-保留 `config/feature_masks/ga_recall_guard_2000.json` 作为候选特征子集，在统一评审闸门下复验。本轮已经把 20,000 样本阈值评估、来源目录 trade-off、完整 hard-holdout，以及高价值白样本评估都补齐了；现在的重点不是继续证明“它能不能减少漏报”，而是把它的业务定位说清楚。
+保留 `config/feature_masks/ga_recall_guard_2000.json` 作为候选特征子集，在统一评审闸门下复验。本轮已经把 20,000 样本阈值评估、历史数据来源分层 trade-off、完整 hard-holdout，以及高价值白样本评估都补齐了；现在的重点不是继续证明“它能不能减少漏报”，而是把它的业务定位说清楚。历史数据来源分层只用于报告切片、泄漏审计和人工复核索引，不是模型输入、verdict 证据、阈值依据、feature mask 依据或 replacement sampling 依据。
 
 ### 为什么值得做
 
-GA 掩码确实展示出减少总错误和减少 FN 的潜力。20,000 样本评估中，GA mask @ `0.525` 相对完整特征 baseline @ `0.50`，F1 从 `0.9310` 到 `0.9391`，总错误从 `1340` 到 `1210`，FN 从 `958` 降到 `670`。来源目录里三个恶意来源的 FN 也都下降，所以它不是无效想法。
+GA 掩码确实展示出减少总错误和减少 FN 的潜力。20,000 样本评估中，GA mask @ `0.525` 相对完整特征 baseline @ `0.50`，F1 从 `0.9310` 到 `0.9391`，总错误从 `1340` 到 `1210`，FN 从 `958` 降到 `670`。按历史数据来源分层切片时，三个恶意来源分层的 FN 也都下降，所以它不是无效想法；这个切片只用于评估分层和泄漏审计，不进入模型、verdict、阈值、feature mask 或 replacement sampling。
 
 ### 补齐后的复验结果
 

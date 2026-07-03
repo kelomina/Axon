@@ -14,7 +14,6 @@ They may only be used for:
 - cache coverage audits
 - duplicate or content-group detection
 - manual review queues
-- building a one-time split/label manifest from human-curated roots
 
 They must not be used for:
 
@@ -23,6 +22,13 @@ They must not be used for:
 - threshold tuning shortcuts
 - relabel evidence
 - production inference decisions
+
+Historical/bootstrap exception: before the locked split exists, a
+human-curated corpus may be converted once into an explicit split or label
+manifest. That exception is not an ongoing permission. The current 20w protocol,
+redraw workflow, verdict workflow, training, evaluation, and production
+inference must not re-infer labels from file names, paths, directories, or
+extensions.
 
 ## Why
 
@@ -36,12 +42,19 @@ After the split CSV or manifest has a label, the model evidence must come from
 file content: bytes, PE structure, statistics, or other content-derived
 features.
 
+Practical clarification: directory or filename inference can explain how an
+early human-curated corpus was converted into a label manifest. It must never
+explain why a trained system predicts malware or benign in deployment. After
+the locked 20w split exists, names and paths are logistics fields only; noisy
+labels must be handled by independent content/external adjudication followed by
+quarantine and fresh same-original-label redraw.
+
 ## Label Manifests
 
-`label_inference=filename` or `label_inference=directory` is only a bootstrap
-mechanism for turning a human-curated corpus into an explicit label manifest.
-It is not a modeling signal and should not be used once an official split CSV
-or cache manifest exists.
+`label_inference=filename` or `label_inference=directory` is only a historical
+bootstrap mechanism for turning a human-curated corpus into an explicit label
+manifest before an official split exists. It is not a modeling signal and must
+not be used once an official split CSV or cache manifest exists.
 
 For the 20w protocol, the frozen split/manifest label is the label source.
 Names, paths, extensions, directory buckets, hashes, `sample_index`, split

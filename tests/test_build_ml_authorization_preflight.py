@@ -309,6 +309,8 @@ def test_build_ml_authorization_preflight_blocks_operations_when_route_awaits_ve
         )
 
     auth = preflight["operation_authorization"]
+    assert "authorization audit summaries" in preflight["evidence_semantics"]
+    assert "not model features" in preflight["evidence_semantics"]
     assert auth["decisions"]["read_only_review_allowed"] is True
     assert auth["decisions"]["package_completion_grants_operations"] is False
     assert auth["decisions"]["train_val_allowed"] is False

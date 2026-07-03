@@ -1,0 +1,162 @@
+{
+  "schema": "axon_loop98_identity_safe_route_audit_v1",
+  "protocol": "read-only route audit; no training, no model loading, no threshold tuning, no NPZ array loading, no split/cache mutation",
+  "evidence_semantics": "Fields named evidence in this route report are audit/source-of-truth summaries for authorization only. They are not model features, verdict evidence, threshold signals, fusion inputs, relabel evidence, replacement-sampling evidence, or production inference evidence.",
+  "inputs": {
+    "loop79_current_state": "reports\\random_20w_split\\loop101_current_state_gate_metadata.json",
+    "loop80_calibrator_fulltest": "reports\\random_20w_split\\loop80_calibrator_fulltest_summary.json",
+    "loop85_noise_strategy": "reports\\random_20w_split\\loop85_noise_strategy_gate.json",
+    "loop95_intake": "reports\\random_20w_split\\loop95_full_queue_review_evidence_intake.json",
+    "loop96_blinded_review": "reports\\random_20w_split\\loop96_full_queue_blinded_review.json",
+    "loop96_verdict_import": "reports\\random_20w_split\\loop107_focus_merged_verdict_import_noop.json",
+    "loop97_speakeasy": "reports\\random_20w_split\\loop97_speakeasy_triage_decision.json"
+  },
+  "decision": "await_independent_blinded_verdicts",
+  "blockers": [],
+  "current_best": {
+    "model": "Loop57 FN overlay gate",
+    "full_test_rows": 160000,
+    "f1": 0.9883629658239992,
+    "errors": 1868,
+    "false_positive": 1195,
+    "false_negative": 673
+  },
+  "target_gap": {
+    "target_f1": 0.999,
+    "approx_error_budget": 160,
+    "minimum_error_reduction_needed": 1708
+  },
+  "route_sections": {
+    "fixed_v2_cache_and_redraw": {
+      "status": "pass",
+      "blockers": [],
+      "evidence": {
+        "loop79_decision": "pass",
+        "replacement_rows": 130,
+        "self_replacements": 0,
+        "selection_status_counts": {
+          "strict_extracted": 130
+        },
+        "current_total_rows": 200000,
+        "current_covered_rows": 200000,
+        "current_missing_rows": 0,
+        "label_balance_enforced": true,
+        "cache_metadata_validation_enabled": true,
+        "metadata_checked_rows": 200000,
+        "metadata_failure_rows": 0,
+        "sampled_rows": 2000,
+        "sample_failed_rows": 0
+      }
+    },
+    "probability_calibrator": {
+      "status": "closed_as_final_candidate",
+      "blockers": [
+        "calibrator full-test F1 is below target",
+        "calibrator full-test errors exceed best-case target allowance",
+        "calibrator does not beat current Loop57 full-test best"
+      ],
+      "evidence": {
+        "decision": "not_final_candidate",
+        "full_test_rows": 160000,
+        "calibrator_f1": 0.9686442786069652,
+        "calibrator_errors": 5042,
+        "loop57_f1": 0.9883629658239992,
+        "loop57_errors": 1868,
+        "delta_errors_vs_loop57": 3174
+      }
+    },
+    "current_calibrator_fusion": {
+      "status": "closed",
+      "blockers": [],
+      "evidence": {
+        "loop82_calibrator_only_correct": 56,
+        "loop82_loop57_only_correct": 463,
+        "loop83_score_delta_improves_loop57": false,
+        "loop84_content_selector_promising": false,
+        "stop_current_calibrator_fusion": true
+      }
+    },
+    "full_queue_review": {
+      "status": "pass",
+      "blockers": [],
+      "evidence": {
+        "intake_rows": 1868,
+        "intake_ready_for_loop87": true,
+        "blinded_rows": 1868,
+        "ready_for_blinded_review": true,
+        "verdict_import_decision": "ready_noop_no_actionable_verdicts",
+        "blank_verdict_rows": 1868,
+        "actionable_rows": 0,
+        "replacement_required_rows": 0,
+        "training_policy_rows": 0
+      }
+    },
+    "speakeasy_dynamic_triage": {
+      "status": "manual_context_only",
+      "blockers": [
+        "confirmation_fn_delta_positive",
+        "confirmation_new_fn_exceeds_zero_tolerance",
+        "confirmation_new_fn_rate_too_high",
+        "timeout_signal_also_hits_true_malicious_rows"
+      ],
+      "evidence": {
+        "automatic_classifier_merge_allowed": false,
+        "automatic_threshold_override_allowed": false,
+        "training_allowed": false,
+        "test10k_allowed": false,
+        "manual_external_review_signal_allowed": true,
+        "confirmation_new_fn": 48,
+        "confirmation_fn_delta": 48
+      }
+    }
+  },
+  "identity_feature_policy": {
+    "forbidden_as_model_or_verdict_evidence": [
+      "filename",
+      "path",
+      "extension",
+      "directory",
+      "hash",
+      "source_sha256",
+      "sample_index",
+      "split",
+      "row_order",
+      "model_score"
+    ],
+    "allowed_uses": [
+      "loading",
+      "alignment",
+      "cache audit",
+      "duplicate detection",
+      "manual/external review indexing"
+    ],
+    "strict_boundary": "Real deployment names do not match training-corpus names. Filename, path, directory, extension, hash, source_sha256, sample_index, split, row order, and model score fields must not be used as training, fusion, threshold, relabel, replacement-sampling, or production inference evidence.",
+    "label_boundary": "If an original corpus used human-curated directories to bootstrap labels, that step ends at the locked split/manifest label. The 20w protocol uses the locked manifest label pool for redraws, not names or paths."
+  },
+  "redraw_policy": {
+    "bad_row_actions": [
+      "label_wrong",
+      "feature_broken",
+      "out_of_scope"
+    ],
+    "required_action": "quarantine_then_fresh_same_original_label_redraw",
+    "self_fill_allowed": false,
+    "replacement_pool": "locked_manifest_original_label_pool",
+    "exact_split_required": {
+      "total": 200000,
+      "train": 20000,
+      "val": 20000,
+      "test": 160000
+    }
+  },
+  "decisions": {
+    "automatic_relabel_allowed": false,
+    "automatic_replacement_allowed_without_verdict": false,
+    "training_allowed_now": false,
+    "test10k_allowed_now": false,
+    "full_test_allowed_now": false,
+    "current_automatic_model_route_open": false,
+    "ready_for_redraw_preflight": false,
+    "next_allowed_step": "Fill Loop96 blinded review with independent content/external verdicts, unblind, run Loop87, then build non-destructive fresh same-original-label redraw preflight."
+  }
+}

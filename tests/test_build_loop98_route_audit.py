@@ -154,6 +154,8 @@ def test_loop98_awaits_independent_verdicts_when_full_queue_is_blank(tmp_path: P
     assert report["route_sections"]["probability_calibrator"]["status"] == "closed_as_final_candidate"
     assert report["route_sections"]["current_calibrator_fusion"]["status"] == "closed"
     assert report["route_sections"]["speakeasy_dynamic_triage"]["status"] == "manual_context_only"
+    assert "authorization only" in report["evidence_semantics"]
+    assert "not model features" in report["evidence_semantics"]
     assert "filename" in report["identity_feature_policy"]["forbidden_as_model_or_verdict_evidence"]
     assert report["redraw_policy"]["self_fill_allowed"] is False
 

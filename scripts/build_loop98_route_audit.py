@@ -267,6 +267,12 @@ def build_audit(
             "read-only route audit; no training, no model loading, no threshold tuning, "
             "no NPZ array loading, no split/cache mutation"
         ),
+        "evidence_semantics": (
+            "Fields named evidence in this route report are audit/source-of-truth summaries "
+            "for authorization only. They are not model features, verdict evidence, threshold "
+            "signals, fusion inputs, relabel evidence, replacement-sampling evidence, or "
+            "production inference evidence."
+        ),
         "inputs": {
             "loop79_current_state": str(loop79_current_state),
             "loop80_calibrator_fulltest": str(loop80_calibrator_fulltest),
