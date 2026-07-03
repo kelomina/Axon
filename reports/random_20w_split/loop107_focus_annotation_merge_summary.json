@@ -1,0 +1,57 @@
+{
+  "schema": "axon_loop107_focus_annotation_merge_summary_v1",
+  "protocol": "read-only focus annotation merge route; no model fitting, no threshold selection, no automatic verdict, no split/cache mutation",
+  "inputs": {
+    "full_blinded_csv": "reports/random_20w_split/loop96_full_queue_blinded_review.csv",
+    "focus_annotations_csv": "reports/random_20w_split/loop106_content_review_focus_top240.csv",
+    "private_map_csv_for_downstream_unblind_only": "reports/random_20w_split/loop96_full_queue_private_map.csv"
+  },
+  "outputs": {
+    "merged_full_blinded_csv": "reports/random_20w_split/loop107_focus_merged_full_blinded_noop.csv",
+    "merge_json": "reports/random_20w_split/loop107_focus_annotation_merge_noop.json",
+    "unblinded_loop87_input_csv": "reports/random_20w_split/loop107_focus_merged_unblinded_loop87_input_noop.csv",
+    "unblind_json": "reports/random_20w_split/loop107_focus_merged_unblind_noop.json",
+    "loop87_validated_csv": "reports/random_20w_split/loop107_focus_merged_verdict_import_noop.csv",
+    "loop87_json": "reports/random_20w_split/loop107_focus_merged_verdict_import_noop.json",
+    "guard_json": "reports/random_20w_split/loop107_focus_annotation_merge_guard.json"
+  },
+  "real_noop_result": {
+    "merge_blockers": [],
+    "full_blinded_rows": 1868,
+    "focus_rows": 240,
+    "annotated_focus_rows": 0,
+    "merged_annotated_rows": 0,
+    "unblind_blockers": [],
+    "loop87_decision": "ready_noop_no_actionable_verdicts",
+    "loop87_actionable_rows": 0,
+    "loop87_replacement_required_rows": 0,
+    "loop87_training_policy_rows": 0,
+    "training_allowed": false,
+    "test10k_allowed": false
+  },
+  "identity_boundary": {
+    "focus_key": "blind_review_id only",
+    "merged_fields_from_focus": [
+      "manual_label_verdict",
+      "manual_verdict_note",
+      "recommended_action"
+    ],
+    "forbidden_focus_columns": [
+      "filename/path/directory/extension",
+      "source_path/cache_path",
+      "hash/source_sha256",
+      "sample_index",
+      "split/row order/review rank",
+      "loop57/loop39/model probability/model score/prediction/threshold"
+    ]
+  },
+  "verification": {
+    "resource_guard": "pass",
+    "py_compile": "pass",
+    "pytest": {
+      "command": "python -m pytest tests/test_merge_loop106_focus_annotations.py tests/test_build_loop106_content_review_focus.py tests/test_build_loop96_blinded_review_package.py tests/test_import_loop87_review_evidence_verdicts.py",
+      "result": "15 passed"
+    }
+  },
+  "next_allowed_step": "Independent reviewer or external engine fills Loop106 focus manual fields; rerun Loop107 merge, Loop96 unblind, Loop87 import, then redraw preflight if Loop87 reports actionable bad rows."
+}

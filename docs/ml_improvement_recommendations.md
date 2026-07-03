@@ -2,6 +2,12 @@
 
 更新时间：2026-07-03
 
+## 2026-07-03 补充：Loop107 focus annotation merge
+
+Loop107 补上了 Loop106 到 Loop87 的回流链路：新增 `scripts/merge_loop106_focus_annotations.py`，允许人工或外部引擎只标注 `reports/random_20w_split/loop106_content_review_focus_top240.csv`，再按 `blind_review_id` 把三个字段 `manual_label_verdict/manual_verdict_note/recommended_action` 合回完整 `1868` 行盲审 CSV。合并脚本不读 private map，不恢复路径/hash/sample_index/split，不使用模型分数，只把人工字段回填到原始 Loop96 full blinded CSV；focus rank/score/reasons 不会进入下游 Loop87。
+
+真实 no-op 链路已经跑通：focus CSV 当前仍无人工标注，合并后 `merged_annotated_rows=0`、`blockers=[]`；再经 Loop96 unblind 和 Loop87 import，结果仍是 `ready_noop_no_actionable_verdicts`、`actionable_rows=0`、`replacement_required_rows=0`、训练和 Test-10k 均不允许。这样后续外部判定只需填 240 行 focus 表，再走同一条严格 gate，而不是直接改 split 或拿身份字段做证据。
+
 ## 2026-07-03 补充：Loop106 content review focus
 
 Loop106 针对当前最大卡点 `actionable_rows=0` 做了只读推进：新增 `scripts/build_loop106_content_review_focus.py`，从 `reports/random_20w_split/loop96_full_queue_blinded_review.csv` 生成内容优先复核批次。排序只使用盲审 CSV 中的 PE/静态内容字段，例如 entropy、overlay、security directory 后附加数据、section 数、import/resource/security directory 形态、重复内容组标记和 objective issue；不读取 private map，不恢复路径/hash/sample_index/split/row order，不使用模型概率或分数。
