@@ -9,18 +9,18 @@ align sidecar caches; they are not model features.
 from __future__ import annotations
 
 import argparse
-import hashlib
+import gc
 import json
 import math
 import pickle
 import sys
 import time
-from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional, Sequence
 
 import numpy as np
+from sklearn.base import clone
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS_DIR = PROJECT_ROOT / "scripts"
@@ -37,10 +37,13 @@ from train_stage2_cache_matrix import (  # noqa: E402
     PEFILE_AVAILABLE,
     FeatureConfig,
     _entropy_from_bytes,
+    append_feature_columns,
     assert_stage2_feature_names_safe,
     build_matrix,
     clean_slice_metrics,
+    content_cache_path_for_row,
     filter_model_candidates,
+    load_valid_feature_npz,
     model_candidates,
     parse_thresholds,
     predict_scores,
@@ -49,8 +52,10 @@ from train_stage2_cache_matrix import (  # noqa: E402
     sample_weights,
     save_feature_npz_atomic,
     select_best_threshold,
+    source_sha256_for_row,
     summarize_noise,
     summarize_weights,
+    verify_content_row_source_sha256,
     write_predictions,
 )
 
@@ -174,6 +179,21 @@ def _section_raw_span(section, file_size: int) -> Optional[tuple[int, int]]:
     return span[0], span[1]
 
 
+def _read_span_prefix(file_path: Path, span: Optional[tuple[int, int]], limit: int = 4096) -> bytes:
+    if span is None or limit <= 0:
+        return b""
+    start, end = span
+    size = max(0, min(end - start, int(limit)))
+    if size <= 0:
+        return b""
+    try:
+        with file_path.open("rb") as handle:
+            handle.seek(start)
+            return handle.read(size)
+    except OSError:
+        return b""
+
+
 def overlay_boundary_features_from_path(file_path: Path) -> np.ndarray:
     if not PEFILE_AVAILABLE:
         return np.zeros(len(OVERLAY_BOUNDARY_FEATURE_NAMES), dtype=np.float32)
@@ -224,10 +244,7 @@ def overlay_boundary_features_from_path(file_path: Path) -> np.ndarray:
             raw_size = float(getattr(last, "SizeOfRawData", 0) or 0)
             virt_size = float(getattr(last, "Misc_VirtualSize", 0) or 0)
             last_raw_virtual_delta = _safe_ratio(abs(raw_size - virt_size), max(raw_size, virt_size, 1.0))
-            try:
-                last_section_entropy = _entropy_from_bytes(last.get_data()[:4096])
-            except Exception:
-                last_section_entropy = 0.0
+            last_section_entropy = _entropy_from_bytes(_read_span_prefix(file_path, last_section_span, 4096))
 
         payload_bytes = _read_segments(file_path, payload_segments)
         payload_entropy = _entropy_from_bytes(payload_bytes) if payload_bytes else 0.0
@@ -340,27 +357,20 @@ def overlay_boundary_features_from_path(file_path: Path) -> np.ndarray:
 
 
 def _overlay_cache_path(row: dict, cache_dir: Optional[str]) -> Optional[Path]:
-    if not cache_dir:
+    cache_path = content_cache_path_for_row(row, cache_dir)
+    if cache_path is None:
         return None
-    key = (row.get("source_sha256") or "").strip().lower()
-    if not key:
-        source_path = row.get("source_path", "")
-        key = hashlib.sha256(str(resolve_path(Path(source_path))).encode("utf-8", errors="ignore")).hexdigest()
-    return resolve_path(Path(cache_dir)) / f"{key}.npz"
+    return cache_path.with_name(f"overlay_boundary_v1_{cache_path.name}")
 
 
 def overlay_boundary_features_for_row(row: dict, cache_dir: Optional[str]) -> np.ndarray:
+    source_path, _source_sha = verify_content_row_source_sha256(row)
     cache_path = _overlay_cache_path(row, cache_dir)
     if cache_path is not None and cache_path.exists():
-        try:
-            with np.load(cache_path, allow_pickle=False) as data:
-                features = data["features"].astype(np.float32, copy=False)
-            if features.shape == (len(OVERLAY_BOUNDARY_FEATURE_NAMES),) and np.isfinite(features).all():
-                return features
-        except Exception:
-            pass
+        features = load_valid_feature_npz(cache_path, len(OVERLAY_BOUNDARY_FEATURE_NAMES))
+        if features is not None:
+            return features
 
-    source_path = resolve_path(Path(row["source_path"]))
     features = overlay_boundary_features_from_path(source_path)
     if cache_path is not None:
         cache_path.parent.mkdir(parents=True, exist_ok=True)
@@ -369,10 +379,12 @@ def overlay_boundary_features_for_row(row: dict, cache_dir: Optional[str]) -> np
 
 
 def build_overlay_boundary_matrix(rows: Sequence[dict], config: OverlayBoundaryConfig) -> np.ndarray:
-    features = [overlay_boundary_features_for_row(row, config.cache_dir) for row in rows]
-    if not features:
+    if not rows:
         raise ValueError("No overlay boundary rows were loaded")
-    return np.vstack(features).astype(np.float32, copy=False)
+    matrix = np.empty((len(rows), len(OVERLAY_BOUNDARY_FEATURE_NAMES)), dtype=np.float32)
+    for index, row in enumerate(rows):
+        matrix[index] = overlay_boundary_features_for_row(row, config.cache_dir)
+    return matrix
 
 
 def _build_overlay_cache_one(payload: tuple[dict, str]) -> dict:
@@ -390,25 +402,20 @@ def build_overlay_boundary_cache(
     cache_dir = resolve_path(cache_dir)
     cache_dir.mkdir(parents=True, exist_ok=True)
     worker_count = max(1, int(workers))
-    payloads = [(row, str(cache_dir)) for row in rows]
+    if worker_count != 1:
+        raise ValueError("Loop55 overlay cache build is intentionally single-process to avoid Windows worker RSS copies")
     counts = {"processed": 0, "zero_features": 0}
     start = time.perf_counter()
-    if worker_count == 1:
-        iterator = map(_build_overlay_cache_one, payloads)
-        for result in iterator:
-            counts["processed"] += 1
-            counts["zero_features"] += int(result["zero"])
-    else:
-        with ProcessPoolExecutor(max_workers=worker_count) as executor:
-            for result in executor.map(_build_overlay_cache_one, payloads, chunksize=32):
-                counts["processed"] += 1
-                counts["zero_features"] += int(result["zero"])
-                if counts["processed"] % 1000 == 0:
-                    print(
-                        f"[overlay-cache] processed={counts['processed']}/{len(payloads)} "
-                        f"zero={counts['zero_features']}",
-                        flush=True,
-                    )
+    for row in rows:
+        result = _build_overlay_cache_one((row, str(cache_dir)))
+        counts["processed"] += 1
+        counts["zero_features"] += int(result["zero"])
+        if counts["processed"] % 1000 == 0:
+            print(
+                f"[overlay-cache] processed={counts['processed']}/{len(rows)} "
+                f"zero={counts['zero_features']}",
+                flush=True,
+            )
     counts["elapsed_sec"] = time.perf_counter() - start
     counts["cache_dir"] = str(cache_dir)
     return counts
@@ -443,6 +450,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     args = build_parser().parse_args(argv)
     checkpoint = load_safe_checkpoint(resolve_path(args.checkpoint), map_location="cpu")
     checkpoint_config = AxonExperimentConfig.from_dict(dict(checkpoint["config"]))
+    del checkpoint
+    gc.collect()
     output_dir = resolve_path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     overlay_cache_dir = resolve_path(args.overlay_boundary_cache_dir or (output_dir / "overlay_boundary_cache_v1"))
@@ -453,9 +462,14 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         rows.extend(read_prediction_rows(args.val_predictions, args.max_val_rows))
         seen = set()
         unique_rows = []
+        invalid_source_sha256 = 0
         for row in rows:
-            key = (row.get("source_sha256") or row.get("source_path") or "").strip().lower()
-            if not key or key in seen:
+            try:
+                key = source_sha256_for_row(row)
+            except ValueError:
+                invalid_source_sha256 += 1
+                continue
+            if key in seen:
                 continue
             seen.add(key)
             unique_rows.append(row)
@@ -471,6 +485,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             "val_predictions": str(resolve_path(args.val_predictions)),
             "input_rows": len(rows),
             "unique_rows": len(unique_rows),
+            "invalid_source_sha256_rows": invalid_source_sha256,
             "feature_dim": len(OVERLAY_BOUNDARY_FEATURE_NAMES),
             "cache_counts": cache_counts,
         }
@@ -499,12 +514,23 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         train_rows, checkpoint_config, feature_config
     )
     val_x, val_y, val_base, val_kept_rows, val_counts = build_matrix(val_rows, checkpoint_config, feature_config)
+    del train_rows
+    del val_rows
 
     overlay_config = OverlayBoundaryConfig(cache_dir=str(overlay_cache_dir))
     train_overlay = build_overlay_boundary_matrix(train_kept_rows, overlay_config)
     val_overlay = build_overlay_boundary_matrix(val_kept_rows, overlay_config)
-    train_x = np.hstack([train_x, train_overlay]).astype(np.float32, copy=False)
-    val_x = np.hstack([val_x, val_overlay]).astype(np.float32, copy=False)
+    base_feature_dim = int(train_x.shape[1])
+    overlay_boundary_feature_dim = int(train_overlay.shape[1])
+    train_overlay_rows = int(train_overlay.shape[0])
+    val_overlay_rows = int(val_overlay.shape[0])
+    train_present = int((train_overlay[:, 6] > 0).sum())
+    val_present = int((val_overlay[:, 6] > 0).sum())
+    train_x = append_feature_columns(train_x, train_overlay)
+    val_x = append_feature_columns(val_x, val_overlay)
+    del train_overlay
+    del val_overlay
+    gc.collect()
     print(f"[matrix] train={train_x.shape} val={val_x.shape}", flush=True)
 
     thresholds = parse_thresholds(args.thresholds)
@@ -512,11 +538,15 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     candidates = filter_model_candidates(model_candidates(int(args.seed)), args.model_candidates)
     noise_modes = [item.strip() for item in args.noise_modes.split(",") if item.strip()]
     results = []
-    fitted = []
+    best_key = None
+    selected = None
+    selected_model = None
+    selected_val_scores = None
     for noise_mode in noise_modes:
         weights = sample_weights(train_y, train_base, noise_mode)
         weight_summary = summarize_weights(train_y, weights)
-        for model_name, model in candidates:
+        for model_name, model_template in candidates:
+            model = clone(model_template)
             start = time.perf_counter()
             fit_kwargs = {}
             if model_name != "logreg_l2_c1":
@@ -542,15 +572,28 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 "delta_val_f1_vs_loop28": float(val_best["f1"]) - float(args.baseline_val_f1),
             }
             results.append(result)
-            fitted.append((float(val_best["f1"]), -int(val_best["errors"]), result, model, val_scores))
+            candidate_key = (float(val_best["f1"]), -int(val_best["errors"]))
+            if best_key is None or candidate_key > best_key:
+                if selected_model is not None:
+                    del selected_model
+                if selected_val_scores is not None:
+                    del selected_val_scores
+                best_key = candidate_key
+                selected = result
+                selected_model = model
+                selected_val_scores = val_scores.astype(np.float32, copy=True)
+            else:
+                del model
+            del val_scores
+            gc.collect()
             print(
                 f"[val] {result['name']} f1={val_best['f1']:.6f} "
                 f"errors={val_best['errors']} threshold={val_best['threshold']:.4f}",
                 flush=True,
             )
 
-    fitted.sort(key=lambda item: (item[0], item[1]), reverse=True)
-    _selected_f1, _neg_errors, selected, selected_model, selected_val_scores = fitted[0]
+    if selected is None or selected_model is None or selected_val_scores is None:
+        raise ValueError("No fitted Loop55 candidate was available for selection")
     selected_threshold = float(selected["val_best"]["threshold"])
     val_predictions_path = output_dir / "loop55_overlay_boundary_val_predictions.csv"
     write_predictions(val_predictions_path, val_kept_rows, val_y, selected_val_scores, selected_threshold)
@@ -573,8 +616,6 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             handle,
         )
 
-    train_present = int((train_overlay[:, 6] > 0).sum())
-    val_present = int((val_overlay[:, 6] > 0).sum())
     val_kept_count = int(val_counts.get("kept", 0)) if isinstance(val_counts, dict) else int(len(val_y))
     if val_kept_count < 20000:
         test_gate_decision = "smoke_only_not_eligible_for_test10k"
@@ -599,15 +640,15 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             **safe_feature_name_groups,
             "overlay_boundary_feature_names": OVERLAY_BOUNDARY_FEATURE_NAMES,
         },
-        "base_feature_dim": int(train_x.shape[1] - train_overlay.shape[1]),
-        "overlay_boundary_feature_dim": int(train_overlay.shape[1]),
+        "base_feature_dim": base_feature_dim,
+        "overlay_boundary_feature_dim": overlay_boundary_feature_dim,
         "feature_dim": int(train_x.shape[1]),
         "overlay_boundary_cache_dir": str(overlay_cache_dir),
         "overlay_boundary_coverage": {
             "train_payload_present": train_present,
             "val_payload_present": val_present,
-            "train_payload_zero": int(train_overlay.shape[0] - train_present),
-            "val_payload_zero": int(val_overlay.shape[0] - val_present),
+            "train_payload_zero": int(train_overlay_rows - train_present),
+            "val_payload_zero": int(val_overlay_rows - val_present),
         },
         "baseline_val_best": baseline_val_best,
         "loop28_reference": {

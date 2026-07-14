@@ -13,6 +13,11 @@ import sys
 import os
 from pathlib import Path
 
+try:
+    sys.stdout.reconfigure(encoding="utf-8")
+except Exception:
+    pass
+
 # 添加 src 目录到路径
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
@@ -57,8 +62,9 @@ def test_feature_extractor():
         assert len(pe_features) == 1500, f"PE特征维度不对: {len(pe_features)}"
         print("  ✓ PE特征提取成功")
         
-        # 测试统计特征提取
-        stat_features = extract_statistical_features(byte_seq, pe_features, orig_len)
+        # 测试统计特征提取。统计特征只需要字节序列和原始长度；
+        # PE 特征是另一条输入，不再混到这个函数里。
+        stat_features = extract_statistical_features(byte_seq, orig_len)
         assert stat_features is not None, "统计特征提取失败"
         assert len(stat_features) > 0, "统计特征为空"
         print("  ✓ 统计特征提取成功")
@@ -89,6 +95,7 @@ def test_dataset():
     print("=" * 60)
     
     try:
+        from config import AxonExperimentConfig
         from dataset import MalwareDataset, NPZDataset
         
         # 创建临时数据目录
@@ -105,12 +112,23 @@ def test_dataset():
             with open(malicious_dir / f"malicious_{i}.exe", 'wb') as f:
                 f.write(b'MZ' + b'\x90' * 100)
         
+        # 这些测试文件只是最小 MZ 合成样本，不是真实 PE。
+        # 冒烟测试里显式开启 fallback，真实配置仍默认严格解析。
+        smoke_config = AxonExperimentConfig(
+            max_byte_length=4096,
+            pe_feature_dim=1500,
+            strict_pe_parsing=False,
+            allow_pe_fallback=True,
+        )
+
         # 测试数据集初始化
         dataset = MalwareDataset(
             data_dir=str(test_dir),
-            max_byte_length=4096,
-            pe_feature_dim=1500,
-            use_cache=False
+            max_byte_length=smoke_config.max_byte_length,
+            pe_feature_dim=smoke_config.pe_feature_dim,
+            stat_feature_dim=smoke_config.stat_feature_dim,
+            use_cache=False,
+            axon_config=smoke_config,
         )
         
         assert len(dataset) == 6, f"数据集大小不对: {len(dataset)}"
@@ -126,7 +144,7 @@ def test_dataset():
         print("  ✓ 数据加载成功")
         
         # 测试数据类型
-        assert byte_seq.dtype == torch.int64, f"字节序列类型不对: {byte_seq.dtype}"
+        assert byte_seq.dtype == torch.uint8, f"字节序列类型不对: {byte_seq.dtype}"
         assert pe_features.dtype == torch.float32, f"PE特征类型不对: {pe_features.dtype}"
         assert label.dtype == torch.int64, f"标签类型不对: {label.dtype}"
         print("  ✓ 数据类型正确")
@@ -244,15 +262,15 @@ def test_trainer():
         config = AxonExperimentConfig(
             max_byte_length=1024,
             batch_size=2,
-            device="cpu",
-            max_epochs=1,
-            early_stopping_patience=1
+            device="cpu"
         )
         
         train_config = TrainingConfig(
             max_epochs=1,
             batch_size=2,
-            learning_rate=1e-4
+            learning_rate=1e-4,
+            lr_scheduler="none",
+            early_stopping_patience=1
         )
         
         # 创建模型
@@ -300,7 +318,7 @@ def test_trainer():
             def __getitem__(self, idx):
                 byte_seq = torch.randint(0, 256, (config.max_byte_length,)).long()
                 pe_features = torch.randn(config.pe_feature_dim).float()
-                stat_features = torch.randn(100).float()
+                stat_features = torch.randn(config.stat_feature_dim).float()
                 label = torch.tensor(idx % 2, dtype=torch.long)
                 return byte_seq, pe_features, stat_features, label
         
@@ -322,8 +340,9 @@ def test_trainer():
         
         # 测试检查点保存
         trainer.save_checkpoint("test_checkpoint.pt")
-        assert Path("test_checkpoint.pt").exists(), "检查点未保存"
-        Path("test_checkpoint.pt").unlink()
+        checkpoint_path = trainer.output_dir / "test_checkpoint.pt"
+        assert checkpoint_path.exists(), "检查点未保存"
+        checkpoint_path.unlink()
         print("  ✓ 检查点保存成功")
         
         print("  ✓ 训练器测试通过\n")

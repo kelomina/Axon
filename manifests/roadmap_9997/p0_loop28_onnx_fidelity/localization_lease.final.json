@@ -1,0 +1,42 @@
+{
+  "administrative_reissue": {
+    "authorization_path": "manifests/roadmap_9997/p0_loop28_onnx_fidelity/localization_lease_reissue_002_authorization.json",
+    "authorization_sha256": "103ea16e08172cb06f173a18006a14d88b5b06a2b0bd06c6ede2379306cf3c75",
+    "failed_consumed_leases": [
+      {
+        "path": "manifests/roadmap_9997/p0_loop28_onnx_fidelity/localization_lease.failed_001.final.json",
+        "sha256": "3d7509ccf8071d1e8d2545c5b883d9dcc4456c95f04ea189a00397e0fd8b1ab7"
+      },
+      {
+        "path": "manifests/roadmap_9997/p0_loop28_onnx_fidelity/localization_lease.failed_002.final.json",
+        "sha256": "65047ba2881d387091148c6e920e4af4e67f713dbe9bef2917391e64481ebd33"
+      }
+    ],
+    "failure_receipts": [
+      {
+        "path": "reports/roadmap_9997/p0_loop28_onnx_fidelity/localization_attempt_001_failure.json",
+        "sha256": "a7c6d26d58a608cc534b5a044bd542e8b3ccc09b4915ca7d8a0e790d16e1c222"
+      },
+      {
+        "path": "reports/roadmap_9997/p0_loop28_onnx_fidelity/localization_attempt_001_reissue_001_failure.json",
+        "sha256": "3d806ab67db39af38e4eb3296771f222db1ad7ba15d90c5e95c0598176debadb"
+      }
+    ],
+    "further_reissue_allowed": false,
+    "invocation": "vnev/Scripts/python.exe -c import sys; sys.path[:0]=['.','scripts']; import diagnose_loop28_onnx_fidelity as d; raise SystemExit(d.main())",
+    "invocation_amendment_path": "manifests/roadmap_9997/p0_loop28_onnx_fidelity/localization_invocation_amendment.json",
+    "invocation_amendment_sha256": "6aaa4ee8704a01fd0dc9cb77ffb89b21beecd1a6578438865c9abf43ae153e02",
+    "reissue_count": 2
+  },
+  "amended_at_utc": "2026-07-11T22:13:39Z",
+  "attempt_id": "p0_loop28_onnx_fidelity_001_attempt_001",
+  "consumed_at_utc": "2026-07-11T22:15:01Z",
+  "issued_at_utc": "2026-07-11T22:12:14Z",
+  "localization_authorization": {
+    "sha256": "96748cb281529886a3c15da9a8d2d1db361d97e5eb2ca2a5a2240bdfe8659bf5"
+  },
+  "loop_id": "p0_loop28_onnx_fidelity_001",
+  "original_lease_sha256": "141b33edce78b3a6114ea986b8183feb9dcdbe077286249e6d46370e07f72209",
+  "schema": "axon_loop28_onnx_fidelity_localization_lease_v1",
+  "status": "consumed_before_execution"
+}

@@ -88,3 +88,63 @@ def test_summarize_errors_uses_probability_buckets_not_identity_groups():
     assert "directory" in payload["identity_feature_policy"]
     assert "top_breakdowns" not in payload
     assert payload["error_examples"][0]["source_path"] == "data/looks_bad/malicious_name.exe"
+
+
+def test_summarize_errors_supports_calibrated_probability_column_and_error_csv():
+    with _case_dir("strict_calibrated_error_summary") as tmp_path:
+        predictions = tmp_path / "predictions.csv"
+        errors_csv = tmp_path / "errors.csv"
+        with predictions.open("w", encoding="utf-8-sig", newline="") as handle:
+            writer = csv.DictWriter(
+                handle,
+                fieldnames=[
+                    "source_path",
+                    "source_sha256",
+                    "cache_path",
+                    "label",
+                    "split",
+                    "sample_index",
+                    "calibrated_prob_malicious",
+                ],
+            )
+            writer.writeheader()
+            writer.writerows(
+                [
+                    {
+                        "source_path": "a.exe",
+                        "source_sha256": "a" * 64,
+                        "cache_path": "a.npz",
+                        "label": "0",
+                        "split": "test",
+                        "sample_index": "1",
+                        "calibrated_prob_malicious": "0.91",
+                    },
+                    {
+                        "source_path": "b.exe",
+                        "source_sha256": "b" * 64,
+                        "cache_path": "b.npz",
+                        "label": "1",
+                        "split": "test",
+                        "sample_index": "2",
+                        "calibrated_prob_malicious": "0.95",
+                    },
+                ]
+            )
+
+        payload = summarize_errors(
+            predictions,
+            threshold=0.44,
+            prob_column="calibrated_prob_malicious",
+            output_errors_csv=errors_csv,
+        )
+        with errors_csv.open("r", encoding="utf-8", newline="") as handle:
+            rows = list(csv.DictReader(handle))
+
+    assert payload["probability_column"] == "calibrated_prob_malicious"
+    assert payload["error_count"] == 1
+    assert payload["false_positive_count"] == 1
+    assert payload["false_negative_count"] == 0
+    assert payload["errors_csv"] == str(errors_csv)
+    assert len(rows) == 1
+    assert rows[0]["error_type"] == "FP"
+    assert rows[0]["calibrated_prob_malicious"] == "0.91"

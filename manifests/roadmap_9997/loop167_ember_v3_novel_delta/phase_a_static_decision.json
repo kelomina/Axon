@@ -1,0 +1,72 @@
+{
+  "schema": "axon_loop167_phase_a_static_decision_v1",
+  "loop_id": "loop167_ember_v3_novel_delta",
+  "decision": "pass_phase_a_static_semantic_closure_keep_phase_b_execution_blocked",
+  "claim_scope": "static_mapping_and_synthetic_native_feature_contract_only_not_model_quality_or_promotion",
+  "bindings": {
+    "proposal": {
+      "path": "manifests/roadmap_9997/loop167_ember_v3_novel_delta/proposal.json",
+      "sha256": "f2c3d61ca25b064eba9fc74df46caf2b57d5ee6997e9354c48b216a582e465fd"
+    },
+    "authorization": {
+      "path": "manifests/roadmap_9997/loop167_ember_v3_novel_delta/authorization.json",
+      "sha256": "be4e4b43f282b4067e86fc909b9780dd077119203e41afabb61a6135fcd2912f"
+    },
+    "semantic_delta_mapping": {
+      "path": "manifests/roadmap_9997/loop167_ember_v3_novel_delta/semantic_delta_mapping.json",
+      "sha256": "8f3e2db45b6fdac01e257096475b575b41e407bf715a541e3127c0a8e4e8d5b0"
+    },
+    "frozen_deduplicated_baseline_allowlist": {
+      "path": "manifests/roadmap_9997/loop167_ember_v3_novel_delta/frozen_deduplicated_baseline_allowlist.json",
+      "sha256": "167a0099433305fc1f4ecf66565090572bde04c1d853ba2337810ab6f262d62f"
+    },
+    "source_semantics_addendum": {
+      "path": "manifests/roadmap_9997/loop167_ember_v3_novel_delta/phase_a_source_semantics_addendum.json",
+      "sha256": "d42477d0865ac07f59425868f5e11e385aea138bab6406a4cd7e5d9f61cc4c4d"
+    },
+    "source_closure": {
+      "path": "manifests/roadmap_9997/loop167_ember_v3_novel_delta/phase_a_source_closure.json",
+      "sha256": "c5824aae15299690d501105061f11eeb12233dc5561c137687761f973f12afff"
+    }
+  },
+  "semantic_mapping_result": {
+    "official_dimension": 2568,
+    "exact_overlap": 49,
+    "partial_overlap": 487,
+    "genuinely_novel": 292,
+    "forbidden_or_unstable": 1740,
+    "novel_groups": [
+      "general",
+      "byteentropy",
+      "header",
+      "richheader"
+    ],
+    "frozen_b0_source_inventory_dimension": 572,
+    "frozen_b0_allowlist_dimension": 571
+  },
+  "validation": {
+    "synthetic_and_governance_tests": "11 passed",
+    "ruff": "passed",
+    "py_compile": "passed",
+    "semantic_artifact_check": "passed",
+    "source_closure_check": "passed",
+    "raw_sample_opens": 0,
+    "checkpoint_opens": 0,
+    "prediction_row_opens": 0,
+    "training_runs": 0,
+    "fit_runs": 0,
+    "heldout_access": 0
+  },
+  "phase_b_remains_blocked_by": [
+    "one_pass_raw_context_and_overlap_control_extractor_not_implemented",
+    "pinned_native_authenticode_contract_not_implemented",
+    "phase_b_controller_immutable_lease_runtime_lock_and_resource_guard_missing",
+    "frozen_hgb_three_seed_rule_requires_reauthorization_as_deterministic_replay_or_independent_mechanism",
+    "new_phase_b_run_authorization_missing"
+  ],
+  "research_champion": "Loop151",
+  "target_f1": 0.9997,
+  "target_achieved": false,
+  "public_key_required": false,
+  "next_action": "Build and test an independent one-pass RawFeatureContext plus native overlap-control extractor before any new Phase-B authorization."
+}

@@ -22,12 +22,58 @@ for item in (PROJECT_ROOT, SCRIPTS_DIR, SRC_DIR):
         sys.path.insert(0, str(item))
 
 from config import AxonExperimentConfig  # noqa: E402
-from train_stage2_cache_matrix import FeatureConfig, build_matrix, read_prediction_rows, resolve_path  # noqa: E402
+from train_stage2_cache_matrix import (  # noqa: E402
+    FeatureConfig,
+    build_matrix,
+    load_stage2_knn_reference_from_payload,
+    read_prediction_rows,
+    resolve_knn_batch_size,
+    resolve_path,
+)
 
 
-def _read_csv(path: Path) -> list[dict]:
+def _priority_value(row: dict) -> int:
+    try:
+        return int(row.get("priority", 999))
+    except (TypeError, ValueError):
+        return 999
+
+
+def _read_review_rows(path: Path, *, max_priority: int, max_rows: Optional[int] = None) -> tuple[list[dict], int]:
+    if max_rows is not None and int(max_rows) < 0:
+        raise ValueError("max_rows must be non-negative")
+    rows: list[dict] = []
+    total_rows = 0
     with resolve_path(path).open("r", encoding="utf-8-sig", newline="") as handle:
-        return list(csv.DictReader(handle))
+        reader = csv.DictReader(handle)
+        for row in reader:
+            total_rows += 1
+            if _priority_value(row) > int(max_priority):
+                continue
+            rows.append(row)
+            if max_rows is not None and len(rows) >= int(max_rows):
+                break
+    return rows, total_rows
+
+
+def _align_prediction_rows_by_key(path: Path, keys: set[str]) -> tuple[dict[str, dict], int]:
+    matched: dict[str, dict] = {}
+    scanned_rows = 0
+    if not keys:
+        return matched, scanned_rows
+    with resolve_path(path).open("r", encoding="utf-8-sig", newline="") as handle:
+        reader = csv.DictReader(handle)
+        for row in reader:
+            scanned_rows += 1
+            key = _review_key(row)
+            if key not in keys:
+                continue
+            if key in matched:
+                raise ValueError(f"Duplicate prediction row for review key {key!r} in {path}")
+            matched[key] = row
+            if len(matched) == len(keys):
+                break
+    return matched, scanned_rows
 
 
 def _write_csv(path: Path, rows: Sequence[dict], fieldnames: Sequence[str]) -> None:
@@ -54,8 +100,17 @@ def _compact_counter(values: Sequence[int]) -> str:
     return "|".join(f"{key}:{counter[key]}" for key in sorted(counter))
 
 
-def _load_payload(model_path: Path) -> tuple[FeatureConfig, AxonExperimentConfig, dict]:
-    with resolve_path(model_path).open("rb") as handle:
+def _top_k_for_similarity_row(similarity_row: np.ndarray, top_k: int) -> tuple[np.ndarray, np.ndarray]:
+    top_k = min(int(top_k), int(similarity_row.shape[0]))
+    top_unsorted = np.argpartition(-similarity_row, top_k - 1)[:top_k]
+    top_order = np.argsort(-similarity_row[top_unsorted])
+    top_idx = top_unsorted[top_order]
+    return top_idx, similarity_row[top_idx]
+
+
+def _load_payload(model_path: Path) -> tuple[FeatureConfig, AxonExperimentConfig, dict, Path]:
+    resolved_model_path = resolve_path(model_path)
+    with resolved_model_path.open("rb") as handle:
         payload = pickle.load(handle)
     feature_config = payload["feature_config"]
     if not isinstance(feature_config, FeatureConfig):
@@ -64,7 +119,7 @@ def _load_payload(model_path: Path) -> tuple[FeatureConfig, AxonExperimentConfig
     knn_payload = payload.get("knn") or {}
     if not knn_payload.get("enabled"):
         raise ValueError("The selected Stage2 model does not contain enabled kNN memory")
-    return feature_config, checkpoint_config, knn_payload
+    return feature_config, checkpoint_config, knn_payload, resolved_model_path
 
 
 def audit_neighbors(
@@ -74,13 +129,15 @@ def audit_neighbors(
     eval_base_predictions: Path,
     review_queue: Path,
     max_priority: int,
+    max_review_rows: Optional[int] = None,
     top_k: int,
     batch_size: int,
+    similarity_memory_mib: float,
     output_json: Path,
     output_csv: Path,
 ) -> dict:
-    feature_config, checkpoint_config, knn_payload = _load_payload(stage2_model)
-    reference = knn_payload["reference"]
+    feature_config, checkpoint_config, knn_payload, resolved_model_path = _load_payload(stage2_model)
+    reference = load_stage2_knn_reference_from_payload(resolved_model_path, knn_payload)
     memory_norm = reference["memory_norm"].astype(np.float32, copy=False)
     memory_labels = reference["memory_labels"].astype(np.int64, copy=False)
     mean = reference["mean"].astype(np.float32, copy=False)
@@ -92,14 +149,16 @@ def audit_neighbors(
             f"Train rows and frozen memory disagree: rows={len(train_rows)} memory={memory_norm.shape[0]}"
         )
 
-    queue_rows_all = _read_csv(review_queue)
-    queue_rows = [row for row in queue_rows_all if int(row.get("priority", 999)) <= int(max_priority)]
+    queue_rows, queue_rows_total = _read_review_rows(
+        review_queue,
+        max_priority=max_priority,
+        max_rows=max_review_rows,
+    )
     queue_by_key = {_review_key(row): row for row in queue_rows}
     if not queue_by_key:
         raise ValueError("No review rows selected for the requested priority")
 
-    eval_rows_all = read_prediction_rows(eval_base_predictions)
-    eval_by_key = {_review_key(row): row for row in eval_rows_all}
+    eval_by_key, eval_rows_scanned = _align_prediction_rows_by_key(eval_base_predictions, set(queue_by_key))
     selected_base_rows = []
     missing = []
     for row in queue_rows:
@@ -121,25 +180,25 @@ def audit_neighbors(
     )
     eval_norm = _normalize(eval_x, mean, std)
     top_k = min(int(top_k), int(memory_norm.shape[0]))
-    batch_size = max(1, int(batch_size))
+    batch_size = resolve_knn_batch_size(
+        max(1, int(batch_size)),
+        eval_norm.shape[0],
+        memory_norm.shape[0],
+        dtype=np.float32,
+        max_similarity_mib=float(similarity_memory_mib),
+    )
 
     output_rows = []
     support_counts: Counter[str] = Counter()
     for start in range(0, eval_norm.shape[0], batch_size):
         stop = min(start + batch_size, eval_norm.shape[0])
         similarities = eval_norm[start:stop] @ memory_norm.T
-        top_unsorted = np.argpartition(-similarities, top_k - 1, axis=1)[:, :top_k]
-        top_sim_unsorted = np.take_along_axis(similarities, top_unsorted, axis=1)
-        top_order = np.argsort(-top_sim_unsorted, axis=1)
-        top_idx_batch = np.take_along_axis(top_unsorted, top_order, axis=1)
-        top_sim_batch = np.take_along_axis(similarities, top_idx_batch, axis=1)
 
         for local_index in range(stop - start):
             eval_index = start + local_index
             eval_row = eval_kept_rows[eval_index]
             review = queue_by_key[eval_row["_review_key"]]
-            top_idx = top_idx_batch[local_index]
-            top_sim = top_sim_batch[local_index]
+            top_idx, top_sim = _top_k_for_similarity_row(similarities[local_index], top_k)
             neighbor_labels = memory_labels[top_idx].astype(int)
             label = int(eval_y[eval_index])
             same_label_count = int((neighbor_labels == label).sum())
@@ -227,8 +286,11 @@ def audit_neighbors(
         "base_feature_dim": int(eval_x.shape[1]),
         "memory_rows": int(memory_norm.shape[0]),
         "eval_records": eval_counts,
-        "review_rows_total": len(queue_rows_all),
+        "review_rows_total": int(queue_rows_total),
         "review_rows_selected": len(queue_rows),
+        "eval_prediction_rows_scanned": int(eval_rows_scanned),
+        "effective_batch_size": int(batch_size),
+        "similarity_memory_mib": float(similarity_memory_mib),
         "support_bucket_counts": dict(sorted(support_counts.items())),
         "examples": output_rows[:20],
         "outputs": {
@@ -238,7 +300,9 @@ def audit_neighbors(
     }
     output_json = resolve_path(output_json)
     output_json.parent.mkdir(parents=True, exist_ok=True)
-    output_json.write_text(json.dumps(summary, indent=2, ensure_ascii=False), encoding="utf-8")
+    with output_json.open("w", encoding="utf-8") as handle:
+        json.dump(summary, handle, indent=2, ensure_ascii=False)
+        handle.write("\n")
     return summary
 
 
@@ -249,8 +313,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser.add_argument("--eval-base-predictions", type=Path, required=True)
     parser.add_argument("--review-queue", type=Path, required=True)
     parser.add_argument("--max-priority", type=int, default=1)
+    parser.add_argument("--max-review-rows", type=int, default=None)
     parser.add_argument("--top-k", type=int, default=25)
     parser.add_argument("--batch-size", type=int, default=256)
+    parser.add_argument("--knn-similarity-memory-mib", type=float, default=256.0)
     parser.add_argument("--output-json", type=Path, required=True)
     parser.add_argument("--output-csv", type=Path, required=True)
     args = parser.parse_args(argv)
@@ -260,8 +326,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         eval_base_predictions=args.eval_base_predictions,
         review_queue=args.review_queue,
         max_priority=args.max_priority,
+        max_review_rows=args.max_review_rows,
         top_k=args.top_k,
         batch_size=args.batch_size,
+        similarity_memory_mib=args.knn_similarity_memory_mib,
         output_json=args.output_json,
         output_csv=args.output_csv,
     )

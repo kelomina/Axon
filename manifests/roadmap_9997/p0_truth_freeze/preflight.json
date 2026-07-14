@@ -1,0 +1,16 @@
+{
+  "schema": "axon_roadmap_9997_preflight_v1",
+  "loop_id": "p0_truth_freeze_001",
+  "checks": {
+    "projectanalysis_doctor": "passed_with_node_25_2_1",
+    "projectanalysis_scripts_scope": "193_python_files_71390_lines_2084_symbols_0_parse_errors",
+    "current_champion_ledger_present": true,
+    "loop151_three_metric_reports_present": true,
+    "worktree_clean": false,
+    "heavy_compute_requested": false,
+    "heldout_evaluation_requested": false,
+    "data_mutation_requested": false
+  },
+  "worktree_policy": "Record the dirty status and tracked patch hash; do not revert unrelated user changes. Dirty state blocks certification but not a read-only fact freeze.",
+  "decision": "allow_readonly_fact_freeze_noncertifiable_worktree"
+}

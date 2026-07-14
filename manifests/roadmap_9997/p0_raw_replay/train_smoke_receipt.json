@@ -1,0 +1,506 @@
+{
+  "schema": "axon_loop151_raw_replay_receipt_v1",
+  "generated_at_utc": "2026-07-11T18:08:54.315702+00:00",
+  "mode": "smoke",
+  "claim_scope": {
+    "quality_claim_allowed": false,
+    "legacy_test10k_or_full_test_used": false,
+    "legacy_metrics_role": "development_only",
+    "raw_file_to_legacy_report_replay_ready": false,
+    "raw_file_to_loop151_replay_ready": false,
+    "native_loop151_ready": false
+  },
+  "truth_manifest": {
+    "path": "manifests/roadmap_9997/p0_truth_freeze/loop151_truth_manifest.json",
+    "sha256": "174861be850a681025a7040798c59b7157cc67ab5503437088359692dad5659d",
+    "required_artifacts_verified": 79,
+    "decision": "artifact_freeze_complete_raw_replay_pending",
+    "champion_scope": "research_champion"
+  },
+  "inputs": {
+    "split_csv": "reports/random_20w_split/loop127_full_duplicate_corrected_split.csv",
+    "split_csv_sha256": "dce89fd048395ef582530109e4dfe6b5ba6c94c5dd603afe024f879a3ef119a7",
+    "requested_split": "train",
+    "max_samples": 1,
+    "allowed_raw_root": "E:\\Project\\python\\Axon_v2.6Exp\\data",
+    "runtime": "native"
+  },
+  "dag": {
+    "ordered_stages": [
+      "loop28_python",
+      "loop28_native",
+      "loop127_primary_and_content",
+      "loop130_r5",
+      "loop134_oof_noise",
+      "loop136_selector",
+      "loop151_trusted_signer"
+    ],
+    "stages": [
+      {
+        "stage_id": "loop28_python",
+        "schema_version": "axon_loop151_raw_replay_receipt_v1",
+        "role": "Python base checkpoint plus Stage-2 HGB",
+        "frozen_parameters": {},
+        "raw_runtime_state": "raw_runtime_available_when_sidecar_and_allowlist_pass",
+        "raw_executable": true,
+        "status": "implementation_available_not_verified",
+        "artifacts": [
+          {
+            "path": "models/random_20w_8192/best_model.pt",
+            "exists": true,
+            "size_bytes": 10359449,
+            "sha256": "96a1b1ece41dd7dd9142a0f7f4330da3a7938a26cca8b01e0e7c7a1074e5e3a4"
+          },
+          {
+            "path": "reports/random_20w_split/stage2_loop28_content_pe_valonly/stage2_selected_model.pkl",
+            "exists": true,
+            "size_bytes": 2147077,
+            "sha256": "34d76eaf015e6750ca080f80a8ae528e8e10f2261ff9f1c001dc2f243672a5c2"
+          },
+          {
+            "path": "manifests/roadmap_9997/p0_raw_replay/loop28_stage2.metadata.json",
+            "exists": true,
+            "size_bytes": 1581,
+            "sha256": "0a24dcf1ec5bab43d6afd004df006e4c8008bace854265cdd5f8cc4c79ba80f4"
+          },
+          {
+            "path": "src/predict_api.py",
+            "exists": true,
+            "size_bytes": 36819,
+            "sha256": "a9207224a777bb7abb38d75524f386f9fa818533e205e6594ab97de6f158daa2"
+          },
+          {
+            "path": "manifests/roadmap_9997/p0_raw_replay/pickle_sha256_allowlist.json",
+            "exists": true,
+            "size_bytes": 4421,
+            "sha256": "744ec3792d88721e861a412acaaaa768d9d0ae99f05c41b2c3b49d78dd3ad8ee"
+          }
+        ],
+        "pickle_policy": [
+          {
+            "path": "reports/random_20w_split/stage2_loop28_content_pe_valonly/stage2_selected_model.pkl",
+            "status": "verified_inventory",
+            "load_authorized": true
+          }
+        ],
+        "run_id": null,
+        "source_bundle_sha256": null,
+        "input_identity_fingerprint": null,
+        "output_identity_fingerprint": null,
+        "input_rows": null,
+        "output_rows": null,
+        "unresolved_rows": null,
+        "duplicate_rows": null,
+        "missing_rows": null,
+        "blockers": []
+      },
+      {
+        "stage_id": "loop28_native",
+        "schema_version": "axon_loop151_raw_replay_receipt_v1",
+        "role": "Native ONNX base plus JSON Stage-2 HGB",
+        "frozen_parameters": {},
+        "raw_runtime_state": "raw_runtime_available",
+        "raw_executable": true,
+        "status": "implementation_available_not_verified",
+        "artifacts": [
+          {
+            "path": "models/random_20w_8192/axon_loop28_base.onnx",
+            "exists": true,
+            "size_bytes": 12231310,
+            "sha256": "3199b158fc8f7e3a53a516b2681aef8b5d5aa4a210baf66152fded72a3ff07f4"
+          },
+          {
+            "path": "models/random_20w_8192/axon_loop28_base.onnx.data",
+            "exists": true,
+            "size_bytes": 29556736,
+            "sha256": "4865d52d861d780627ca9aea4b16f83d8c2df62dd5b2136217d1e42547b8c7fa"
+          },
+          {
+            "path": "models/random_20w_8192/loop28_stage2_hgb.json",
+            "exists": true,
+            "size_bytes": 2062474,
+            "sha256": "c2c0cb0f39d12892891f9949e6f765e03fb1188f8fa3f3e574c0c4f73c63c648"
+          },
+          {
+            "path": "tools/axon_onnx_dll/src/axon_onnx_predict.cpp",
+            "exists": true,
+            "size_bytes": 104424,
+            "sha256": "38a13a037a520fc5560d60c08da0a0bf3f95e2c11a109828227683d55f27ea6a"
+          }
+        ],
+        "pickle_policy": [],
+        "run_id": null,
+        "source_bundle_sha256": null,
+        "input_identity_fingerprint": null,
+        "output_identity_fingerprint": null,
+        "input_rows": null,
+        "output_rows": null,
+        "unresolved_rows": null,
+        "duplicate_rows": null,
+        "missing_rows": null,
+        "blockers": []
+      },
+      {
+        "stage_id": "loop127_primary_and_content",
+        "schema_version": "axon_loop151_raw_replay_receipt_v1",
+        "role": "OOF fixed-v2 primary/conservative experts and content-cross expert",
+        "frozen_parameters": {
+          "primary_threshold": 0.31,
+          "conservative_threshold": 0.415,
+          "content_cross_threshold": 0.4
+        },
+        "raw_runtime_state": "historical_artifacts_only",
+        "raw_executable": false,
+        "status": "blocked",
+        "artifacts": [
+          {
+            "path": "reports/phase3_loop127/oof_fixed_v2_all_valonly_with_logreg/stage2_oof_stacker_selected_model.pkl",
+            "exists": true,
+            "size_bytes": 48153342,
+            "sha256": "2429cc21a5f43c79b484e421ec4fbc5da92f0322ad8fcefbde03f2b60e2ecec9"
+          },
+          {
+            "path": "reports/phase3_loop127/oof_fixed_v2_all_valonly_no_logreg/stage2_oof_stacker_selected_model.pkl",
+            "exists": true,
+            "size_bytes": 48098439,
+            "sha256": "4c17e2b38ecea6f8f02aeebfaf4002fb8cd517adcebafbee84bd60a12a05fd8b"
+          },
+          {
+            "path": "reports/phase3_loop127/phase1_content_cross_hgb_local_valonly/loop43_content_cross_selected_model.pkl",
+            "exists": true,
+            "size_bytes": 2169403,
+            "sha256": "43c09a9db391606d98084d60fc1ca21f6f797387a9c511dcfbde6577b73c9372"
+          },
+          {
+            "path": "scripts/evaluate_stage2_oof_stacker.py",
+            "exists": true,
+            "size_bytes": 6376,
+            "sha256": "feb8c46d89263a6082389b66aaccc2880d5633970ca872d09bb6b7e8779e6f99"
+          },
+          {
+            "path": "scripts/evaluate_stage2_cache_model.py",
+            "exists": true,
+            "size_bytes": 10885,
+            "sha256": "6d198769da5dba7e4ccb01d799682381ce21999aad95b91cfa64089eed34d658"
+          }
+        ],
+        "pickle_policy": [
+          {
+            "path": "reports/phase3_loop127/oof_fixed_v2_all_valonly_with_logreg/stage2_oof_stacker_selected_model.pkl",
+            "status": "verified_inventory",
+            "load_authorized": false
+          },
+          {
+            "path": "reports/phase3_loop127/oof_fixed_v2_all_valonly_no_logreg/stage2_oof_stacker_selected_model.pkl",
+            "status": "verified_inventory",
+            "load_authorized": false
+          },
+          {
+            "path": "reports/phase3_loop127/phase1_content_cross_hgb_local_valonly/loop43_content_cross_selected_model.pkl",
+            "status": "verified_inventory",
+            "load_authorized": false
+          }
+        ],
+        "run_id": null,
+        "source_bundle_sha256": null,
+        "input_identity_fingerprint": null,
+        "output_identity_fingerprint": null,
+        "input_rows": null,
+        "output_rows": null,
+        "unresolved_rows": null,
+        "duplicate_rows": null,
+        "missing_rows": null,
+        "blockers": [
+          "No per-file raw adapter rebuilds all Loop127 expert features without historical caches."
+        ]
+      },
+      {
+        "stage_id": "loop130_r5",
+        "schema_version": "axon_loop151_raw_replay_receipt_v1",
+        "role": "Frozen R5_r4_plus_vendor_strings guard",
+        "frozen_parameters": {
+          "selected_rule": "R5_r4_plus_vendor_strings"
+        },
+        "raw_runtime_state": "csv_evaluator_only",
+        "raw_executable": false,
+        "status": "blocked",
+        "artifacts": [
+          {
+            "path": "scripts/evaluate_loop130_content_string_guard_rules.py",
+            "exists": true,
+            "size_bytes": 13434,
+            "sha256": "0954097c86088d8ae35ee044dbcacab35606305c9cb051295bf369ef0b202076"
+          },
+          {
+            "path": "reports/phase3_loop128/loop130_content_string_guard_val_eval.json",
+            "exists": true,
+            "size_bytes": 5265,
+            "sha256": "35520dabd64c82cdb5658c1998c214b1f22cf77867a10cf80a060a8c881732c8"
+          }
+        ],
+        "pickle_policy": [],
+        "run_id": null,
+        "source_bundle_sha256": null,
+        "input_identity_fingerprint": null,
+        "output_identity_fingerprint": null,
+        "input_rows": null,
+        "output_rows": null,
+        "unresolved_rows": null,
+        "duplicate_rows": null,
+        "missing_rows": null,
+        "blockers": [
+          "The evaluator consumes upstream prediction CSVs and cache sidecars, not one raw file."
+        ]
+      },
+      {
+        "stage_id": "loop134_oof_noise",
+        "schema_version": "axon_loop151_raw_replay_receipt_v1",
+        "role": "Noise-aware OOF stacker",
+        "frozen_parameters": {
+          "threshold": 0.39
+        },
+        "raw_runtime_state": "historical_artifact_and_csv_evaluator",
+        "raw_executable": false,
+        "status": "blocked",
+        "artifacts": [
+          {
+            "path": "reports/phase3_loop134/oof_fixed_v2_string_noise_valonly/stage2_oof_stacker_selected_model.pkl",
+            "exists": true,
+            "size_bytes": 143755082,
+            "sha256": "7eee28e5c324d42e45ed8bc47c1b7c76b26993a9b5eb9d31c94625337b588339"
+          },
+          {
+            "path": "scripts/evaluate_stage2_oof_stacker.py",
+            "exists": true,
+            "size_bytes": 6376,
+            "sha256": "feb8c46d89263a6082389b66aaccc2880d5633970ca872d09bb6b7e8779e6f99"
+          }
+        ],
+        "pickle_policy": [
+          {
+            "path": "reports/phase3_loop134/oof_fixed_v2_string_noise_valonly/stage2_oof_stacker_selected_model.pkl",
+            "status": "verified_inventory",
+            "load_authorized": false
+          }
+        ],
+        "run_id": null,
+        "source_bundle_sha256": null,
+        "input_identity_fingerprint": null,
+        "output_identity_fingerprint": null,
+        "input_rows": null,
+        "output_rows": null,
+        "unresolved_rows": null,
+        "duplicate_rows": null,
+        "missing_rows": null,
+        "blockers": [
+          "The frozen stacker has no guarded per-file raw inference adapter."
+        ]
+      },
+      {
+        "stage_id": "loop136_selector",
+        "schema_version": "axon_loop151_raw_replay_receipt_v1",
+        "role": "Recall-aware pairwise selector at threshold 0.79",
+        "frozen_parameters": {
+          "threshold": 0.79
+        },
+        "raw_runtime_state": "historical_artifact_and_csv_evaluator",
+        "raw_executable": false,
+        "status": "blocked",
+        "artifacts": [
+          {
+            "path": "reports/phase3_loop136/r5_oof_noise_pairwise_selector_recall_valonly/loop135_pairwise_selector.pkl",
+            "exists": true,
+            "size_bytes": 4016,
+            "sha256": "cdc838d64d55ce2697c5b46c8a85e04e32a3ecdba21f18f6e905888d93424516"
+          },
+          {
+            "path": "scripts/evaluate_loop135_pairwise_selector.py",
+            "exists": true,
+            "size_bytes": 8200,
+            "sha256": "2584d0977cf0bd532b078600545a2bf496c81fb6e7b00fca8bf488cea4302c26"
+          }
+        ],
+        "pickle_policy": [
+          {
+            "path": "reports/phase3_loop136/r5_oof_noise_pairwise_selector_recall_valonly/loop135_pairwise_selector.pkl",
+            "status": "verified_inventory",
+            "load_authorized": false
+          }
+        ],
+        "run_id": null,
+        "source_bundle_sha256": null,
+        "input_identity_fingerprint": null,
+        "output_identity_fingerprint": null,
+        "input_rows": null,
+        "output_rows": null,
+        "unresolved_rows": null,
+        "duplicate_rows": null,
+        "missing_rows": null,
+        "blockers": [
+          "The selector depends on Loop130/Loop134 prediction rows and feature sidecars."
+        ]
+      },
+      {
+        "stage_id": "loop151_trusted_signer",
+        "schema_version": "axon_loop151_raw_replay_receipt_v1",
+        "role": "Frozen Authenticode trusted-signer guard",
+        "frozen_parameters": {
+          "score_threshold": 1.0
+        },
+        "raw_runtime_state": "csv_evaluator_only",
+        "raw_executable": false,
+        "status": "blocked",
+        "artifacts": [
+          {
+            "path": "scripts/evaluate_authenticode_trusted_signer_guard.py",
+            "exists": true,
+            "size_bytes": 11400,
+            "sha256": "236105b62f53176cba6c37575dfbf5b77a99f3a09b555697dba42b0c0c4ff677"
+          },
+          {
+            "path": "reports/phase3_loop151/loop151_trusted_signer_guard_val_eval.json",
+            "exists": true,
+            "size_bytes": 2632,
+            "sha256": "304d2783eda51e22797d602ce2e9af5cc053331d318ed715198957d1ead17be6"
+          }
+        ],
+        "pickle_policy": [],
+        "run_id": null,
+        "source_bundle_sha256": null,
+        "input_identity_fingerprint": null,
+        "output_identity_fingerprint": null,
+        "input_rows": null,
+        "output_rows": null,
+        "unresolved_rows": null,
+        "duplicate_rows": null,
+        "missing_rows": null,
+        "blockers": [
+          "No connected runtime invokes Authenticode after a raw Loop136 decision with frozen provenance."
+        ]
+      }
+    ],
+    "full_dag_blockers": [
+      "loop127_primary_and_content:No per-file raw adapter rebuilds all Loop127 expert features without historical caches.",
+      "loop130_r5:The evaluator consumes upstream prediction CSVs and cache sidecars, not one raw file.",
+      "loop134_oof_noise:The frozen stacker has no guarded per-file raw inference adapter.",
+      "loop136_selector:The selector depends on Loop130/Loop134 prediction rows and feature sidecars.",
+      "loop151_trusted_signer:No connected runtime invokes Authenticode after a raw Loop136 decision with frozen provenance."
+    ]
+  },
+  "authorization": {
+    "path": "manifests/roadmap_9997/p0_raw_replay/authorization.json",
+    "sha256": "82e276b3ac5ea38dc96c9d07379849376ce2ab51e57f5b110b0bd463afd54444",
+    "loop_id": "p0_raw_replay_001",
+    "authorization_level": "A1_scoped_change",
+    "mode": "native-smoke",
+    "allowed_split": "train",
+    "max_samples": 1,
+    "allowed_logical_raw_root": "E:\\Project\\python\\Axon_v2.6Exp\\data",
+    "allowed_resolved_raw_roots": [
+      "E:\\Project\\python\\KoloVirusDetector_ML_V2-main\\benign_samples\\待加入白名单",
+      "E:\\Project\\python\\KoloVirusDetector_ML_V2-main\\malicious_samples\\待拉黑"
+    ],
+    "status": "authorized"
+  },
+  "identity_audit": {
+    "rows_scanned": 200000,
+    "unique_identity_count": 200000,
+    "unique_source_sha256_count": 200000,
+    "identity_multiset_sha256": "5c7910e53a438479a31b6b5aa1ec2127ff8483fc77a4bccc24de32832b16cd22",
+    "selected_identity_multiset_sha256": "2af29ac5b1ddd8dd67582f74214b20c3d7975867699d07b0eb723e8172c63376",
+    "split_counts": {
+      "test": 160000,
+      "train": 20000,
+      "val": 20000
+    },
+    "selected_count": 1
+  },
+  "samples": [
+    {
+      "source_sha256": "09b6b8c80bc31846312bd6958e1d4bf1bcd72d25450d7f7dec2bce6ba81798cc",
+      "sample_index": 0,
+      "label": 0,
+      "split": "train",
+      "logical_path": "E:\\Project\\python\\Axon_v2.6Exp\\data\\待加入白名单\\09B6B8C80BC31846312BD6958E1D4BF1BCD72D25450D7F7DEC2BCE6BA81798CC",
+      "resolved_path": "E:\\Project\\python\\KoloVirusDetector_ML_V2-main\\benign_samples\\待加入白名单\\09B6B8C80BC31846312BD6958E1D4BF1BCD72D25450D7F7DEC2BCE6BA81798CC",
+      "matched_resolved_root": "E:\\Project\\python\\KoloVirusDetector_ML_V2-main\\benign_samples\\待加入白名单",
+      "size_bytes": 4218880,
+      "raw_sha256_verified": true,
+      "snapshot_path": "C:\\Users\\Saika\\AppData\\Local\\Temp\\axon-loop151-replay-fsxy8khf\\0-09b6b8c80bc31846312bd6958e1d4bf1bcd72d25450d7f7dec2bce6ba81798cc.bin",
+      "snapshot_sha256": "09b6b8c80bc31846312bd6958e1d4bf1bcd72d25450d7f7dec2bce6ba81798cc",
+      "status": "native_loop28_smoke_passed",
+      "native_loop28": {
+        "runtime": "native_loop28",
+        "command": [
+          "E:\\Project\\python\\Axon_v2.6Exp\\tools\\axon_onnx_dll\\build\\bin\\Release\\axon_onnx_selftest.exe",
+          "--dll",
+          "E:\\Project\\python\\Axon_v2.6Exp\\tools\\axon_onnx_dll\\build\\bin\\Release\\axon_onnx_predict.dll",
+          "--onnx",
+          "E:\\Project\\python\\Axon_v2.6Exp\\models\\random_20w_8192\\axon_loop28_base.onnx",
+          "--target",
+          "C:\\Users\\Saika\\AppData\\Local\\Temp\\axon-loop151-replay-fsxy8khf\\0-09b6b8c80bc31846312bd6958e1d4bf1bcd72d25450d7f7dec2bce6ba81798cc.bin",
+          "--allowed_root",
+          "C:\\Users\\Saika\\AppData\\Local\\Temp\\axon-loop151-replay-fsxy8khf",
+          "--stage2",
+          "E:\\Project\\python\\Axon_v2.6Exp\\models\\random_20w_8192\\loop28_stage2_hgb.json"
+        ],
+        "returncode": 0,
+        "validation": {
+          "validate_rc": 0,
+          "validate_msg": "ok"
+        },
+        "prediction": {
+          "ok": true,
+          "mode": "single_pe",
+          "file": "C:\\Users\\Saika\\AppData\\Local\\Temp\\axon-loop151-replay-fsxy8khf\\0-09b6b8c80bc31846312bd6958e1d4bf1bcd72d25450d7f7dec2bce6ba81798cc.bin",
+          "is_malware": false,
+          "confidence": 0.99991238,
+          "axon_malware": false,
+          "axon_score": 8.765e-05,
+          "prediction": 0,
+          "label": "benign",
+          "prob_benign": 0.99991238,
+          "prob_malicious": 8.765e-05,
+          "threshold": 0.5,
+          "original_length": 4218880,
+          "base_model": {
+            "prediction": 0,
+            "confidence": 0.94018805,
+            "prob_benign": 0.94018805,
+            "prob_malicious": 0.05981189
+          },
+          "stage2": {
+            "enabled": true,
+            "threshold": 0.5,
+            "feature_dim": 1520,
+            "prob_malicious": 8.765e-05
+          }
+        }
+      }
+    }
+  ],
+  "execution": {
+    "requested_count": 1,
+    "reported_count": 1,
+    "dropped_row_count": 0,
+    "blockers": []
+  },
+  "decision": "native_loop28_train_smoke_passed_full_loop151_blocked",
+  "invocation": {
+    "argv": [
+      "E:\\Project\\python\\Axon_v2.6Exp\\vnev\\Scripts\\python.exe",
+      "E:\\Project\\python\\Axon_v2.6Exp\\scripts\\replay_loop151_raw.py",
+      "smoke",
+      "--runtime",
+      "native",
+      "--max-samples",
+      "1"
+    ],
+    "cwd": "E:\\Project\\python\\Axon_v2.6Exp",
+    "python": "3.14.4 (tags/v3.14.4:23116f9, Apr  7 2026, 14:10:54) [MSC v.1944 64 bit (AMD64)]",
+    "platform": "Windows-11-10.0.29617-SP0",
+    "os_name": "nt",
+    "resource_receipt_required": false,
+    "authorization_scope": "A1_train_only_smoke_or_parity"
+  }
+}

@@ -1,0 +1,70 @@
+{
+  "schema": "axon_loop28_pytorch_native_package_controller_manifest_v1",
+  "loop_id": "p0_loop28_pytorch_native_feasibility_001",
+  "generated_at_utc": "2026-07-11T23:58:12Z",
+  "lineage": {
+    "implementation_manifest_sha256": "45d38299623ab32e701d6bf1408a509caa19513287c239b3866532cd405bd3f4",
+    "cpp_build_receipt_sha256": "2ef9fc018cf72c0552902d4e9cca2190b4c5e983bdd15d4917dd5d926043dc77",
+    "failed_package_diagnostic_sha256": "590099120d81d6da31f1e2c301817301336750f618afecaa162c1742d07c296d"
+  },
+  "contract": {
+    "original_implementation_files_unchanged": true,
+    "administrative_reissue_only": true,
+    "corrected_vcvars_activation_is_work_root_confined": true,
+    "base_package_function_delegated_after_preflight": true,
+    "authorization_and_ready_lease_machine_verified": true,
+    "build_receipt_and_native_binaries_machine_verified": true,
+    "cuda_before_and_after_false_required": true,
+    "retained_output_cap_bytes": 536870912,
+    "archive_windows_and_unicode_collision_rejection": true,
+    "archive_symlink_encryption_and_compression_guards": true,
+    "precompiled_pyd_count": 1,
+    "package_load_allowed": false,
+    "runtime_lane_execution_allowed": false,
+    "output_replacement_allowed": false
+  },
+  "artifacts": [
+    {
+      "name": "reissue_authorization",
+      "role": "administrative_reissue_boundary",
+      "path": "manifests/roadmap_9997/p0_loop28_pytorch_native_feasibility/package_reissue_001_authorization.json",
+      "size_bytes": 5028,
+      "sha256": "35f16bb360f07d031484f3fa26937e4afaf7df499a8178d5aa664162f065b8b8"
+    },
+    {
+      "name": "controller",
+      "role": "versioned_package_gate_and_receipt_auditor",
+      "path": "scripts/run_loop28_pytorch_native_package_controller.py",
+      "size_bytes": 28687,
+      "sha256": "9baea0517a0b5cf7ecd80edb6f4e84911f1148d3a9d73d929d813f075e693f48"
+    },
+    {
+      "name": "controller_test",
+      "role": "focused_controller_contract_tests",
+      "path": "tests/test_run_loop28_pytorch_native_package_controller.py",
+      "size_bytes": 4576,
+      "sha256": "235350c988ff794ab3773ea4cc009fb9c6fafec677ad176e8721016cbc4d6924"
+    },
+    {
+      "name": "controller_validation",
+      "role": "immutable_pre_package_validation_receipt",
+      "path": "reports/roadmap_9997/p0_loop28_pytorch_native_feasibility/package_controller_validation.final.json",
+      "size_bytes": 2535,
+      "sha256": "bd86db2ef96f926520315c365553ca54a0bfba13efcd00a486e7943334106c42"
+    }
+  ],
+  "integrity": {
+    "artifact_count": 4,
+    "all_required_present": true,
+    "manifest_self_hashed": false
+  },
+  "claim_boundary": {
+    "package_generation_allowed_after_fresh_authorization_and_lease": true,
+    "package_load_allowed": false,
+    "runtime_lane_execution_allowed": false,
+    "axon_checkpoint_access_allowed": false,
+    "quality_claim_allowed": false,
+    "certification_claim_allowed": false
+  },
+  "decision": "package_controller_frozen_reissue_authorization_required"
+}

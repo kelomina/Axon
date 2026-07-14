@@ -1,0 +1,60 @@
+{
+  "schema": "axon_loop28_pytorch_native_negative_closure_authorization_v1",
+  "loop_id": "p0_loop28_pytorch_native_feasibility_001",
+  "created_at_utc": "2026-07-12T00:08:15Z",
+  "lineage": {
+    "implementation_manifest_sha256": "45d38299623ab32e701d6bf1408a509caa19513287c239b3866532cd405bd3f4",
+    "cpp_build_receipt_sha256": "2ef9fc018cf72c0552902d4e9cca2190b4c5e983bdd15d4917dd5d926043dc77",
+    "package_controller_manifest_sha256": "d5164f3d785419fa9eec977580e55f4e8fa5e52ea798765a9a6691d8c5510dd7",
+    "package_attempt_002_diagnostic": {
+      "path": "reports/roadmap_9997/p0_loop28_pytorch_native_feasibility/package_attempt_002_diagnostic.final.json",
+      "sha256": "a542ed54593e6524030d18e064046c68a4768d73aadb1042862d6d349f28ae05",
+      "decision": "package_budget_exhausted_utf8_cp936_compiler_probe_failure_no_load"
+    },
+    "upstream_research": {
+      "path": "reports/roadmap_9997/p0_loop28_pytorch_native_feasibility/upstream_decode_compatibility_research.final.json",
+      "sha256": "280c8fc1792ae4affaf6252a0c0dfbd3f053a7d544100d1832b267a6678fa608",
+      "decision": "upstream_v213_decoder_fix_identified_successor_still_requires_new_loop"
+    }
+  },
+  "closure_basis": {
+    "single_protected_package_call_consumed": true,
+    "package_created": false,
+    "runtime_executed": false,
+    "checkpoint_or_onnx_loaded": false,
+    "quality_metric_computed": false,
+    "failure_root_cause_confirmed": true,
+    "current_loop_retry_allowed": false
+  },
+  "authorized_actions": [
+    "add one negative-closure manifest builder and focused tests without modifying frozen implementation or controller sources",
+    "build and verify an immutable package failure manifest from the existing authorization, consumed lease, failures, diagnostics, and partial input",
+    "write the loop-scoped immutable goal delta, journal entry, and owner status",
+    "build and verify one negative post manifest that closes this loop without a runtime or quality claim"
+  ],
+  "authorized_outputs": [
+    "scripts/build_loop28_pytorch_native_negative_closure.py",
+    "tests/test_build_loop28_pytorch_native_negative_closure.py",
+    "manifests/roadmap_9997/p0_loop28_pytorch_native_feasibility/package_failure_manifest.json",
+    "reports/roadmap_9997/p0_loop28_pytorch_native_feasibility/goal_delta.final.md",
+    "reports/roadmap_9997/p0_loop28_pytorch_native_feasibility/journal_entry.final.md",
+    "reports/roadmap_9997/p0_loop28_pytorch_native_feasibility/status.final.md",
+    "manifests/roadmap_9997/p0_loop28_pytorch_native_feasibility/post_manifest.json"
+  ],
+  "explicitly_forbidden": [
+    "another package attempt in this loop",
+    "any generated package load or native runtime lane",
+    "modification of implementation-manifest-bound files",
+    "checkpoint, ONNX, Stage-2, raw, split, cache, heldout, prediction, error-row, or quality artifact access",
+    "training, fitting, thresholding, F1 computation, dependency installation, deployment, commit, or push"
+  ],
+  "claim_boundary": {
+    "negative_toolchain_integration_claim_allowed": true,
+    "tiny_package_generation_claim_allowed": false,
+    "tiny_runtime_feasibility_claim_allowed": false,
+    "axon_runtime_parity_claim_allowed": false,
+    "quality_claim_allowed": false,
+    "certification_claim_allowed": false
+  },
+  "decision": "authorize_immutable_negative_closure_after_package_budget_exhaustion"
+}

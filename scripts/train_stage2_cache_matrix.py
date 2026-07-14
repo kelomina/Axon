@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import gc
 import hashlib
 import json
 import math
@@ -18,13 +19,26 @@ import pickle
 import sys
 import time
 from dataclasses import dataclass
+from itertools import islice
 from pathlib import Path
 from typing import Optional, Sequence
 
 import numpy as np
-from sklearn.ensemble import ExtraTreesClassifier, HistGradientBoostingClassifier, RandomForestClassifier
+from sklearn.base import clone
+from sklearn.ensemble import (
+    ExtraTreesClassifier,
+    HistGradientBoostingClassifier,
+    RandomForestClassifier,
+)
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import accuracy_score, confusion_matrix, f1_score, precision_score, recall_score, roc_auc_score
+from sklearn.metrics import (
+    accuracy_score,
+    confusion_matrix,
+    f1_score,
+    precision_score,
+    recall_score,
+    roc_auc_score,
+)
 from sklearn.model_selection import StratifiedKFold
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
@@ -37,9 +51,12 @@ except ImportError:
     PEFILE_AVAILABLE = False
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+SCRIPTS_DIR = PROJECT_ROOT / "scripts"
 SRC_DIR = PROJECT_ROOT / "src"
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
+if str(SCRIPTS_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPTS_DIR))
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
@@ -56,6 +73,9 @@ from kvd_features.content_pe_v1 import (  # noqa: E402
     _content_pe_features_from_path,
 )
 
+
+STAGE2_MODEL_METADATA_SCHEMA = "axon_stage2_model_metadata_v1"
+STAGE2_KNN_REFERENCE_STORAGE = "npz_sidecar"
 
 CONTENT_PE_V2_IMPORT_DLLS = [
     "kernel32.dll",
@@ -93,7 +113,13 @@ CONTENT_PE_V2_IMPORT_DLLS = [
 ]
 
 CONTENT_PE_V2_API_CATEGORIES = {
-    "service": ["openscmanager", "createservice", "startservice", "controlservice", "deleteservice"],
+    "service": [
+        "openscmanager",
+        "createservice",
+        "startservice",
+        "controlservice",
+        "deleteservice",
+    ],
     "driver": ["ntloaddriver", "zwloaddriver", "deviceiocontrol", "createsymboliclink", "ioctl"],
     "privilege": ["adjusttokenprivileges", "openprocesstoken", "lookupprivilege", "impersonate"],
     "antidebug": [
@@ -103,15 +129,45 @@ CONTENT_PE_V2_API_CATEGORIES = {
         "outputdebugstring",
     ],
     "memory": ["virtualalloc", "virtualallocex", "virtualprotect", "virtualprotectex", "heapalloc"],
-    "thread": ["createthread", "createremotethread", "queueuserapc", "rtlcreateuserthread", "setthreadcontext"],
+    "thread": [
+        "createthread",
+        "createremotethread",
+        "queueuserapc",
+        "rtlcreateuserthread",
+        "setthreadcontext",
+    ],
     "module": ["loadlibrary", "getprocaddress", "ldrloaddll", "freelibrary"],
-    "process_enum": ["createtoolhelp32snapshot", "process32first", "process32next", "enumprocesses"],
+    "process_enum": [
+        "createtoolhelp32snapshot",
+        "process32first",
+        "process32next",
+        "enumprocesses",
+    ],
     "persistence": ["regsetvalue", "regcreatekey", "createservice", "schtasks", "startup"],
-    "network_http": ["internetopen", "internetconnect", "httpopenrequest", "httpsendrequest", "winhttp"],
+    "network_http": [
+        "internetopen",
+        "internetconnect",
+        "httpopenrequest",
+        "httpsendrequest",
+        "winhttp",
+    ],
     "network_socket": ["socket", "connect", "bind", "listen", "accept", "wsastartup"],
-    "file_mutation": ["createfile", "writefile", "deletefile", "movefile", "copyfile", "setfileattributes"],
+    "file_mutation": [
+        "createfile",
+        "writefile",
+        "deletefile",
+        "movefile",
+        "copyfile",
+        "setfileattributes",
+    ],
     "crypto_cert": ["crypt", "bcrypt", "cert", "winverifytrust"],
-    "resource": ["findresource", "loadresource", "lockresource", "sizeofresource", "beginupdateresource"],
+    "resource": [
+        "findresource",
+        "loadresource",
+        "lockresource",
+        "sizeofresource",
+        "beginupdateresource",
+    ],
     "installer": ["msi", "setup", "install", "uninstall"],
     "com": ["cocreateinstance", "coinitialize", "clsidfromprogid", "regsvr"],
 }
@@ -148,10 +204,14 @@ CONTENT_PE_V2_SECTION_NAME_GROUPS = {
     "packer": ["upx", "aspack", "themida", "vmprotect", "enigma", "packed", "nspack", "upack"],
 }
 
+DEFAULT_KNN_SIMILARITY_MEMORY_MIB = 256.0
+
 CONTENT_PE_V2_FEATURE_NAMES = []
 for dll_name in CONTENT_PE_V2_IMPORT_DLLS:
     stem = dll_name[:-4].replace(".", "_")
-    CONTENT_PE_V2_FEATURE_NAMES.extend([f"v2_import_dll_{stem}_present", f"v2_import_dll_{stem}_api_ratio"])
+    CONTENT_PE_V2_FEATURE_NAMES.extend(
+        [f"v2_import_dll_{stem}_present", f"v2_import_dll_{stem}_api_ratio"]
+    )
 for category_name in CONTENT_PE_V2_API_CATEGORIES:
     CONTENT_PE_V2_FEATURE_NAMES.extend(
         [
@@ -249,7 +309,9 @@ def _content_pe_v2_group_map() -> dict[str, tuple[int, ...]]:
             raise ValueError(f"Unassigned content PE v2 feature: {name}")
 
     result = {name: tuple(indexes) for name, indexes in groups.items()}
-    result["imports"] = tuple(sorted(set(result["import_dll"]) | set(result["api"]) | set(result["delay_import"])))
+    result["imports"] = tuple(
+        sorted(set(result["import_dll"]) | set(result["api"]) | set(result["delay_import"]))
+    )
     result["all"] = tuple(range(len(CONTENT_PE_V2_FEATURE_NAMES)))
     return result
 
@@ -299,21 +361,80 @@ def content_pe_v2_group_indices(groups: str | Sequence[str] | None) -> tuple[int
 def content_pe_v2_selected_feature_names(groups: str | Sequence[str] | None) -> list[str]:
     return [CONTENT_PE_V2_FEATURE_NAMES[index] for index in content_pe_v2_group_indices(groups)]
 
+
 CONTENT_STRING_PATTERNS = {
     "url": [b"http://", b"https://", b"www.", b"ftp://"],
-    "network": [b"socket", b"connect", b"recv", b"send", b"wininet", b"ws2_32", b"internetopen", b"urldownload"],
-    "script_exec": [b"powershell", b"cmd.exe", b"wscript", b"cscript", b"mshta", b"rundll32", b"regsvr32"],
-    "persistence": [b"currentversion\\run", b"runonce", b"\\services\\", b"startup", b"schtasks", b"autostart"],
-    "injection": [b"createremotethread", b"virtualalloc", b"virtualprotect", b"writeprocessmemory", b"queueuserapc"],
+    "network": [
+        b"socket",
+        b"connect",
+        b"recv",
+        b"send",
+        b"wininet",
+        b"ws2_32",
+        b"internetopen",
+        b"urldownload",
+    ],
+    "script_exec": [
+        b"powershell",
+        b"cmd.exe",
+        b"wscript",
+        b"cscript",
+        b"mshta",
+        b"rundll32",
+        b"regsvr32",
+    ],
+    "persistence": [
+        b"currentversion\\run",
+        b"runonce",
+        b"\\services\\",
+        b"startup",
+        b"schtasks",
+        b"autostart",
+    ],
+    "injection": [
+        b"createremotethread",
+        b"virtualalloc",
+        b"virtualprotect",
+        b"writeprocessmemory",
+        b"queueuserapc",
+    ],
     "credential": [b"password", b"credential", b"token", b"cookie", b"browser", b"wallet"],
     "crypto": [b"cryptencrypt", b"cryptdecrypt", b"bcrypt", b"advapi32", b"base64", b"aes", b"rsa"],
-    "evasion": [b"isdebuggerpresent", b"checkremotedebugger", b"ntqueryinformationprocess", b"sleep", b"sandbox"],
+    "evasion": [
+        b"isdebuggerpresent",
+        b"checkremotedebugger",
+        b"ntqueryinformationprocess",
+        b"sleep",
+        b"sandbox",
+    ],
     "vm": [b"vmware", b"virtualbox", b"vbox", b"qemu", b"wine_get_unix_file_name"],
     "packer": [b"upx", b"themida", b"vmprotect", b"aspack", b"enigma", b"packed"],
-    "file_ops": [b"createfile", b"writefile", b"deletefile", b"copyfile", b"movefile", b"findfirstfile"],
+    "file_ops": [
+        b"createfile",
+        b"writefile",
+        b"deletefile",
+        b"copyfile",
+        b"movefile",
+        b"findfirstfile",
+    ],
     "registry": [b"regopenkey", b"regsetvalue", b"regcreatekey", b"regdeletekey", b"regqueryvalue"],
-    "benign_vendor": [b"microsoft", b"windows", b"google", b"adobe", b"intel", b"nvidia", b"mozilla", b"oracle"],
-    "version_resource": [b"companyname", b"productname", b"filedescription", b"originalfilename", b"copyright"],
+    "benign_vendor": [
+        b"microsoft",
+        b"windows",
+        b"google",
+        b"adobe",
+        b"intel",
+        b"nvidia",
+        b"mozilla",
+        b"oracle",
+    ],
+    "version_resource": [
+        b"companyname",
+        b"productname",
+        b"filedescription",
+        b"originalfilename",
+        b"copyright",
+    ],
 }
 
 CONTENT_STRING_FEATURE_NAMES = [
@@ -422,14 +543,22 @@ def stage2_feature_name_groups(
             else []
         ),
         "byte_summary_features": [],
-        "content_pe_feature_names": CONTENT_PE_FEATURE_NAMES if feature_config.include_content_pe else [],
+        "content_pe_feature_names": CONTENT_PE_FEATURE_NAMES
+        if feature_config.include_content_pe
+        else [],
         "content_pe_v2_feature_names": (
-            content_pe_v2_selected_feature_names(getattr(feature_config, "content_pe_v2_groups", ("all",)))
+            content_pe_v2_selected_feature_names(
+                getattr(feature_config, "content_pe_v2_groups", ("all",))
+            )
             if getattr(feature_config, "include_content_pe_v2", False)
             else []
         ),
-        "content_string_feature_names": CONTENT_STRING_FEATURE_NAMES if feature_config.include_content_string else [],
-        "content_cert_feature_names": CONTENT_CERT_FEATURE_NAMES if feature_config.include_content_cert else [],
+        "content_string_feature_names": CONTENT_STRING_FEATURE_NAMES
+        if feature_config.include_content_string
+        else [],
+        "content_cert_feature_names": CONTENT_CERT_FEATURE_NAMES
+        if feature_config.include_content_cert
+        else [],
         "knn_feature_names": list(knn_feature_names),
     }
     if feature_config.include_byte_summary:
@@ -467,7 +596,9 @@ def assert_stage2_feature_names_safe(
 for name in CERT_OID_PATTERNS:
     CONTENT_CERT_FEATURE_NAMES.append(f"cert_oid_{name}_present")
 for name in CERT_VENDOR_PATTERNS:
-    CONTENT_CERT_FEATURE_NAMES.extend([f"cert_vendor_{name}_present", f"cert_vendor_{name}_count_log"])
+    CONTENT_CERT_FEATURE_NAMES.extend(
+        [f"cert_vendor_{name}_present", f"cert_vendor_{name}_count_log"]
+    )
 
 
 def resolve_path(path: Path) -> Path:
@@ -496,10 +627,12 @@ def parse_int_list(text: str) -> list[int]:
 
 def read_prediction_rows(path: Path, max_rows: Optional[int] = None) -> list[dict]:
     with resolve_path(path).open("r", encoding="utf-8-sig", newline="") as handle:
-        rows = list(csv.DictReader(handle))
-    if max_rows is not None:
-        rows = rows[:max_rows]
-    return rows
+        reader = csv.DictReader(handle)
+        if max_rows is None:
+            return list(reader)
+        if max_rows <= 0:
+            return []
+        return list(islice(reader, max_rows))
 
 
 def _safe_logit(probability: np.ndarray) -> np.ndarray:
@@ -523,6 +656,17 @@ def _entropy_from_bytes(data: bytes) -> float:
 
 def _safe_ratio(numerator: float, denominator: float) -> float:
     return float(numerator) / max(float(denominator), 1.0)
+
+
+def _safe_lower_bytes(value: bytes | str | None) -> str:
+    if not value:
+        return ""
+    if isinstance(value, str):
+        return value.lower().strip()
+    try:
+        return value.decode("utf-8", errors="ignore").lower().strip()
+    except Exception:
+        return ""
 
 
 def _section_entropy(section) -> float:
@@ -615,7 +759,9 @@ def _content_pe_v2_features_from_path(file_path: Path) -> np.ndarray:
             )
         for category in CONTENT_PE_V2_API_CATEGORIES:
             count = category_counts[category]
-            features.extend([1.0 if count > 0 else 0.0, math.log1p(count), _safe_ratio(count, total_imports)])
+            features.extend(
+                [1.0 if count > 0 else 0.0, math.log1p(count), _safe_ratio(count, total_imports)]
+            )
 
         features.extend(
             [
@@ -651,7 +797,9 @@ def _content_pe_v2_features_from_path(file_path: Path) -> np.ndarray:
             [
                 _safe_ratio(export_count - export_name_count, export_count),
                 _safe_ratio(export_forwarder_count, export_count),
-                _safe_ratio(float(np.mean(export_name_lengths)) if export_name_lengths else 0.0, 128.0),
+                _safe_ratio(
+                    float(np.mean(export_name_lengths)) if export_name_lengths else 0.0, 128.0
+                ),
                 _safe_ratio(max(export_name_lengths) if export_name_lengths else 0, 256.0),
                 math.log1p(ordinal_span),
             ]
@@ -666,7 +814,10 @@ def _content_pe_v2_features_from_path(file_path: Path) -> np.ndarray:
         resource_sizes: list[int] = []
         resource_entropies: list[float] = []
         if hasattr(pe, "DIRECTORY_ENTRY_RESOURCE"):
-            stack = [(entry, 0, getattr(entry, "id", None)) for entry in getattr(pe.DIRECTORY_ENTRY_RESOURCE, "entries", [])]
+            stack = [
+                (entry, 0, getattr(entry, "id", None))
+                for entry in getattr(pe.DIRECTORY_ENTRY_RESOURCE, "entries", [])
+            ]
             while stack:
                 entry, depth, root_type = stack.pop()
                 resource_entries += 1
@@ -690,7 +841,9 @@ def _content_pe_v2_features_from_path(file_path: Path) -> np.ndarray:
                                 offset = pe.get_offset_from_rva(rva)
                                 with file_path.open("rb") as handle:
                                     handle.seek(offset)
-                                    resource_entropies.append(_entropy_from_bytes(handle.read(min(size, 4096))))
+                                    resource_entropies.append(
+                                        _entropy_from_bytes(handle.read(min(size, 4096)))
+                                    )
                             except Exception:
                                 pass
                 if hasattr(entry, "directory"):
@@ -763,10 +916,19 @@ def _content_pe_v2_features_from_path(file_path: Path) -> np.ndarray:
                 math.log1p(len(write_sections)),
                 math.log1p(len(read_sections)),
                 math.log1p(len(exec_write_sections)),
-                _safe_ratio(sum(1 for info in exec_sections if info["entropy"] >= 0.80), len(exec_sections)),
-                _safe_ratio(sum(1 for info in write_sections if info["entropy"] >= 0.80), len(write_sections)),
-                _safe_ratio(sum(1 for info in exec_sections if info["zero_raw"]), len(exec_sections)),
-                _safe_ratio(sum(1 for info in write_sections if info["zero_raw"]), len(write_sections)),
+                _safe_ratio(
+                    sum(1 for info in exec_sections if info["entropy"] >= 0.80), len(exec_sections)
+                ),
+                _safe_ratio(
+                    sum(1 for info in write_sections if info["entropy"] >= 0.80),
+                    len(write_sections),
+                ),
+                _safe_ratio(
+                    sum(1 for info in exec_sections if info["zero_raw"]), len(exec_sections)
+                ),
+                _safe_ratio(
+                    sum(1 for info in write_sections if info["zero_raw"]), len(write_sections)
+                ),
                 max(deltas) if deltas else 0.0,
                 float(np.mean(deltas)) if deltas else 0.0,
                 math.log1p(max(virtual_raw_ratios) if virtual_raw_ratios else 0.0),
@@ -796,25 +958,86 @@ def _content_pe_v2_features_from_path(file_path: Path) -> np.ndarray:
         pe.close()
 
 
-def _content_cache_path(row: dict, cache_dir: Optional[str]) -> Optional[Path]:
+def is_valid_source_sha256(value: object) -> bool:
+    text = str(value or "").strip().casefold()
+    return len(text) == 64 and all(char in "0123456789abcdef" for char in text)
+
+
+def file_sha256(file_path: Path, chunk_size: int = 1024 * 1024) -> str:
+    digest = hashlib.sha256()
+    with file_path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(chunk_size), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def source_sha256_for_row(row: dict) -> str:
+    source_sha = str(row.get("source_sha256") or "").strip().casefold()
+    if not is_valid_source_sha256(source_sha):
+        raise ValueError(f"invalid source_sha256: {source_sha or '<missing>'}")
+    return source_sha
+
+
+def source_path_for_content_row(row: dict) -> Path:
+    source_path_text = str(row.get("source_path") or "").strip()
+    if not source_path_text:
+        raise ValueError("source_path is required for content feature extraction")
+    return resolve_path(Path(source_path_text))
+
+
+def verify_content_row_source_sha256(row: dict) -> tuple[Path, str]:
+    source_sha = source_sha256_for_row(row)
+    source_path = source_path_for_content_row(row)
+    if not source_path.is_file():
+        raise ValueError(f"source_path_missing_or_not_file: {source_path}")
+    actual_sha = file_sha256(source_path)
+    if actual_sha != source_sha:
+        raise ValueError(
+            f"source_sha256_mismatch for {source_path}: expected {source_sha}, got {actual_sha}"
+        )
+    return source_path, source_sha
+
+
+def content_cache_path_for_row(row: dict, cache_dir: Optional[str | Path]) -> Optional[Path]:
     if not cache_dir:
         return None
-    key = (row.get("source_sha256") or "").strip().lower()
-    if not key:
-        source_path = row.get("source_path", "")
-        key = hashlib.sha256(str(resolve_path(Path(source_path))).encode("utf-8", errors="ignore")).hexdigest()
-    return resolve_path(Path(cache_dir)) / f"{key}.npz"
+    source_sha = source_sha256_for_row(row)
+    cache_root = resolve_path(Path(cache_dir)).resolve(strict=False)
+    cache_path = (cache_root / f"{source_sha}.npz").resolve(strict=False)
+    try:
+        cache_path.relative_to(cache_root)
+    except ValueError as exc:
+        raise ValueError(f"Content cache path escapes cache_dir: {cache_path}") from exc
+    return cache_path
+
+
+def load_valid_feature_npz(cache_path: Path, expected_dim: int) -> np.ndarray | None:
+    try:
+        with np.load(cache_path, allow_pickle=False) as data:
+            if "features" not in data.files:
+                return None
+            features = data["features"].astype(np.float32, copy=False)
+    except Exception:
+        return None
+    if features.shape != (expected_dim,):
+        return None
+    if not np.isfinite(features).all():
+        return None
+    return features
+
+
+def _content_cache_path(row: dict, cache_dir: Optional[str]) -> Optional[Path]:
+    return content_cache_path_for_row(row, cache_dir)
 
 
 def content_pe_features_for_row(row: dict, cache_dir: Optional[str]) -> np.ndarray:
     cache_path = _content_cache_path(row, cache_dir)
     if cache_path is not None and cache_path.exists():
-        with np.load(cache_path, allow_pickle=False) as data:
-            features = data["features"].astype(np.float32, copy=False)
-        if features.shape == (len(CONTENT_PE_FEATURE_NAMES),):
+        features = load_valid_feature_npz(cache_path, len(CONTENT_PE_FEATURE_NAMES))
+        if features is not None:
             return features
 
-    source_path = resolve_path(Path(row["source_path"]))
+    source_path, _source_sha = verify_content_row_source_sha256(row)
     features = _content_pe_features_from_path(source_path)
     if cache_path is not None:
         cache_path.parent.mkdir(parents=True, exist_ok=True)
@@ -823,24 +1046,17 @@ def content_pe_features_for_row(row: dict, cache_dir: Optional[str]) -> np.ndarr
 
 
 def _content_pe_v2_cache_path(row: dict, cache_dir: Optional[str]) -> Optional[Path]:
-    if not cache_dir:
-        return None
-    key = (row.get("source_sha256") or "").strip().lower()
-    if not key:
-        source_path = row.get("source_path", "")
-        key = hashlib.sha256(str(resolve_path(Path(source_path))).encode("utf-8", errors="ignore")).hexdigest()
-    return resolve_path(Path(cache_dir)) / f"{key}.npz"
+    return content_cache_path_for_row(row, cache_dir)
 
 
 def content_pe_v2_features_for_row(row: dict, cache_dir: Optional[str]) -> np.ndarray:
     cache_path = _content_pe_v2_cache_path(row, cache_dir)
     if cache_path is not None and cache_path.exists():
-        with np.load(cache_path, allow_pickle=False) as data:
-            features = data["features"].astype(np.float32, copy=False)
-        if features.shape == (len(CONTENT_PE_V2_FEATURE_NAMES),):
+        features = load_valid_feature_npz(cache_path, len(CONTENT_PE_V2_FEATURE_NAMES))
+        if features is not None:
             return features
 
-    source_path = resolve_path(Path(row["source_path"]))
+    source_path, _source_sha = verify_content_row_source_sha256(row)
     features = _content_pe_v2_features_from_path(source_path)
     if cache_path is not None:
         cache_path.parent.mkdir(parents=True, exist_ok=True)
@@ -850,11 +1066,31 @@ def content_pe_v2_features_for_row(row: dict, cache_dir: Optional[str]) -> np.nd
 
 def save_feature_npz_atomic(cache_path: Path, features: np.ndarray) -> None:
     temp_path = cache_path.with_name(f"{cache_path.stem}.{os.getpid()}.{time.time_ns()}.tmp.npz")
-    np.savez(temp_path, features=features)
-    temp_path.replace(cache_path)
+    try:
+        np.savez(temp_path, features=features)
+        last_error: OSError | None = None
+        for attempt in range(5):
+            try:
+                temp_path.replace(cache_path)
+                break
+            except OSError as exc:
+                last_error = exc
+                if attempt == 4:
+                    raise
+                time.sleep(0.1 * (attempt + 1))
+        if last_error is not None and temp_path.exists():
+            raise last_error
+    except Exception:
+        try:
+            temp_path.unlink(missing_ok=True)
+        except OSError:
+            pass
+        raise
 
 
-def _read_binary_sample(file_path: Path, *, head_bytes: int = 2 * 1024 * 1024, tail_bytes: int = 512 * 1024) -> bytes:
+def _read_binary_sample(
+    file_path: Path, *, head_bytes: int = 2 * 1024 * 1024, tail_bytes: int = 512 * 1024
+) -> bytes:
     try:
         file_size = file_path.stat().st_size
         with file_path.open("rb") as handle:
@@ -939,8 +1175,14 @@ def _content_string_features_from_path(file_path: Path) -> np.ndarray:
         _safe_ratio(utf16_count, length / 1024.0),
         math.log1p(_count_regex(lowered, rb"https?://[^\s\x00\"']+")),
         math.log1p(_count_regex(lowered, rb"\b(?:\d{1,3}\.){3}\d{1,3}\b")),
-        math.log1p(lowered.count(b"\\software\\") + lowered.count(b"\\registry\\") + lowered.count(b"hkey_")),
-        math.log1p(lowered.count(b"c:\\") + lowered.count(b"\\windows\\") + lowered.count(b"\\system32\\")),
+        math.log1p(
+            lowered.count(b"\\software\\")
+            + lowered.count(b"\\registry\\")
+            + lowered.count(b"hkey_")
+        ),
+        math.log1p(
+            lowered.count(b"c:\\") + lowered.count(b"\\windows\\") + lowered.count(b"\\system32\\")
+        ),
         _entropy_from_counts(np.bincount(byte_values, minlength=256)),
     ]
 
@@ -956,24 +1198,17 @@ def _content_string_features_from_path(file_path: Path) -> np.ndarray:
 
 
 def _string_cache_path(row: dict, cache_dir: Optional[str]) -> Optional[Path]:
-    if not cache_dir:
-        return None
-    key = (row.get("source_sha256") or "").strip().lower()
-    if not key:
-        source_path = row.get("source_path", "")
-        key = hashlib.sha256(str(resolve_path(Path(source_path))).encode("utf-8", errors="ignore")).hexdigest()
-    return resolve_path(Path(cache_dir)) / f"{key}.npz"
+    return content_cache_path_for_row(row, cache_dir)
 
 
 def content_string_features_for_row(row: dict, cache_dir: Optional[str]) -> np.ndarray:
     cache_path = _string_cache_path(row, cache_dir)
     if cache_path is not None and cache_path.exists():
-        with np.load(cache_path, allow_pickle=False) as data:
-            features = data["features"].astype(np.float32, copy=False)
-        if features.shape == (len(CONTENT_STRING_FEATURE_NAMES),):
+        features = load_valid_feature_npz(cache_path, len(CONTENT_STRING_FEATURE_NAMES))
+        if features is not None:
             return features
 
-    source_path = resolve_path(Path(row["source_path"]))
+    source_path, _source_sha = verify_content_row_source_sha256(row)
     features = _content_string_features_from_path(source_path)
     if cache_path is not None:
         cache_path.parent.mkdir(parents=True, exist_ok=True)
@@ -1026,7 +1261,9 @@ def _content_cert_features_from_path(file_path: Path) -> np.ndarray:
     max_ascii = float(np.max(ascii_runs)) if ascii_runs else 0.0
     lowered = blob.lower()
     try:
-        utf16_text = blob.decode("utf-16le", errors="ignore").lower().encode("utf-8", errors="ignore")
+        utf16_text = (
+            blob.decode("utf-16le", errors="ignore").lower().encode("utf-8", errors="ignore")
+        )
     except Exception:
         utf16_text = b""
     searchable = lowered + b"\n" + utf16_text
@@ -1035,7 +1272,10 @@ def _content_cert_features_from_path(file_path: Path) -> np.ndarray:
         1.0,
         math.log1p(declared_size or length),
         _safe_ratio(declared_size or length, file_size),
-        _safe_ratio(int.from_bytes(blob[:4], "little", signed=False) if len(blob) >= 4 else 0, declared_size or length),
+        _safe_ratio(
+            int.from_bytes(blob[:4], "little", signed=False) if len(blob) >= 4 else 0,
+            declared_size or length,
+        ),
         float(revision) / 65535.0,
         float(cert_type) / 65535.0,
         _entropy_from_counts(np.bincount(byte_values, minlength=256)),
@@ -1059,29 +1299,24 @@ def _content_cert_features_from_path(file_path: Path) -> np.ndarray:
         features.extend([1.0 if count > 0 else 0.0, math.log1p(count)])
 
     if len(features) != len(CONTENT_CERT_FEATURE_NAMES):
-        raise ValueError(f"Content cert feature length mismatch: {len(features)} != {len(CONTENT_CERT_FEATURE_NAMES)}")
+        raise ValueError(
+            f"Content cert feature length mismatch: {len(features)} != {len(CONTENT_CERT_FEATURE_NAMES)}"
+        )
     return np.nan_to_num(np.asarray(features, dtype=np.float32), copy=False)
 
 
 def _cert_cache_path(row: dict, cache_dir: Optional[str]) -> Optional[Path]:
-    if not cache_dir:
-        return None
-    key = (row.get("source_sha256") or "").strip().lower()
-    if not key:
-        source_path = row.get("source_path", "")
-        key = hashlib.sha256(str(resolve_path(Path(source_path))).encode("utf-8", errors="ignore")).hexdigest()
-    return resolve_path(Path(cache_dir)) / f"{key}.npz"
+    return content_cache_path_for_row(row, cache_dir)
 
 
 def content_cert_features_for_row(row: dict, cache_dir: Optional[str]) -> np.ndarray:
     cache_path = _cert_cache_path(row, cache_dir)
     if cache_path is not None and cache_path.exists():
-        with np.load(cache_path, allow_pickle=False) as data:
-            features = data["features"].astype(np.float32, copy=False)
-        if features.shape == (len(CONTENT_CERT_FEATURE_NAMES),):
+        features = load_valid_feature_npz(cache_path, len(CONTENT_CERT_FEATURE_NAMES))
+        if features is not None:
             return features
 
-    source_path = resolve_path(Path(row["source_path"]))
+    source_path, _source_sha = verify_content_row_source_sha256(row)
     features = _content_cert_features_from_path(source_path)
     if cache_path is not None:
         cache_path.parent.mkdir(parents=True, exist_ok=True)
@@ -1126,7 +1361,9 @@ def _byte_summary_features(byte_seq: np.ndarray, prefix_len: int, chunk_count: i
         ],
         dtype=np.float32,
     )
-    return np.concatenate([hist, log_hist, prefix, np.asarray(chunk_features, dtype=np.float32), scalar])
+    return np.concatenate(
+        [hist, log_hist, prefix, np.asarray(chunk_features, dtype=np.float32), scalar]
+    )
 
 
 @dataclass(frozen=True)
@@ -1153,11 +1390,12 @@ def build_matrix(
     checkpoint_config: AxonExperimentConfig,
     feature_config: FeatureConfig,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, list[dict], dict]:
-    features = []
-    labels = []
-    base_probs = []
+    matrix = None
+    labels = np.empty(len(rows), dtype=np.int64)
+    base_probs = np.empty(len(rows), dtype=np.float32)
     kept_rows = []
     skipped_missing_cache = 0
+    kept_count = 0
     content_pe_v2_indices = None
     if getattr(feature_config, "include_content_pe_v2", False):
         content_pe_v2_indices = np.asarray(
@@ -1165,67 +1403,117 @@ def build_matrix(
             dtype=np.int64,
         )
     for row in rows:
-        cache_path = Path(row["cache_path"])
-        if not cache_path.exists():
+        row_features = build_feature_vector_for_row(
+            row,
+            checkpoint_config,
+            feature_config,
+            content_pe_v2_indices=content_pe_v2_indices,
+        )
+        if row_features is None:
             skipped_missing_cache += 1
             continue
-        label = int(row["label"])
-        byte_seq, pe_feat, stat_feat, lightweight_feat, cached_label = _load_cached_feature_npz(
-            cache_path,
-            checkpoint_config.max_byte_length,
-            checkpoint_config.pe_feature_dim,
-            checkpoint_config.stat_feature_dim,
-            checkpoint_config.lightweight_feature_dim,
-            expected_label=label,
-        )
-        if cached_label != label:
-            raise ValueError(f"Cache label mismatch: {cache_path}")
-
-        prob = float(row["prob_malicious"])
-        prob_arr = np.asarray(
-            [
-                prob,
-                prob * prob,
-                abs(prob - 0.5),
-                math.log(max(prob, 1.0e-6)),
-                math.log(max(1.0 - prob, 1.0e-6)),
-                float(_safe_logit(np.asarray([prob]))[0]),
-            ],
-            dtype=np.float32,
-        )
-        parts = [prob_arr]
-        if feature_config.include_stat:
-            parts.append(np.nan_to_num(stat_feat.astype(np.float32, copy=False), copy=False))
-        if feature_config.include_pe:
-            parts.append(np.nan_to_num(pe_feat.astype(np.float32, copy=False), copy=False))
-        if feature_config.include_lightweight:
-            parts.append(np.nan_to_num(lightweight_feat.astype(np.float32, copy=False), copy=False))
-        if feature_config.include_byte_summary:
-            parts.append(_byte_summary_features(byte_seq, feature_config.prefix_len, feature_config.chunk_count))
-        if getattr(feature_config, "include_content_pe", False):
-            parts.append(content_pe_features_for_row(row, getattr(feature_config, "content_cache_dir", None)))
-        if getattr(feature_config, "include_content_pe_v2", False):
-            v2_features = content_pe_v2_features_for_row(row, getattr(feature_config, "content_pe_v2_cache_dir", None))
-            parts.append(v2_features[content_pe_v2_indices])
-        if getattr(feature_config, "include_content_string", False):
-            parts.append(
-                content_string_features_for_row(row, getattr(feature_config, "content_string_cache_dir", None))
+        feature_vector, label, prob = row_features
+        if matrix is None:
+            matrix = np.empty((len(rows), int(feature_vector.shape[0])), dtype=np.float32)
+        elif feature_vector.shape[0] != matrix.shape[1]:
+            raise ValueError(
+                f"Feature dimension changed inside build_matrix: expected {matrix.shape[1]}, "
+                f"got {feature_vector.shape[0]}"
             )
-        if getattr(feature_config, "include_content_cert", False):
-            parts.append(content_cert_features_for_row(row, getattr(feature_config, "content_cert_cache_dir", None)))
-        features.append(np.concatenate(parts).astype(np.float32, copy=False))
-        labels.append(label)
-        base_probs.append(prob)
+        matrix[kept_count] = feature_vector
+        labels[kept_count] = label
+        base_probs[kept_count] = prob
         kept_rows.append(row)
-    if not features:
+        kept_count += 1
+    if matrix is None or kept_count == 0:
         raise ValueError("No usable rows were loaded")
+    if kept_count < matrix.shape[0]:
+        matrix = matrix[:kept_count].copy()
+        labels = labels[:kept_count].copy()
+        base_probs = base_probs[:kept_count].copy()
     return (
-        np.vstack(features),
-        np.asarray(labels, dtype=np.int64),
-        np.asarray(base_probs, dtype=np.float32),
+        matrix,
+        labels,
+        base_probs,
         kept_rows,
-        {"total": len(rows), "kept": len(labels), "skipped_missing_cache": skipped_missing_cache},
+        {"total": len(rows), "kept": kept_count, "skipped_missing_cache": skipped_missing_cache},
     )
+
+
+def build_feature_vector_for_row(
+    row: dict,
+    checkpoint_config: AxonExperimentConfig,
+    feature_config: FeatureConfig,
+    *,
+    content_pe_v2_indices: Optional[np.ndarray] = None,
+) -> Optional[tuple[np.ndarray, int, float]]:
+    cache_path = Path(row["cache_path"])
+    if not cache_path.exists():
+        return None
+    label = int(row["label"])
+    byte_seq, pe_feat, stat_feat, lightweight_feat, cached_label = _load_cached_feature_npz(
+        cache_path,
+        checkpoint_config.max_byte_length,
+        checkpoint_config.pe_feature_dim,
+        checkpoint_config.stat_feature_dim,
+        checkpoint_config.lightweight_feature_dim,
+        expected_label=label,
+    )
+    if cached_label != label:
+        raise ValueError(f"Cache label mismatch: {cache_path}")
+
+    prob = float(row["prob_malicious"])
+    prob_arr = np.asarray(
+        [
+            prob,
+            prob * prob,
+            abs(prob - 0.5),
+            math.log(max(prob, 1.0e-6)),
+            math.log(max(1.0 - prob, 1.0e-6)),
+            float(_safe_logit(np.asarray([prob]))[0]),
+        ],
+        dtype=np.float32,
+    )
+    parts = [prob_arr]
+    if feature_config.include_stat:
+        parts.append(np.nan_to_num(stat_feat.astype(np.float32, copy=False), copy=False))
+    if feature_config.include_pe:
+        parts.append(np.nan_to_num(pe_feat.astype(np.float32, copy=False), copy=False))
+    if feature_config.include_lightweight:
+        parts.append(np.nan_to_num(lightweight_feat.astype(np.float32, copy=False), copy=False))
+    if feature_config.include_byte_summary:
+        parts.append(
+            _byte_summary_features(byte_seq, feature_config.prefix_len, feature_config.chunk_count)
+        )
+    if getattr(feature_config, "include_content_pe", False):
+        parts.append(
+            content_pe_features_for_row(row, getattr(feature_config, "content_cache_dir", None))
+        )
+    if getattr(feature_config, "include_content_pe_v2", False):
+        if content_pe_v2_indices is None:
+            content_pe_v2_indices = np.asarray(
+                content_pe_v2_group_indices(
+                    getattr(feature_config, "content_pe_v2_groups", ("all",))
+                ),
+                dtype=np.int64,
+            )
+        v2_features = content_pe_v2_features_for_row(
+            row, getattr(feature_config, "content_pe_v2_cache_dir", None)
+        )
+        parts.append(v2_features[content_pe_v2_indices])
+    if getattr(feature_config, "include_content_string", False):
+        parts.append(
+            content_string_features_for_row(
+                row, getattr(feature_config, "content_string_cache_dir", None)
+            )
+        )
+    if getattr(feature_config, "include_content_cert", False):
+        parts.append(
+            content_cert_features_for_row(
+                row, getattr(feature_config, "content_cert_cache_dir", None)
+            )
+        )
+    return np.concatenate(parts).astype(np.float32, copy=False), label, prob
 
 
 def _fit_standard_l2_reference(matrix: np.ndarray) -> dict:
@@ -1261,6 +1549,50 @@ def _knn_feature_names(top_ks: Sequence[int]) -> list[str]:
     return names
 
 
+def append_feature_columns(matrix: np.ndarray, extra_columns: np.ndarray) -> np.ndarray:
+    """Append feature columns with one explicit output allocation."""
+    if matrix.shape[0] != extra_columns.shape[0]:
+        raise ValueError(
+            f"Cannot append feature columns with different row counts: "
+            f"{matrix.shape[0]} != {extra_columns.shape[0]}"
+        )
+    output = np.empty((matrix.shape[0], matrix.shape[1] + extra_columns.shape[1]), dtype=np.float32)
+    output[:, : matrix.shape[1]] = matrix.astype(np.float32, copy=False)
+    output[:, matrix.shape[1] :] = extra_columns.astype(np.float32, copy=False)
+    return output
+
+
+def resolve_knn_batch_size(
+    requested_batch_size: int,
+    query_count: int,
+    memory_count: int,
+    *,
+    dtype=np.float32,
+    max_similarity_mib: float = DEFAULT_KNN_SIMILARITY_MEMORY_MIB,
+) -> int:
+    """Clamp kNN batches so the dense query x memory similarity block is bounded."""
+    if memory_count <= 0:
+        raise ValueError("kNN memory is empty")
+    if query_count <= 0:
+        return 1
+    if max_similarity_mib <= 0:
+        raise ValueError("--knn-similarity-memory-mib must be positive")
+
+    itemsize = np.dtype(dtype).itemsize
+    memory_bytes_per_query = int(memory_count) * itemsize
+    budget_bytes = int(float(max_similarity_mib) * 1024 * 1024)
+    if memory_bytes_per_query > budget_bytes:
+        raise MemoryError(
+            "kNN dense similarity budget is too small for one query row: "
+            f"memory_rows={memory_count}, dtype={np.dtype(dtype).name}, "
+            f"required_mib={memory_bytes_per_query / (1024 * 1024):.2f}, "
+            f"budget_mib={float(max_similarity_mib):.2f}"
+        )
+
+    budget_batch_size = max(1, budget_bytes // max(memory_bytes_per_query, 1))
+    return max(1, min(int(requested_batch_size), int(query_count), int(budget_batch_size)))
+
+
 def _knn_support_features_from_norm(
     query_norm: np.ndarray,
     memory_norm: np.ndarray,
@@ -1268,6 +1600,7 @@ def _knn_support_features_from_norm(
     top_ks: Sequence[int],
     *,
     batch_size: int,
+    max_similarity_mib: float = DEFAULT_KNN_SIMILARITY_MEMORY_MIB,
 ) -> np.ndarray:
     if memory_norm.shape[0] == 0:
         raise ValueError("kNN memory is empty")
@@ -1276,7 +1609,14 @@ def _knn_support_features_from_norm(
     feature_dim = len(_knn_feature_names(top_ks))
     features = np.empty((query_norm.shape[0], feature_dim), dtype=np.float32)
     memory_labels = memory_labels.astype(np.float32, copy=False)
-    batch_size = max(1, int(batch_size))
+    similarity_dtype = np.result_type(query_norm.dtype, memory_norm.dtype, np.float32)
+    batch_size = resolve_knn_batch_size(
+        batch_size,
+        query_norm.shape[0],
+        memory_norm.shape[0],
+        dtype=similarity_dtype,
+        max_similarity_mib=max_similarity_mib,
+    )
 
     for start in range(0, query_norm.shape[0], batch_size):
         stop = min(start + batch_size, query_norm.shape[0])
@@ -1295,7 +1635,9 @@ def _knn_support_features_from_norm(
             sim_k = top_sim[:, :top_k]
             mal_ratio = labels_k.mean(axis=1)
             weights = np.clip((sim_k + 1.0) * 0.5, 1.0e-6, None)
-            weighted_mal_ratio = (labels_k * weights).sum(axis=1) / np.maximum(weights.sum(axis=1), 1.0e-6)
+            weighted_mal_ratio = (labels_k * weights).sum(axis=1) / np.maximum(
+                weights.sum(axis=1), 1.0e-6
+            )
             batch_features[:, column] = mal_ratio
             batch_features[:, column + 1] = 1.0 - mal_ratio
             batch_features[:, column + 2] = 2.0 * mal_ratio - 1.0
@@ -1321,6 +1663,7 @@ def build_oof_knn_features(
     folds: int,
     seed: int,
     batch_size: int,
+    max_similarity_mib: float = DEFAULT_KNN_SIMILARITY_MEMORY_MIB,
 ) -> tuple[np.ndarray, dict]:
     if folds < 2:
         raise ValueError("OOF kNN requires at least 2 folds")
@@ -1341,6 +1684,7 @@ def build_oof_knn_features(
             labels[memory_idx],
             top_ks,
             batch_size=batch_size,
+            max_similarity_mib=max_similarity_mib,
         )
         print(
             f"[knn-oof] fold={fold_index + 1}/{folds} query={query_idx.shape[0]} memory={memory_idx.shape[0]}",
@@ -1365,6 +1709,7 @@ def append_frozen_knn_features(
     top_ks: Sequence[int],
     *,
     batch_size: int,
+    max_similarity_mib: float = DEFAULT_KNN_SIMILARITY_MEMORY_MIB,
 ) -> np.ndarray:
     query_norm = _normalize_with_reference(
         matrix,
@@ -1379,8 +1724,125 @@ def append_frozen_knn_features(
         frozen_reference["memory_labels"],
         top_ks,
         batch_size=batch_size,
+        max_similarity_mib=max_similarity_mib,
     )
-    return np.hstack([matrix, knn_features]).astype(np.float32, copy=False)
+    return append_feature_columns(matrix, knn_features)
+
+
+def stage2_metadata_path(model_path: Path) -> Path:
+    model_path = Path(model_path)
+    return model_path.with_name(f"{model_path.stem}.metadata.json")
+
+
+def stage2_knn_reference_path(model_path: Path) -> Path:
+    model_path = Path(model_path)
+    return model_path.with_name(f"{model_path.stem}.knn_reference.npz")
+
+
+def _resolve_stage2_sidecar_path(model_path: Path, sidecar_path: str | Path) -> Path:
+    sidecar = Path(sidecar_path)
+    if sidecar.is_absolute():
+        return sidecar
+    return Path(model_path).parent / sidecar
+
+
+def save_stage2_knn_reference_npz(path: Path, reference: dict) -> None:
+    required = ("mean", "std", "memory_norm", "memory_labels")
+    missing = [key for key in required if key not in reference]
+    if missing:
+        raise ValueError(f"kNN reference missing keys: {missing}")
+
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp_path = path.with_name(f".{path.name}.{os.getpid()}.tmp")
+    try:
+        with tmp_path.open("wb") as handle:
+            np.savez(
+                handle,
+                mean=np.asarray(reference["mean"], dtype=np.float32),
+                std=np.asarray(reference["std"], dtype=np.float32),
+                memory_norm=np.asarray(reference["memory_norm"], dtype=np.float32),
+                memory_labels=np.asarray(reference["memory_labels"], dtype=np.int64),
+            )
+        tmp_path.replace(path)
+    except Exception:
+        tmp_path.unlink(missing_ok=True)
+        raise
+
+
+def load_stage2_knn_reference_npz(path: Path) -> dict:
+    with np.load(Path(path), allow_pickle=False) as data:
+        required = ("mean", "std", "memory_norm", "memory_labels")
+        missing = [key for key in required if key not in data]
+        if missing:
+            raise ValueError(f"kNN reference sidecar missing keys: {missing}")
+        return {
+            "mean": data["mean"].astype(np.float32, copy=False),
+            "std": data["std"].astype(np.float32, copy=False),
+            "memory_norm": data["memory_norm"].astype(np.float32, copy=False),
+            "memory_labels": data["memory_labels"].astype(np.int64, copy=False),
+        }
+
+
+def load_stage2_knn_reference_from_payload(model_path: Path, knn_payload: dict) -> dict:
+    legacy_reference = knn_payload.get("reference")
+    if legacy_reference is not None:
+        return legacy_reference
+
+    reference_path = knn_payload.get("reference_path")
+    if not reference_path:
+        raise ValueError("Enabled Stage2 kNN payload is missing reference_path")
+    return load_stage2_knn_reference_npz(_resolve_stage2_sidecar_path(model_path, reference_path))
+
+
+def _json_safe(value):
+    if isinstance(value, np.generic):
+        return value.item()
+    if isinstance(value, np.ndarray):
+        return value.tolist()
+    if isinstance(value, Path):
+        return str(value)
+    if isinstance(value, dict):
+        return {str(key): _json_safe(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_json_safe(item) for item in value]
+    if hasattr(value, "__dict__"):
+        return _json_safe(dict(value.__dict__))
+    return value
+
+
+def stage2_model_metadata_from_payload(payload: dict, model_path: Path) -> dict:
+    knn_payload = payload.get("knn") or {}
+    metadata_knn = {
+        "enabled": bool(knn_payload.get("enabled")),
+        "top_ks": _json_safe(knn_payload.get("top_ks") or []),
+        "batch_size": _json_safe(knn_payload.get("batch_size")),
+        "similarity_memory_mib": _json_safe(knn_payload.get("similarity_memory_mib")),
+        "feature_names": _json_safe(knn_payload.get("feature_names") or []),
+        "reference_storage": knn_payload.get("reference_storage"),
+        "reference_path": knn_payload.get("reference_path"),
+    }
+    return {
+        "schema": STAGE2_MODEL_METADATA_SCHEMA,
+        "model_path": str(Path(model_path)),
+        "model_sha256": file_sha256(Path(model_path)) if Path(model_path).is_file() else None,
+        "threshold": float(payload.get("threshold", 0.5)),
+        "feature_config": _json_safe(payload.get("feature_config")),
+        "checkpoint_config": _json_safe(payload.get("checkpoint_config")),
+        "knn": metadata_knn,
+    }
+
+
+def write_stage2_model_metadata(path: Path, metadata: dict) -> None:
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp_path = path.with_name(f".{path.name}.{os.getpid()}.tmp")
+    try:
+        tmp_path.write_text(json.dumps(metadata, indent=2, ensure_ascii=False), encoding="utf-8")
+        tmp_path.replace(path)
+    except Exception:
+        tmp_path.unlink(missing_ok=True)
+        raise
 
 
 def metrics_at_threshold(scores: np.ndarray, labels: np.ndarray, threshold: float) -> dict:
@@ -1401,13 +1863,17 @@ def metrics_at_threshold(scores: np.ndarray, labels: np.ndarray, threshold: floa
     }
 
 
-def select_best_threshold(scores: np.ndarray, labels: np.ndarray, thresholds: Sequence[float]) -> dict:
+def select_best_threshold(
+    scores: np.ndarray, labels: np.ndarray, thresholds: Sequence[float]
+) -> dict:
     rows = [metrics_at_threshold(scores, labels, threshold) for threshold in thresholds]
     rows.sort(key=lambda row: (row["f1"], -row["errors"], row["threshold"]), reverse=True)
     return rows[0]
 
 
-def suspected_noise_mask(labels: np.ndarray, base_probs: np.ndarray, *, low: float = 0.05, high: float = 0.95) -> np.ndarray:
+def suspected_noise_mask(
+    labels: np.ndarray, base_probs: np.ndarray, *, low: float = 0.05, high: float = 0.95
+) -> np.ndarray:
     return ((labels == 1) & (base_probs <= low)) | ((labels == 0) & (base_probs >= high))
 
 
@@ -1670,7 +2136,9 @@ def model_candidates(seed: int) -> list[tuple[str, object]]:
     ]
 
 
-def filter_model_candidates(candidates: list[tuple[str, object]], names: str) -> list[tuple[str, object]]:
+def filter_model_candidates(
+    candidates: list[tuple[str, object]], names: str
+) -> list[tuple[str, object]]:
     if names.strip() == "__none__":
         return []
     selected_names = [name.strip() for name in names.split(",") if name.strip()]
@@ -1684,6 +2152,11 @@ def filter_model_candidates(candidates: list[tuple[str, object]], names: str) ->
     return selected
 
 
+def fresh_model_candidate(model):
+    """Return an unfitted model instance for a single candidate/noise trial."""
+    return clone(model)
+
+
 def predict_scores(model, matrix: np.ndarray) -> np.ndarray:
     if hasattr(model, "predict_proba"):
         return model.predict_proba(matrix)[:, 1].astype(np.float32, copy=False)
@@ -1692,7 +2165,9 @@ def predict_scores(model, matrix: np.ndarray) -> np.ndarray:
     return (1.0 / (1.0 + np.exp(-scores))).astype(np.float32, copy=False)
 
 
-def write_predictions(path: Path, rows: Sequence[dict], labels: np.ndarray, scores: np.ndarray, threshold: float) -> None:
+def write_predictions(
+    path: Path, rows: Sequence[dict], labels: np.ndarray, scores: np.ndarray, threshold: float
+) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     fieldnames = [
         "source_path",
@@ -1706,7 +2181,9 @@ def write_predictions(path: Path, rows: Sequence[dict], labels: np.ndarray, scor
         "correct",
     ]
     with path.open("w", encoding="utf-8-sig", newline="") as handle:
-        writer = csv.DictWriter(handle, fieldnames=fieldnames, lineterminator="\n", extrasaction="ignore")
+        writer = csv.DictWriter(
+            handle, fieldnames=fieldnames, lineterminator="\n", extrasaction="ignore"
+        )
         writer.writeheader()
         for row, label, score in zip(rows, labels, scores):
             prediction = int(score >= threshold)
@@ -1738,7 +2215,9 @@ def summarize_noise(labels: np.ndarray, base_probs: np.ndarray) -> dict:
     }
 
 
-def clean_slice_metrics(scores: np.ndarray, labels: np.ndarray, base_probs: np.ndarray, threshold: float) -> dict:
+def clean_slice_metrics(
+    scores: np.ndarray, labels: np.ndarray, base_probs: np.ndarray, threshold: float
+) -> dict:
     severe = suspected_noise_mask(labels, base_probs, low=0.05, high=0.95)
     clean = ~severe
     if clean.sum() == 0:
@@ -1815,12 +2294,22 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         default=None,
         help="Optional sidecar cache for content-only certificate features.",
     )
-    parser.add_argument("--noise-modes", default="none,soft_conflict_downweight,trim_extreme_conflict")
+    parser.add_argument(
+        "--noise-modes", default="none,soft_conflict_downweight,trim_extreme_conflict"
+    )
     parser.add_argument("--test-val-f1-gate", type=float, default=0.980)
-    parser.add_argument("--knn-features", action="store_true", help="Append train-only kNN label-support features.")
+    parser.add_argument(
+        "--knn-features", action="store_true", help="Append train-only kNN label-support features."
+    )
     parser.add_argument("--knn-top-k", default="5,10,25,50")
     parser.add_argument("--knn-folds", type=int, default=5)
     parser.add_argument("--knn-batch-size", type=int, default=2048)
+    parser.add_argument(
+        "--knn-similarity-memory-mib",
+        type=float,
+        default=DEFAULT_KNN_SIMILARITY_MEMORY_MIB,
+        help="Maximum dense query x memory similarity block size for kNN feature batches.",
+    )
     parser.add_argument(
         "--model-candidates",
         default="",
@@ -1831,21 +2320,30 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     checkpoint = load_safe_checkpoint(resolve_path(args.checkpoint), map_location="cpu")
     checkpoint_config = AxonExperimentConfig.from_dict(dict(checkpoint["config"]))
+    del checkpoint
     output_dir = resolve_path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     content_cache_dir = None
     if args.content_pe_features:
-        content_cache_dir = resolve_path(args.content_pe_cache_dir or (output_dir / "content_pe_cache_v1"))
+        content_cache_dir = resolve_path(
+            args.content_pe_cache_dir or (output_dir / "content_pe_cache_v1")
+        )
     content_pe_v2_cache_dir = None
     if args.content_pe_v2_features:
-        content_pe_v2_cache_dir = resolve_path(args.content_pe_v2_cache_dir or (output_dir / "content_pe_v2_cache"))
+        content_pe_v2_cache_dir = resolve_path(
+            args.content_pe_v2_cache_dir or (output_dir / "content_pe_v2_cache")
+        )
     content_pe_v2_groups = parse_content_pe_v2_groups(args.content_pe_v2_groups)
     content_string_cache_dir = None
     if args.content_string_features:
-        content_string_cache_dir = resolve_path(args.content_string_cache_dir or (output_dir / "content_string_cache_v1"))
+        content_string_cache_dir = resolve_path(
+            args.content_string_cache_dir or (output_dir / "content_string_cache_v1")
+        )
     content_cert_cache_dir = None
     if args.content_cert_features:
-        content_cert_cache_dir = resolve_path(args.content_cert_cache_dir or (output_dir / "content_cert_cache_v1"))
+        content_cert_cache_dir = resolve_path(
+            args.content_cert_cache_dir or (output_dir / "content_cert_cache_v1")
+        )
     feature_config = FeatureConfig(
         prefix_len=max(0, int(args.prefix_len)),
         chunk_count=max(1, int(args.chunk_count)),
@@ -1856,19 +2354,33 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         include_content_pe=bool(args.content_pe_features),
         content_cache_dir=str(content_cache_dir) if content_cache_dir is not None else None,
         include_content_pe_v2=bool(args.content_pe_v2_features),
-        content_pe_v2_cache_dir=str(content_pe_v2_cache_dir) if content_pe_v2_cache_dir is not None else None,
+        content_pe_v2_cache_dir=str(content_pe_v2_cache_dir)
+        if content_pe_v2_cache_dir is not None
+        else None,
         content_pe_v2_groups=content_pe_v2_groups,
         include_content_string=bool(args.content_string_features),
-        content_string_cache_dir=str(content_string_cache_dir) if content_string_cache_dir is not None else None,
+        content_string_cache_dir=str(content_string_cache_dir)
+        if content_string_cache_dir is not None
+        else None,
         include_content_cert=bool(args.content_cert_features),
-        content_cert_cache_dir=str(content_cert_cache_dir) if content_cert_cache_dir is not None else None,
+        content_cert_cache_dir=str(content_cert_cache_dir)
+        if content_cert_cache_dir is not None
+        else None,
     )
 
     train_rows = read_prediction_rows(args.train_predictions, args.max_train_rows)
     val_rows = read_prediction_rows(args.val_predictions, args.max_val_rows)
     print(f"[load] train rows={len(train_rows)} val rows={len(val_rows)}", flush=True)
-    train_x, train_y, train_base, train_kept_rows, train_counts = build_matrix(train_rows, checkpoint_config, feature_config)
-    val_x, val_y, val_base, val_kept_rows, val_counts = build_matrix(val_rows, checkpoint_config, feature_config)
+    train_x, train_y, train_base, train_kept_rows, train_counts = build_matrix(
+        train_rows, checkpoint_config, feature_config
+    )
+    val_x, val_y, val_base, val_kept_rows, val_counts = build_matrix(
+        val_rows, checkpoint_config, feature_config
+    )
+    del train_rows
+    del val_rows
+    del train_kept_rows
+    gc.collect()
     print(f"[matrix] train={train_x.shape} val={val_x.shape}", flush=True)
 
     base_feature_dim = int(train_x.shape[1])
@@ -1877,6 +2389,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "top_ks": parse_int_list(args.knn_top_k),
         "folds": int(args.knn_folds),
         "batch_size": int(args.knn_batch_size),
+        "similarity_memory_mib": float(args.knn_similarity_memory_mib),
         "feature_names": [],
         "oof": None,
     }
@@ -1886,7 +2399,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         top_ks = knn_config["top_ks"]
         knn_config["feature_names"] = _knn_feature_names(top_ks)
         print(
-            f"[knn] building OOF train features top_k={top_ks} folds={args.knn_folds} batch={args.knn_batch_size}",
+            f"[knn] building OOF train features top_k={top_ks} folds={args.knn_folds} "
+            f"batch={args.knn_batch_size} similarity_mib={args.knn_similarity_memory_mib}",
             flush=True,
         )
         train_knn, oof_info = build_oof_knn_features(
@@ -1896,6 +2410,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             folds=int(args.knn_folds),
             seed=int(args.seed),
             batch_size=int(args.knn_batch_size),
+            max_similarity_mib=float(args.knn_similarity_memory_mib),
         )
         frozen_knn_reference = build_frozen_knn_reference(train_x, train_y)
         val_x = append_frozen_knn_features(
@@ -1903,8 +2418,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             frozen_knn_reference,
             top_ks,
             batch_size=int(args.knn_batch_size),
+            max_similarity_mib=float(args.knn_similarity_memory_mib),
         )
-        train_x = np.hstack([train_x, train_knn]).astype(np.float32, copy=False)
+        train_x = append_feature_columns(train_x, train_knn)
         knn_config["oof"] = oof_info
         print(f"[knn] augmented train={train_x.shape} val={val_x.shape}", flush=True)
     safe_feature_name_groups = assert_stage2_feature_names_safe(
@@ -1916,7 +2432,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     thresholds = parse_thresholds(args.thresholds)
     baseline_val_best = select_best_threshold(val_base, val_y, thresholds)
     results = []
-    fitted = []
+    best_key = None
+    selected = None
+    selected_model = None
+    selected_val_scores = None
     noise_modes = [item.strip() for item in args.noise_modes.split(",") if item.strip()]
     candidates = filter_model_candidates(model_candidates(int(args.seed)), args.model_candidates)
     for noise_mode in noise_modes:
@@ -1929,7 +2448,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         )
         weight_summary = summarize_weights(train_y, weights)
         effective_train_rows = int(weight_summary["effective_train_rows"])
-        for model_name, model in candidates:
+        for model_name, model_template in candidates:
+            model = fresh_model_candidate(model_template)
             start = time.perf_counter()
             fit_kwargs = {}
             if not isinstance(model, type(make_pipeline(StandardScaler(), LogisticRegression()))):
@@ -1941,7 +2461,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             fit_sec = time.perf_counter() - start
             val_scores = predict_scores(model, val_x)
             val_best = select_best_threshold(val_scores, val_y, thresholds)
-            clean_val = clean_slice_metrics(val_scores, val_y, val_base, float(val_best["threshold"]))
+            clean_val = clean_slice_metrics(
+                val_scores, val_y, val_base, float(val_best["threshold"])
+            )
             result = {
                 "name": f"{model_name}__noise_{noise_mode}",
                 "base_model": model_name,
@@ -1954,39 +2476,63 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 "delta_val_f1_vs_baseline": val_best["f1"] - baseline_val_best["f1"],
             }
             results.append(result)
-            fitted.append((val_best["f1"], -val_best["errors"], result, model, val_scores))
+            candidate_key = (float(val_best["f1"]), -int(val_best["errors"]))
+            if best_key is None or candidate_key > best_key:
+                if selected_model is not None:
+                    del selected_model
+                if selected_val_scores is not None:
+                    del selected_val_scores
+                best_key = candidate_key
+                selected = result
+                selected_model = model
+                selected_val_scores = val_scores.astype(np.float32, copy=True)
+            else:
+                del model
+                del val_scores
+            gc.collect()
             print(
                 f"[val] {result['name']} f1={val_best['f1']:.6f} errors={val_best['errors']} "
                 f"threshold={val_best['threshold']:.4f} fit_sec={fit_sec:.1f}",
                 flush=True,
             )
 
-    fitted.sort(key=lambda item: (item[0], item[1]), reverse=True)
-    selected_f1, _neg_errors, selected, selected_model, selected_val_scores = fitted[0]
+    if selected is None or selected_model is None or selected_val_scores is None:
+        raise ValueError("No fitted stage-2 candidate was available for selection")
+    selected_f1 = float(selected["val_best"]["f1"])
     report = {
         "schema": "axon_stage2_cache_matrix_v1",
         "protocol": "train predictions/cache fit candidates; val selects model/noise mode/threshold; test10k only if val gate passes",
         "checkpoint": str(resolve_path(args.checkpoint)),
         "train_predictions": str(resolve_path(args.train_predictions)),
         "val_predictions": str(resolve_path(args.val_predictions)),
-        "test_predictions": str(resolve_path(args.test_predictions)) if args.test_predictions else None,
+        "test_predictions": str(resolve_path(args.test_predictions))
+        if args.test_predictions
+        else None,
         "feature_config": feature_config.__dict__,
         "identity_feature_policy": (
             "source_path/source_sha256/cache_path/sample_index/split/filename/extension/directory are identity "
             "or audit fields only and are forbidden as model features"
         ),
         "feature_name_groups": safe_feature_name_groups,
-        "content_pe_feature_names": CONTENT_PE_FEATURE_NAMES if feature_config.include_content_pe else [],
+        "content_pe_feature_names": CONTENT_PE_FEATURE_NAMES
+        if feature_config.include_content_pe
+        else [],
         "content_pe_v2_feature_names": (
-            content_pe_v2_selected_feature_names(getattr(feature_config, "content_pe_v2_groups", ("all",)))
+            content_pe_v2_selected_feature_names(
+                getattr(feature_config, "content_pe_v2_groups", ("all",))
+            )
             if getattr(feature_config, "include_content_pe_v2", False)
             else []
         ),
         "content_pe_v2_group_feature_counts": {
             group: len(indexes) for group, indexes in sorted(CONTENT_PE_V2_GROUPS.items())
         },
-        "content_string_feature_names": CONTENT_STRING_FEATURE_NAMES if feature_config.include_content_string else [],
-        "content_cert_feature_names": CONTENT_CERT_FEATURE_NAMES if feature_config.include_content_cert else [],
+        "content_string_feature_names": CONTENT_STRING_FEATURE_NAMES
+        if feature_config.include_content_string
+        else [],
+        "content_cert_feature_names": CONTENT_CERT_FEATURE_NAMES
+        if feature_config.include_content_cert
+        else [],
         "records": {"train": train_counts, "val": val_counts},
         "base_feature_dim": base_feature_dim,
         "feature_dim": int(train_x.shape[1]),
@@ -1995,33 +2541,58 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             "train": summarize_noise(train_y, train_base),
             "val": summarize_noise(val_y, val_base),
         },
-        "knn_conflict_summary": summarize_knn_conflicts(train_y, train_knn, knn_config["feature_names"]),
+        "knn_conflict_summary": summarize_knn_conflicts(
+            train_y, train_knn, knn_config["feature_names"]
+        ),
         "baseline_val_best": baseline_val_best,
-        "models": sorted(results, key=lambda row: (row["val_best"]["f1"], -row["val_best"]["errors"]), reverse=True),
+        "models": sorted(
+            results,
+            key=lambda row: (row["val_best"]["f1"], -row["val_best"]["errors"]),
+            reverse=True,
+        ),
         "selected_by_val": selected,
     }
 
     selected_threshold = float(selected["val_best"]["threshold"])
-    write_predictions(output_dir / "stage2_val_predictions.csv", val_kept_rows, val_y, selected_val_scores, selected_threshold)
+    write_predictions(
+        output_dir / "stage2_val_predictions.csv",
+        val_kept_rows,
+        val_y,
+        selected_val_scores,
+        selected_threshold,
+    )
 
     test_ran = False
     if args.test_predictions is not None and selected_f1 >= float(args.test_val_f1_gate):
         test_rows = read_prediction_rows(args.test_predictions, args.max_test_rows)
-        test_x, test_y, test_base, test_kept_rows, test_counts = build_matrix(test_rows, checkpoint_config, feature_config)
+        test_x, test_y, test_base, test_kept_rows, test_counts = build_matrix(
+            test_rows, checkpoint_config, feature_config
+        )
+        del test_rows
+        gc.collect()
         if args.knn_features:
             test_x = append_frozen_knn_features(
                 test_x,
                 frozen_knn_reference,
                 knn_config["top_ks"],
                 batch_size=int(args.knn_batch_size),
+                max_similarity_mib=float(args.knn_similarity_memory_mib),
             )
         test_scores = predict_scores(selected_model, test_x)
         test_metrics = metrics_at_threshold(test_scores, test_y, selected_threshold)
         report["records"]["test"] = test_counts
         report["test_at_val_threshold"] = test_metrics
-        report["clean_test_at_val_threshold"] = clean_slice_metrics(test_scores, test_y, test_base, selected_threshold)
+        report["clean_test_at_val_threshold"] = clean_slice_metrics(
+            test_scores, test_y, test_base, selected_threshold
+        )
         report["noise_summary"]["test"] = summarize_noise(test_y, test_base)
-        write_predictions(output_dir / "stage2_test_predictions.csv", test_kept_rows, test_y, test_scores, selected_threshold)
+        write_predictions(
+            output_dir / "stage2_test_predictions.csv",
+            test_kept_rows,
+            test_y,
+            test_scores,
+            selected_threshold,
+        )
         test_ran = True
     else:
         report["test_skipped"] = {
@@ -2031,41 +2602,67 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         }
 
     model_path = output_dir / "stage2_selected_model.pkl"
+    knn_payload = {
+        "enabled": bool(args.knn_features),
+        "top_ks": knn_config["top_ks"],
+        "batch_size": int(args.knn_batch_size),
+        "similarity_memory_mib": float(args.knn_similarity_memory_mib),
+        "feature_names": knn_config["feature_names"],
+        "reference_storage": None,
+        "reference_path": None,
+    }
+    if args.knn_features:
+        knn_reference_path = stage2_knn_reference_path(model_path)
+        save_stage2_knn_reference_npz(knn_reference_path, frozen_knn_reference)
+        knn_payload["reference_storage"] = STAGE2_KNN_REFERENCE_STORAGE
+        knn_payload["reference_path"] = knn_reference_path.name
+
+    model_payload = {
+        "model": selected_model,
+        "feature_config": feature_config,
+        "threshold": selected_threshold,
+        "selected": selected,
+        "checkpoint_config": checkpoint_config.to_dict(),
+        "identity_feature_policy": report["identity_feature_policy"],
+        "feature_name_groups": safe_feature_name_groups,
+        "content_pe_feature_names": CONTENT_PE_FEATURE_NAMES
+        if feature_config.include_content_pe
+        else [],
+        "content_pe_v2_feature_names": (
+            content_pe_v2_selected_feature_names(
+                getattr(feature_config, "content_pe_v2_groups", ("all",))
+            )
+            if getattr(feature_config, "include_content_pe_v2", False)
+            else []
+        ),
+        "content_string_feature_names": CONTENT_STRING_FEATURE_NAMES
+        if feature_config.include_content_string
+        else [],
+        "content_cert_feature_names": CONTENT_CERT_FEATURE_NAMES
+        if feature_config.include_content_cert
+        else [],
+        "knn": knn_payload,
+    }
     with model_path.open("wb") as handle:
-        pickle.dump(
-            {
-                "model": selected_model,
-                "feature_config": feature_config,
-                "threshold": selected_threshold,
-                "selected": selected,
-                "checkpoint_config": checkpoint_config.to_dict(),
-                "identity_feature_policy": report["identity_feature_policy"],
-                "feature_name_groups": safe_feature_name_groups,
-                "content_pe_feature_names": CONTENT_PE_FEATURE_NAMES if feature_config.include_content_pe else [],
-                "content_pe_v2_feature_names": (
-                    content_pe_v2_selected_feature_names(getattr(feature_config, "content_pe_v2_groups", ("all",)))
-                    if getattr(feature_config, "include_content_pe_v2", False)
-                    else []
-                ),
-                "content_string_feature_names": (
-                    CONTENT_STRING_FEATURE_NAMES if feature_config.include_content_string else []
-                ),
-                "content_cert_feature_names": CONTENT_CERT_FEATURE_NAMES if feature_config.include_content_cert else [],
-                "knn": {
-                    "enabled": bool(args.knn_features),
-                    "top_ks": knn_config["top_ks"],
-                    "batch_size": int(args.knn_batch_size),
-                    "feature_names": knn_config["feature_names"],
-                    "reference": frozen_knn_reference,
-                },
-            },
-            handle,
-        )
+        pickle.dump(model_payload, handle)
+    metadata_path = stage2_metadata_path(model_path)
+    write_stage2_model_metadata(
+        metadata_path, stage2_model_metadata_from_payload(model_payload, model_path)
+    )
     report["model_path"] = str(model_path)
+    report["model_metadata_path"] = str(metadata_path)
+    if args.knn_features:
+        report["knn_reference_path"] = str(stage2_knn_reference_path(model_path))
     report["test_ran"] = test_ran
     report_path = output_dir / "stage2_cache_matrix_report.json"
     report_path.write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
-    print(json.dumps({"selected_by_val": selected, "test": report.get("test_at_val_threshold")}, indent=2, ensure_ascii=False))
+    print(
+        json.dumps(
+            {"selected_by_val": selected, "test": report.get("test_at_val_threshold")},
+            indent=2,
+            ensure_ascii=False,
+        )
+    )
     print(f"JSON: {report_path}")
     return 0
 

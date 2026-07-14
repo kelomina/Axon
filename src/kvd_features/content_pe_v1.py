@@ -84,6 +84,7 @@ DATA_DIRECTORY_INDEXES = {
 }
 
 SECTION_COMBO_NAMES = ["rx", "rw", "rwx", "wx", "exec_only", "read_only", "write_only", "none"]
+SECTION_ENTROPY_SAMPLE_BYTES = 4096
 
 CONTENT_PE_V1_FEATURE_NAMES = [
     "content_file_log_size",
@@ -191,6 +192,26 @@ def _safe_lower_bytes(value: bytes | None) -> str:
         return value.decode("utf-8", errors="ignore").lower().strip()
     except Exception:
         return ""
+
+
+def _section_data_prefix(section, file_path: Path) -> bytes:
+    """Read only the prefix needed for entropy, never the full section."""
+
+    try:
+        return section.get_data(length=SECTION_ENTROPY_SAMPLE_BYTES)
+    except TypeError:
+        pointer = int(getattr(section, "PointerToRawData", 0) or 0)
+        raw_size = int(getattr(section, "SizeOfRawData", 0) or 0)
+        if pointer < 0 or raw_size <= 0:
+            return b""
+        try:
+            with Path(file_path).open("rb") as handle:
+                handle.seek(pointer)
+                return handle.read(4096)
+        except OSError:
+            return b""
+    except Exception:
+        return b""
 
 
 def _data_directory(pe, index: int):
@@ -376,7 +397,7 @@ def extract_content_pe_v1_features(file_path: Path) -> np.ndarray:
             try:
                 with file_path.open("rb") as handle:
                     handle.seek(int(overlay_offset))
-                    overlay_entropy = _entropy_from_bytes(handle.read(min(overlay_size, 65536)))
+                    overlay_entropy = _entropy_from_bytes(handle.read(65536)[: min(overlay_size, 65536)])
             except OSError:
                 overlay_entropy = 0.0
         features.extend([1.0 if overlay_size > 0 else 0.0, math.log1p(float(overlay_size)), _safe_ratio(overlay_size, file_size), overlay_entropy])
@@ -423,10 +444,7 @@ def extract_content_pe_v1_features(file_path: Path) -> np.ndarray:
             if max(raw_size, virt_size) > 0 and abs(raw_size - virt_size) / max(raw_size, virt_size) > 0.50:
                 raw_virtual_mismatch += 1
             if raw_size > 0:
-                try:
-                    section_entropies.append(_entropy_from_bytes(section.get_data()[:4096]))
-                except Exception:
-                    pass
+                section_entropies.append(_entropy_from_bytes(_section_data_prefix(section, file_path)))
 
         section_count = max(len(pe.sections), 1)
         for combo_name in SECTION_COMBO_NAMES:

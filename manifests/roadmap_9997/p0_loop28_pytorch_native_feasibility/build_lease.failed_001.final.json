@@ -1,0 +1,14 @@
+{
+  "schema": "axon_loop28_pytorch_native_build_lease_v1",
+  "loop_id": "p0_loop28_pytorch_native_feasibility_001",
+  "lease_id": "p0_loop28_pytorch_native_feasibility_001_build_attempt_001",
+  "created_at_utc": "2026-07-11T23:18:28Z",
+  "status": "consumed_before_execution",
+  "authorization_path": "manifests/roadmap_9997/p0_loop28_pytorch_native_feasibility/build_authorization.json",
+  "authorization_sha256": "de963aaee8a326c2915444fd622c917513a2fa05736c580106120586cf12ca91",
+  "implementation_manifest_sha256": "d402bc4e2177b0120cc0678dc9b0b99cd514432107cb68f7309659b45028af2f",
+  "ready_command": "vnev/Scripts/python.exe scripts/run_loop28_pytorch_native_feasibility.py build",
+  "consumed_path": "manifests/roadmap_9997/p0_loop28_pytorch_native_feasibility/build_lease.final.json",
+  "single_use": true,
+  "original_lease_sha256": "4d98d09209056919f729ada0316517ed6779687347a94267ab96f3084c5f8727"
+}

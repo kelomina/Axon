@@ -1,0 +1,307 @@
+{
+  "schema": "axon_loop166_phase_b1_step4096_recovery_external_restart_v1",
+  "loop_id": "loop166_code_section_foundation",
+  "recorded_at": "2026-07-13T18:37:59+08:00",
+  "claim_scope": "local_train_only_fail_closed_external_restart_incident_not_model_quality",
+  "status": "incomplete_fail_closed_after_recovery_v1_lease_consumption",
+  "recovery_v1_closure": {
+    "contract": {
+      "path": "manifests/roadmap_9997/loop166_code_section_foundation/phase_b1_step4096_recovery.json",
+      "sha256": "15d94c9ab63b75cdc56e11abf3d05f6e4eb54a5727eac3d9e849215ffcdd0391",
+      "immutable": true
+    },
+    "authorization": {
+      "path": "manifests/roadmap_9997/loop166_code_section_foundation/phase_b1_step4096_recovery_authorization.json",
+      "sha256": "c156db642862b3362de615bf460cc6274f682c172d81ab1ccafac3a7da027f88",
+      "immutable": true
+    },
+    "controller": {
+      "path": "scripts/run_loop166_phase_b1_step4096_recovery.py",
+      "sha256": "3ec5f8e8bc2987928dffa3a47da02a5f07db4228323f1b3748ac4498564c1ab0",
+      "immutable": true
+    },
+    "windows_process_lineage": {
+      "path": "src/loop166/windows_process_lineage.py",
+      "sha256": "9bf5fa53c16a468e0fb1c990f9b83d01042d7aa700f42525e6c3ade4f0ba9599",
+      "immutable": true
+    },
+    "recovery_tests": {
+      "path": "tests/test_loop166_phase_b1_step4096_recovery.py",
+      "sha256": "b251c0d17a7452c95b4034c31c48def9c1c34baa7382ce115e4b5bfaf65dc389",
+      "immutable": true
+    },
+    "lineage_tests": {
+      "path": "tests/test_loop166_windows_process_lineage.py",
+      "sha256": "cb3bb05e14bd867dbbef3f75ef1bac63233095ff548e0833de9443df98d0dc78",
+      "immutable": true
+    },
+    "consumed_marker": {
+      "path": "reports/roadmap_9997/loop166/phase_b1_step4096_recovery_consumed.json",
+      "sha256": "2108a4c963f4964da52733139e1bc182363ebfcb1c51093c00f96f751fa64e3b",
+      "schema": "axon_loop166_phase_b1_step4096_recovery_consumption_v1",
+      "lease_id": "loop166-b1-step4096-recovery-v1",
+      "status": "recovery_consumed_before_additional_raw_access",
+      "creation_time_local": "2026-07-13T17:47:27.3386564+08:00",
+      "creation_time_utc": "2026-07-13T09:47:27.3386564Z",
+      "length_bytes": 1455,
+      "recovery_parent_pid": 1026272,
+      "new_handoff_nonce_sha256": "f33b05a5b23a12e64b5ac98ecd3120633daa9608edda3656ece34731d4e6d9fd",
+      "immutable": true,
+      "delete_overwrite_rename_or_reuse_allowed": false
+    }
+  },
+  "origin_closure": {
+    "prior_incident": {
+      "path": "manifests/roadmap_9997/loop166_code_section_foundation/phase_b1_resume_lineage_failure.json",
+      "sha256": "4f012e8730e46261329126f6dd86cc14e87d14c5a5d9a6b1f34e320a0fa99361",
+      "immutable": true
+    },
+    "original_authorization": {
+      "path": "manifests/roadmap_9997/loop166_code_section_foundation/phase_b1_run_authorization.json",
+      "sha256": "ce271be62e335631db39079ade914f9a111dd58b4c220b319260a0c8bc2564f7",
+      "immutable": true
+    },
+    "original_contract": {
+      "path": "manifests/roadmap_9997/loop166_code_section_foundation/phase_b1_full_outer_resource_cell.json",
+      "sha256": "5e4355ef0d37aacd358e7b8323a35d6eb6bc9935620eb9cded6f460d3a61b609",
+      "immutable": true
+    },
+    "original_controller": {
+      "path": "scripts/run_loop166_phase_b1_full_outer_resource_cell.py",
+      "sha256": "12be192088b408a31682b1275d56b29a301841a3563f7518c6371afa49c931bb",
+      "immutable": true
+    },
+    "original_tests": {
+      "path": "tests/test_loop166_phase_b1.py",
+      "sha256": "0c45a5be3ff077d463c37634bd860bb7f0f59b8228f044a6b69ea0a52d4073ee",
+      "immutable": true
+    },
+    "original_consumed_marker": {
+      "path": "reports/roadmap_9997/loop166/phase_b1_execution_consumed.json",
+      "sha256": "a4b0de3556f2f084736b78c1cdce647464300ac0c9f2c27271373320172cbd75",
+      "immutable": true
+    },
+    "origin_tokenizer": {
+      "path": "reports/roadmap_9997/loop166/phase_b1_tokenizer.json",
+      "sha256": "73734f28f01b5045ff6f77beb9c07bd62e52102c5153bd94e21c28285659c7f6",
+      "immutable": true
+    },
+    "origin_checkpoint": {
+      "path": "models/roadmap_9997/loop166/phase_b1_tiny_mlm.pt",
+      "sha256": "82177e6d69ef1a2e17a1ea09dcb3e870a32e3305f92ea15bcff124fdc86f14a6",
+      "completed_optimizer_steps": 4096,
+      "next_permutation_cursor": 16384,
+      "immutable": true
+    }
+  },
+  "external_session_observation": {
+    "exit_code": 4,
+    "stdout_observed": false,
+    "stderr_observed": false,
+    "controller_defined_exit_code": false,
+    "controller_attribution": "not_attributed",
+    "interpretation": "external_session_termination_observation_not_a_controller_decision",
+    "controller_decision_or_resource_gate_failure_proven": false,
+    "worker_cpu_activity_was_observed_before_restart": true,
+    "gpu_utilization_was_observed_low_before_restart": true,
+    "resource_observations_may_identify_execution_stage": false
+  },
+  "windows_system_event_evidence": {
+    "source": "Windows System event log live query",
+    "computer": "Kolomina-PC",
+    "query_window_local": {
+      "start": "2026-07-13T17:40:00+08:00",
+      "end": "2026-07-13T18:30:00+08:00"
+    },
+    "restart_request": {
+      "provider": "User32",
+      "event_id": 1074,
+      "record_id": 26690,
+      "time_local": "2026-07-13T17:58:20.6644882+08:00",
+      "system_time_utc": "2026-07-13T09:58:20.6644882Z",
+      "initiating_process": "C:\\Windows\\SystemApps\\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy\\StartMenuExperienceHost.exe (KOLOMINA-PC)",
+      "initiating_user": "KOLOMINA-PC\\Saika",
+      "action": "restart",
+      "reason_text": "\u5176\u4ed6(\u8ba1\u5212\u5916)",
+      "reason_code": "0x0",
+      "classified_as_planned_restart": false,
+      "attributed_to_recovery_controller": false
+    },
+    "orderly_shutdown_sequence": [
+      {
+        "provider": "EventLog",
+        "event_id": 6006,
+        "record_id": 26701,
+        "time_local": "2026-07-13T17:59:43.3055290+08:00",
+        "system_time_utc": "2026-07-13T09:59:43.3055290Z",
+        "meaning": "event_log_service_stopped"
+      },
+      {
+        "provider": "Microsoft-Windows-Kernel-Power",
+        "event_id": 109,
+        "record_id": 26719,
+        "time_local": "2026-07-13T17:59:48.2755735+08:00",
+        "system_time_utc": "2026-07-13T09:59:48.2755735Z",
+        "shutdown_action_type": 5,
+        "shutdown_event_code": 0,
+        "shutdown_reason": 5,
+        "meaning": "kernel_power_reboot_transition"
+      },
+      {
+        "provider": "Microsoft-Windows-Kernel-General",
+        "event_id": 13,
+        "record_id": 26721,
+        "time_local": "2026-07-13T17:59:49.1675956+08:00",
+        "system_time_utc": "2026-07-13T09:59:49.1675956Z",
+        "meaning": "operating_system_shutdown"
+      }
+    ],
+    "boot_sequence": [
+      {
+        "provider": "Microsoft-Windows-Kernel-General",
+        "event_id": 12,
+        "record_id": 26722,
+        "time_local": "2026-07-13T18:00:22.8409588+08:00",
+        "system_time_utc": "2026-07-13T10:00:22.8409588Z",
+        "meaning": "operating_system_start"
+      },
+      {
+        "provider": "EventLog",
+        "event_id": 6005,
+        "record_id": 26713,
+        "time_local": "2026-07-13T18:00:37.6435285+08:00",
+        "system_time_utc": "2026-07-13T10:00:37.6435285Z",
+        "meaning": "event_log_service_started"
+      }
+    ],
+    "unexpected_shutdown_query": {
+      "event_ids": [41, 6008],
+      "matching_event_count": 0,
+      "absence_is_point_in_time_query_evidence": true
+    },
+    "conclusion": "user_session_initiated_external_restart_with_orderly_shutdown_sequence_reason_text_unplanned"
+  },
+  "execution_stage_boundary": {
+    "lower_bound": "recovery_v1_lease_consumed_and_worker_activity_observed",
+    "upper_bound": "before_any_durable_recovery_checkpoint_report_or_final_receipt",
+    "possible_worker_stages": [
+      "control_and_origin_revalidation",
+      "outer_fit_raw_scan",
+      "compact_corpus_rebuild",
+      "training_before_first_recovery_checkpoint"
+    ],
+    "exact_stage_proven": false,
+    "optimizer_progress_beyond_step4096_proven": false,
+    "recoverable_v1_training_progress": false
+  },
+  "raw_access_accounting": {
+    "runtime_raw_ledger_persisted": false,
+    "recovery_v1_full_fit_raw_passes": {
+      "minimum": 0,
+      "maximum": 1,
+      "status": "unknown",
+      "charged_full_pass_equivalents": 1
+    },
+    "recovery_v1_fit_raw_open_attempts": {
+      "minimum": 0,
+      "maximum": 15988,
+      "status": "unknown"
+    },
+    "recovery_v1_fit_raw_bytes": {
+      "minimum": 0,
+      "maximum": 19239582561,
+      "status": "unknown"
+    },
+    "outer_holdout_fold": 0,
+    "outer_holdout_raw_access_structurally_authorized": false,
+    "outer_holdout_runtime_measurement_persisted": false,
+    "original_confirmed_full_fit_raw_passes": 1,
+    "possible_total_full_fit_raw_passes_through_recovery_v1": {
+      "minimum": 1,
+      "maximum": 2
+    },
+    "charged_total_full_fit_raw_pass_equivalents_through_recovery_v1": 2,
+    "physical_completion_count_may_be_reported_as_exact": false,
+    "same_lease_rescan_or_retry_allowed": false
+  },
+  "output_and_process_observation": {
+    "observed_at": "2026-07-13T18:37:59+08:00",
+    "recovered_checkpoint": {
+      "path": "models/roadmap_9997/loop166/phase_b1_step4096_recovered_tiny_mlm.pt",
+      "exists": false,
+      "must_not_be_backfilled": true
+    },
+    "recovery_report": {
+      "path": "reports/roadmap_9997/loop166/phase_b1_step4096_recovery_report.json",
+      "exists": false,
+      "must_not_be_backfilled": true
+    },
+    "final_verify_receipt": {
+      "path": "reports/roadmap_9997/loop166/phase_b1_step4096_recovery_final_verify_receipt.json",
+      "exists": false,
+      "must_not_be_backfilled": true
+    },
+    "recovery_temporary_output_files_found": 0,
+    "matching_recovery_processes_found_after_boot": 0,
+    "absence_observations_are_point_in_time": true
+  },
+  "wall_time_accounting": {
+    "source_checkpoint_cumulative_wall_seconds": 2554.2020570000022,
+    "prior_failed_handoff_debit_seconds": 300.0,
+    "recovery_v1_budget_base_seconds": 2854.2020570000022,
+    "parent_elapsed_at_v1_marker_consumption_seconds": 1.329434699997364,
+    "cumulative_wall_seconds_at_v1_marker_consumption": 2855.5314916999996,
+    "marker_creation_to_restart_request_seconds": 653.3258318,
+    "marker_creation_to_kernel_shutdown_seconds": 741.8289392,
+    "conservative_post_marker_external_restart_debit_seconds": 900.0,
+    "conservative_subsequent_recovery_budget_base_seconds": 3755.5314916999996,
+    "maximum_cumulative_wall_seconds": 28800.0,
+    "remaining_cumulative_wall_seconds_after_conservative_debit": 25044.4685083,
+    "budget_reset_allowed": false,
+    "cpu_or_gpu_utilization_discount_allowed": false,
+    "debit_basis": "round_marker_to_kernel_shutdown_interval_up_to_fifteen_minutes"
+  },
+  "failure_classification": {
+    "category": "external_windows_restart_after_recovery_v1_lease_consumption",
+    "controller_failure_attributed": false,
+    "controller_resource_gate_failure_proven": false,
+    "oom_proven": false,
+    "nonfinite_proven": false,
+    "throughput_gate_failure_proven": false,
+    "lineage_failure_proven": false,
+    "raw_commitment_mismatch_proven": false,
+    "exit_code_4_is_a_controller_decision": false,
+    "original_cause_of_restart_beyond_windows_event_fields_proven": false
+  },
+  "protocol": {
+    "recovery_v1_marker_may_be_deleted_overwritten_renamed_or_reused": false,
+    "recovery_v1_sources_or_closure_may_be_modified": false,
+    "recovery_v1_missing_outputs_may_be_backfilled": false,
+    "recovery_v1_same_lease_retry_allowed": false,
+    "new_explicit_authority_lease_marker_and_nonce_required_for_any_future_recovery": true,
+    "old_nonce_continuity_claim_allowed": false,
+    "public_key_required": false,
+    "external_signer_required": false,
+    "quality_metrics_computed": false,
+    "threshold_operations_performed": false,
+    "val_test_or_full_access_authorized": false,
+    "promotion_authority": false
+  },
+  "ready_for": {
+    "recovery_v1_retry": false,
+    "future_recovery_design": true,
+    "future_recovery_execution": false,
+    "five_fold_oof": false,
+    "val_test_or_full": false,
+    "promotion": false,
+    "blocked_by": [
+      "recovery_v1_lease_consumed",
+      "raw_access_extent_unknown",
+      "new_explicit_recovery_authority_not_yet_frozen"
+    ]
+  },
+  "decision": "phase_b1_step4096_recovery_v1_incomplete_fail_closed_allow_design_only_of_new_explicit_recovery_authority",
+  "research_champion": "Loop151",
+  "target_f1": 0.9997,
+  "target_achieved": false
+}

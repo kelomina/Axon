@@ -1,0 +1,216 @@
+{
+  "schema": "axon_loop166_phase_b1_run_authorization_v1",
+  "loop_id": "loop166_code_section_foundation",
+  "claim_scope": "local_train_only_one_full_outer_fit_resource_cell_run_authorization",
+  "status": "granted_source_closure",
+  "authorization_granted": true,
+  "authority": {
+    "user_directed_local_custody": true,
+    "public_key_required": false,
+    "a2_or_a3_authority": false,
+    "val_test_or_full_authority": false,
+    "promotion_authority": false
+  },
+  "canonical_paths": {
+    "project_root": "E:\\Project\\python\\Axon_v2.6Exp",
+    "contract": "E:\\Project\\python\\Axon_v2.6Exp\\manifests\\roadmap_9997\\loop166_code_section_foundation\\phase_b1_full_outer_resource_cell.json",
+    "folds": "E:\\Project\\python\\Axon_v2.6Exp\\reports\\roadmap_9997\\loop164\\local_train_diagnostic_folds.jsonl",
+    "folds_summary": "E:\\Project\\python\\Axon_v2.6Exp\\reports\\roadmap_9997\\loop164\\local_train_diagnostic_folds_summary.json",
+    "data_root": "E:\\Project\\python\\Axon_v2.6Exp\\data\\random_20w_worktree",
+    "tokenizer_output": "E:\\Project\\python\\Axon_v2.6Exp\\reports\\roadmap_9997\\loop166\\phase_b1_tokenizer.json",
+    "checkpoint_output": "E:\\Project\\python\\Axon_v2.6Exp\\models\\roadmap_9997\\loop166\\phase_b1_tiny_mlm.pt",
+    "report_output": "E:\\Project\\python\\Axon_v2.6Exp\\reports\\roadmap_9997\\loop166\\phase_b1_full_outer_resource_cell.json",
+    "controller": "E:\\Project\\python\\Axon_v2.6Exp\\scripts\\run_loop166_phase_b1_full_outer_resource_cell.py",
+    "tests": "E:\\Project\\python\\Axon_v2.6Exp\\tests\\test_loop166_phase_b1.py",
+    "run_authorization": "E:\\Project\\python\\Axon_v2.6Exp\\manifests\\roadmap_9997\\loop166_code_section_foundation\\phase_b1_run_authorization.json",
+    "consumption_marker": "E:\\Project\\python\\Axon_v2.6Exp\\reports\\roadmap_9997\\loop166\\phase_b1_execution_consumed.json",
+    "final_verify_receipt": "E:\\Project\\python\\Axon_v2.6Exp\\reports\\roadmap_9997\\loop166\\phase_b1_final_verify_receipt.json"
+  },
+  "runtime": {
+    "python_executable": "E:\\Project\\python\\Axon_v2.6Exp\\vnev\\Scripts\\python.exe",
+    "python_version": "3.14.4",
+    "implementation": "CPython",
+    "platform": "win32",
+    "torch_version": "2.12.0+cu132",
+    "tokenizers_version": "0.22.2",
+    "pefile_version": "2024.8.26",
+    "version_match_policy": "exact",
+    "runtime_drift_action": "fail_before_lease_consumption_or_raw_open"
+  },
+  "bindings": {
+    "phase_b0_decision": {
+      "path": "E:\\Project\\python\\Axon_v2.6Exp\\manifests\\roadmap_9997\\loop166_code_section_foundation\\phase_b0_decision.json",
+      "sha256": "67c4bf3db6bfd2d71e769e4b2b4358e33b0aa89b348bc1e319cc06543c733066"
+    },
+    "phase_b1_contract": {
+      "path": "E:\\Project\\python\\Axon_v2.6Exp\\manifests\\roadmap_9997\\loop166_code_section_foundation\\phase_b1_full_outer_resource_cell.json",
+      "sha256": "5e4355ef0d37aacd358e7b8323a35d6eb6bc9935620eb9cded6f460d3a61b609"
+    },
+    "phase_b1_controller": {
+      "path": "E:\\Project\\python\\Axon_v2.6Exp\\scripts\\run_loop166_phase_b1_full_outer_resource_cell.py",
+      "sha256": "12be192088b408a31682b1275d56b29a301841a3563f7518c6371afa49c931bb"
+    },
+    "phase_b1_tests": {
+      "path": "E:\\Project\\python\\Axon_v2.6Exp\\tests\\test_loop166_phase_b1.py",
+      "sha256": "0c45a5be3ff077d463c37634bd860bb7f0f59b8228f044a6b69ea0a52d4073ee"
+    }
+  },
+  "runtime_source_closure": {
+    "status": "complete",
+    "sources": {
+      "loop164_package": {
+        "path": "E:\\Project\\python\\Axon_v2.6Exp\\src\\loop164\\__init__.py",
+        "sha256": "094166ff2664759292e5f515074e61dfb1cded2a6d392dd523928c808ec4fe3f"
+      },
+      "loop164_local_oof": {
+        "path": "E:\\Project\\python\\Axon_v2.6Exp\\src\\loop164\\local_oof.py",
+        "sha256": "c261f5fc34f3580ad87f10f29b5120c50e619daedeccfd84ebd0672367f90724"
+      },
+      "loop166_package": {
+        "path": "E:\\Project\\python\\Axon_v2.6Exp\\src\\loop166\\__init__.py",
+        "sha256": "a04b3dcbb6a2c40a75d2cc452b9b9700229073f5f8ce4f70e2583508dfb6b358"
+      },
+      "loop166_byte_bpe": {
+        "path": "E:\\Project\\python\\Axon_v2.6Exp\\src\\loop166\\byte_bpe.py",
+        "sha256": "fed76604bcdf8d0b735a16f5195b6e567e2bc79200da255a9c151a8793b065f7"
+      },
+      "loop166_mlm_model": {
+        "path": "E:\\Project\\python\\Axon_v2.6Exp\\src\\loop166\\mlm_model.py",
+        "sha256": "06eae8e1bfc35a76c31d6a74f79971bc7aa58d4bc39b08dd74586c3190056437"
+      },
+      "loop166_code_sections": {
+        "path": "E:\\Project\\python\\Axon_v2.6Exp\\src\\loop166\\code_sections.py",
+        "sha256": "281a494ca5cabe2581a93733e218a181e2d11f579e109e221fc99c3ec215f607"
+      },
+      "loop166_compact_corpus": {
+        "path": "E:\\Project\\python\\Axon_v2.6Exp\\src\\loop166\\compact_corpus.py",
+        "sha256": "1f6b536dedcbb200e6903efb394f779f626d82e21afc018debb3566c83a7e5da"
+      },
+      "loop166_b1_schedule": {
+        "path": "E:\\Project\\python\\Axon_v2.6Exp\\src\\loop166\\b1_schedule.py",
+        "sha256": "d3d95bbd722ad2833b826fbacf43b4922c262a2d47818c495f5fe30945f38f51"
+      }
+    },
+    "pending_bindings": [],
+    "all_sources_must_match_before_authorization": true,
+    "source_drift_action": "fail_before_lease_consumption_or_raw_open"
+  },
+  "canonical_invocation": {
+    "parent": {
+      "mode": "parent",
+      "argv": [
+        "E:\\Project\\python\\Axon_v2.6Exp\\vnev\\Scripts\\python.exe",
+        "E:\\Project\\python\\Axon_v2.6Exp\\scripts\\run_loop166_phase_b1_full_outer_resource_cell.py",
+        "--contract",
+        "E:\\Project\\python\\Axon_v2.6Exp\\manifests\\roadmap_9997\\loop166_code_section_foundation\\phase_b1_full_outer_resource_cell.json",
+        "--folds",
+        "E:\\Project\\python\\Axon_v2.6Exp\\reports\\roadmap_9997\\loop164\\local_train_diagnostic_folds.jsonl",
+        "--folds-summary",
+        "E:\\Project\\python\\Axon_v2.6Exp\\reports\\roadmap_9997\\loop164\\local_train_diagnostic_folds_summary.json",
+        "--data-root",
+        "E:\\Project\\python\\Axon_v2.6Exp\\data\\random_20w_worktree",
+        "--tokenizer-output",
+        "E:\\Project\\python\\Axon_v2.6Exp\\reports\\roadmap_9997\\loop166\\phase_b1_tokenizer.json",
+        "--checkpoint-output",
+        "E:\\Project\\python\\Axon_v2.6Exp\\models\\roadmap_9997\\loop166\\phase_b1_tiny_mlm.pt",
+        "--report-output",
+        "E:\\Project\\python\\Axon_v2.6Exp\\reports\\roadmap_9997\\loop166\\phase_b1_full_outer_resource_cell.json"
+      ]
+    },
+    "internal_modes": {
+      "allowed": ["resume", "final_verify"],
+      "direct_user_invocation_allowed": false,
+      "must_inherit_parent_authorization_and_handoff_nonce": true,
+      "must_revalidate_runtime_paths_sources_and_lease": true
+    },
+    "unlisted_arguments_allowed": false,
+    "path_alias_or_symlink_allowed": false,
+    "working_directory": "E:\\Project\\python\\Axon_v2.6Exp"
+  },
+  "one_shot_lease": {
+    "lease_id": "loop166-b1-outer0-resource-cell-v1",
+    "consumption_marker": "reports/roadmap_9997/loop166/phase_b1_execution_consumed.json",
+    "consumption_marker_absolute": "E:\\Project\\python\\Axon_v2.6Exp\\reports\\roadmap_9997\\loop166\\phase_b1_execution_consumed.json",
+    "marker_must_not_exist_before_parent_start": true,
+    "marker_creation": "atomic_O_EXCL_then_file_fsync_then_parent_directory_flush_best_effort_on_windows",
+    "consume_before_any_raw_open": true,
+    "overwrite_or_delete_marker_allowed": false,
+    "parent_mode_consumes_lease": true,
+    "resume_or_final_verify_may_consume_new_lease": false,
+    "all_modes_must_bind_same_marker_content_sha256": true
+  },
+  "handoff_nonce": {
+    "required": true,
+    "minimum_entropy_bits": 256,
+    "generated_by": "authorized_parent_after_lease_consumption",
+    "required_modes": ["parent", "resume", "final_verify"],
+    "direct_cli_value_allowed": false,
+    "plaintext_persistence_allowed": false,
+    "checkpoint_contains_sha256_commitment_only": true,
+    "resume_and_final_verify_must_prove_nonce_possession": true,
+    "nonce_mismatch_action": "fail_before_raw_open_or_checkpoint_acceptance"
+  },
+  "raw_scope": {
+    "split_role": "train",
+    "outer_holdout_fold": 0,
+    "outer_holdout_raw_opens_allowed": 0,
+    "outer_holdout_raw_bytes_allowed": 0,
+    "outer_fit_folds": [1, 2, 3, 4],
+    "outer_fit_metadata_rows": 16000,
+    "identity_and_labels_used_for_scope_audit_only": true,
+    "identity_or_labels_used_as_model_inputs": false,
+    "all_raw_access_must_use_canonical_data_root_and_bound_fold_scope": true,
+    "raw_access_ledger_required": true
+  },
+  "allowed_modes": {
+    "parent": {
+      "may_consume_lease": true,
+      "may_open_outer_fit_raw": true,
+      "may_spawn": ["resume", "final_verify"]
+    },
+    "resume": {
+      "may_consume_lease": false,
+      "may_open_outer_fit_raw": true,
+      "requires_parent_handoff": true
+    },
+    "final_verify": {
+      "may_consume_lease": false,
+      "may_open_outer_fit_raw": false,
+      "requires_parent_handoff": true,
+      "checkpoint_load_policy": "weights_only"
+    }
+  },
+  "forbidden": {
+    "outer_holdout_raw_access": true,
+    "val_test_or_full_access": true,
+    "heldout_tokenizer_or_model_fit": true,
+    "quality_metrics": true,
+    "threshold_operations": true,
+    "f1_accuracy_auc_or_perplexity_claim": true,
+    "hard_decisions_or_predictions": true,
+    "five_fold_oof_claim": true,
+    "promotion_claim": true,
+    "public_key_dependency": true
+  },
+  "grant_prerequisites": {
+    "all_pending_sha256_replaced_by_exact_lowercase_sha256": true,
+    "runtime_source_closure_complete": true,
+    "canonical_contract_controller_and_tests_pass": true,
+    "canonical_paths_and_argv_exact": true,
+    "consumption_marker_absent": true,
+    "handoff_nonce_protocol_implemented_and_tested": true,
+    "final_verify_mode_implemented_and_tested": true,
+    "authorization_status_changed_to_granted": true,
+    "authorization_granted_changed_to_true": true
+  },
+  "ready_for": {
+    "parent_execution": true,
+    "resume_execution": true,
+    "final_verify_execution": true,
+    "five_fold_oof": false,
+    "val_test_or_full": false,
+    "promotion": false
+  },
+  "decision": "authorize_one_phase_b1_full_outer_resource_cell",
+  "research_champion": "Loop151"
+}

@@ -123,3 +123,30 @@ def test_align_external_scores_rejects_label_mismatch(tmp_path):
             probability_column="stage2_prob_malicious",
             key_column="sample_index",
         )
+
+
+def test_align_external_scores_stops_after_required_keys(tmp_path):
+    prediction_path = tmp_path / "predictions.csv"
+    prediction_path.write_text(
+        "sample_index,source_sha256,label,stage2_prob_malicious\n"
+        "ignore,zzz,0,0.1\n"
+        "1,abc,1,0.7\n"
+        "2,def,0,0.2\n"
+        "late,boom,1,not-a-number\n",
+        encoding="utf-8",
+    )
+    rows = [
+        {"sample_index": "1", "source_sha256": "abc", "label": "1"},
+        {"sample_index": "2", "source_sha256": "def", "label": "0"},
+    ]
+
+    scores, summary = align_external_scores(
+        rows=rows,
+        prediction_path=prediction_path,
+        probability_column="stage2_prob_malicious",
+        key_column="sample_index",
+    )
+
+    np.testing.assert_allclose(scores, [0.7, 0.2])
+    assert summary["external_rows_scanned"] == 3
+    assert summary["matched_external_rows"] == 2

@@ -1,0 +1,124 @@
+{
+  "schema": "axon_loop168_capability_semantic_expert_proposal_v1",
+  "loop_id": "loop168_capability_semantic_expert",
+  "status": "preregistered_static_only_no_tool_or_sample_execution",
+  "parent_route": {
+    "loop167": "loop167_ember_v3_novel_delta",
+    "priority": "Loop167 remains the first executable static diagnostic; Loop168 is a successor only if Loop167 closes negative or proves non-actionable."
+  },
+  "claim_scope": "future_train_only_capability_semantic_diagnostic_not_model_quality_promotion_or_heldout_evaluation",
+  "target_context": {
+    "research_champion": "Loop151",
+    "legacy_full_test_f1": 0.9908541911012403,
+    "legacy_full_test_errors": 1466,
+    "target_f1": 0.9997,
+    "target_achieved": false,
+    "interpretation": "A single capability expert cannot plausibly certify the target. It must first prove stable independent error correction in a protected Train-only experiment and later join a decision-aligned multi-expert program with new truth and temporal evidence."
+  },
+  "external_source_pins": {
+    "capa_repository": {
+      "url": "https://github.com/mandiant/capa",
+      "commit": "f850024b5604443170de502ea0a6a598e82fe1c9",
+      "verified_at_utc": "2026-07-14T05:49:18Z",
+      "license": "Apache-2.0",
+      "claim": "capa identifies executable capabilities from static executable evidence and supports standalone binaries."
+    },
+    "capa_rules_repository": {
+      "url": "https://github.com/mandiant/capa-rules",
+      "commit": "aed45e2571ebf7d2330e3daddbb5c472cc54966e",
+      "verified_at_utc": "2026-07-14T05:49:18Z"
+    },
+    "local_availability": {
+      "capa_on_path": false,
+      "flare_capa_installed_in_project_venv": false,
+      "binary_or_ruleset_sha256_pinned": false,
+      "conclusion": "No capa binary, ruleset, package, raw sample, or installation is authorized by this proposal."
+    }
+  },
+  "static_feature_contract": {
+    "allowed_future_feature_families": [
+      "fixed_ruleset_capability_binary_indicators",
+      "fixed_ruleset_capability_match_counts",
+      "fixed_ruleset_namespace_aggregate_counts",
+      "explicit_parser_timeout_unsupported_or_packed_missing_indicators"
+    ],
+    "forbidden_future_feature_families": [
+      "filename_path_extension_directory_source_sha256_sample_index_fold_or_row_order",
+      "label_or_reviewer_verdict_derived_features",
+      "historical_model_scores_probabilities_or_predictions",
+      "dynamic_sandbox_outcomes_or_timeout_as_label_proxy",
+      "unfrozen_rule_selection_or_data_driven_capability_vocabulary"
+    ],
+    "missingness_policy": "Any parser failure, timeout, unsupported format, rule-load failure, or packed/insufficient-static-evidence condition must be explicit missingness and deterministically fall back to B0. It must never be silently dropped or treated as benign.",
+    "sample_safety_policy": "Future extraction must use an isolated no-network worker that parses but never executes samples, persists no raw bytes or match locations, and records only SHA-bound aggregate feature receipts."
+  },
+  "future_phase_a_coverage_gate": {
+    "authorization_required": "separate_source_bound_train_only_authorization",
+    "input_scope": "future_SHA_bound_256_row_train_only_coverage_bundle_only",
+    "operations": [
+      "verify each source SHA before and after parsing",
+      "run one fixed binary and one fixed ruleset in a no-network isolated worker",
+      "emit aggregate success_missing_reason_timeout_and_resource_receipt"
+    ],
+    "forbidden_operations": [
+      "model_fitting",
+      "threshold_search",
+      "Val_Test10k_legacy_full_test_or_prediction_access",
+      "rule_authoring_or_rule_selection_from_labels",
+      "checkpoint_or_raw_match_location_persistence"
+    ],
+    "go_no_go": {
+      "coverage_minimum": 0.95,
+      "silent_drop_allowed": false,
+      "timeout_or_unsupported_must_be_explicit": true,
+      "failure_action": "close_the_capability_route_without_retries_on_the_same_authorization"
+    }
+  },
+  "future_phase_b_train_only_causal_gate": {
+    "authorization_required": "new_execution_contract_resource_guard_and_one_shot_lease",
+    "arms": [
+      "B0_frozen_structural_baseline",
+      "C_capability_only",
+      "M_B0_plus_capability",
+      "CF_B0_plus_within_fit_fold_shuffled_capability"
+    ],
+    "partition": "same_decision_aligned_component_and_future_time_family_source_aware_outer_partition_for_every_arm",
+    "replays": {
+      "seeds": [41, 42, 43],
+      "outer_folds": 5,
+      "threshold": 0.5,
+      "threshold_search_allowed": false,
+      "hyperparameter_search_allowed": false,
+      "all_rows_remain_in_denominator": true
+    },
+    "per_seed_success_gate": {
+      "minimum_net_error_reduction_vs_better_B0_or_C": "max(30, ceil(10 percent of control errors))",
+      "minimum_repairs": 50,
+      "minimum_override_precision": 0.8,
+      "minimum_net_positive_folds": 4,
+      "component_bootstrap_one_sided_95pct_lcb_net_error_reduction_gt_zero": true,
+      "max_relative_fp_or_fn_regression": 0.05,
+      "M_minus_CF_minimum_net_error_reduction": 30,
+      "CF_must_fail_causal_lcb_gate": true
+    },
+    "failure_action": "close_this_capability_recipe_without_rule_tuning_threshold_tuning_extra_seeds_or_heldout_access"
+  },
+  "promotion_boundary": {
+    "local_train_only_signal_is_not_full_test_evidence": true,
+    "requires_before_any_selection_window": [
+      "independent_label_quality_and_provenance_contract",
+      "time_family_source_and_near_duplicate_isolation",
+      "at_least_two_materially_independent_positive_experts_on_the_same_outer_partition",
+      "new_decision_aligned_cross_fitted_router_contract"
+    ],
+    "requires_before_any_target_claim": [
+      "frozen_Val_then_Test10k_then_full_test_funnel",
+      "two_independent_sealed_windows",
+      "per_window_one_sided_97_5pct_component_bootstrap_lcb_at_least_0_9997",
+      "no_leakage_sample_filtering_or_abstain_deletion"
+    ],
+    "public_key_required": false,
+    "val_test10k_full_test_or_promotion_authorized": false
+  },
+  "decision": "preregister_static_capability_successor_without_executing_tool_or_opening_samples"
+}

@@ -1,0 +1,44 @@
+{
+  "schema": "axon_roadmap_9997_proposal_v1",
+  "loop_id": "p0_truth_freeze_001",
+  "parent_reference": "Loop151",
+  "hypothesis": "Freezing metrics, lineage artifacts, policy, and worktree state before new experiments will expose protocol drift and create a reproducible starting point for the 99.97 roadmap.",
+  "failure_observation": "The legacy full-test has become a repeatedly observed development leaderboard, status facts are partly hard-coded, and Loop151 is not reproducible from raw files in the native runtime.",
+  "new_independent_evidence": "None; this loop audits existing artifacts only.",
+  "runtime_availability": "Local repository artifacts and Windows project virtual environment are available.",
+  "allowed_splits": [
+    "legacy_val_readonly",
+    "legacy_test10k_readonly",
+    "legacy_full_test_readonly"
+  ],
+  "forbidden_operations": [
+    "training",
+    "threshold_selection",
+    "heldout_rerun",
+    "relabeling",
+    "split_or_cache_mutation",
+    "native_release"
+  ],
+  "frozen_thresholds": {
+    "loop151_score_threshold": 1.0,
+    "target_f1": 0.9997
+  },
+  "sample_count": {
+    "val": 20000,
+    "test10k": 10000,
+    "legacy_full_test": 160000
+  },
+  "seeds": [],
+  "compute_budget": "Small read-only streaming audit; no GPU and no model inference.",
+  "success_gate": "All three prediction CSVs exactly reproduce their JSON confusion matrices and F1; required artifacts exist and have SHA-256; one policy fingerprint is shared across splits.",
+  "slice_gate": "Not applicable to the first truth-freeze loop; missing slice metrics remain a P1 blocker.",
+  "stop_condition": "Fail closed on missing artifacts, row-count drift, duplicate identity keys, label conflicts, metric mismatch, or policy drift.",
+  "expected_artifacts": [
+    "goal.md",
+    "scripts/build_roadmap_9997_truth_manifest.py",
+    "tests/test_build_roadmap_9997_truth_manifest.py",
+    "manifests/roadmap_9997/p0_truth_freeze/loop151_truth_manifest.json"
+  ],
+  "authorization_level": "A1_scoped_change",
+  "native_path": "Audit only; Loop151 native serialization is explicitly out of scope."
+}

@@ -1,0 +1,119 @@
+{
+  "schema": "axon_loop28_onnx_operator_remediation_post_manifest_v1",
+  "loop_id": "p0_loop28_onnx_operator_remediation_001",
+  "generated_at_utc": "2026-07-11T22:50:20Z",
+  "contract": {
+    "structured_chain_validation": true,
+    "duplicate_json_keys_rejected": true,
+    "candidate_generation_forbidden": true,
+    "manifest_self_hashed": false,
+    "output_replace_allowed": false
+  },
+  "lineage": {
+    "parent_closure_sha256": "e36b720de8a20d137d740712242e67f4a102857b2365fdd2fdb7c8c5b2a5b719",
+    "parent_evidence_sha256": "a3caf51b5354fb6c3725c09cb25bc2360ce91322934708e586d1bb576e72ced0",
+    "implementation_manifest_sha256": "79307f34a6742a4f68f3e59417b0cd54f1421d8d2bf81e145eaa3fa9a1bb1c5f",
+    "preflight_sha256": "0d9544092f110f492b9093364776cb62925ea94bdfc97fef50e2773a67f3881a"
+  },
+  "outcome": {
+    "fixture_count": 4,
+    "shared_exact_tie_proven": true,
+    "strict_margin_success_branch_reachable": false,
+    "candidate_graph_count": 0,
+    "lease_count": 0,
+    "checkpoint_or_onnx_load_count": 0,
+    "native_probe_subprocess_count": 0,
+    "raw_split_cache_heldout_access_count": 0,
+    "quality_metric_count": 0,
+    "f1_computation_count": 0,
+    "next_route": "pytorch_compatible_native_runtime"
+  },
+  "artifacts": [
+    {
+      "name": "implementation_manifest",
+      "role": "verified_static_tooling",
+      "path": "manifests/roadmap_9997/p0_loop28_onnx_operator_remediation/implementation_manifest.json",
+      "size_bytes": 5669,
+      "sha256": "79307f34a6742a4f68f3e59417b0cd54f1421d8d2bf81e145eaa3fa9a1bb1c5f"
+    },
+    {
+      "name": "preflight",
+      "role": "formal_exact_tie_blocker",
+      "path": "manifests/roadmap_9997/p0_loop28_onnx_operator_remediation/preflight.json",
+      "size_bytes": 6514,
+      "sha256": "0d9544092f110f492b9093364776cb62925ea94bdfc97fef50e2773a67f3881a"
+    },
+    {
+      "name": "proposal",
+      "role": "frozen_proposal",
+      "path": "manifests/roadmap_9997/p0_loop28_onnx_operator_remediation/proposal.json",
+      "size_bytes": 8131,
+      "sha256": "21e0699a3c6ceb4667bdb1acd7152ebf0d3029fa9b9fb3908e532fbe93a70100"
+    },
+    {
+      "name": "authorization",
+      "role": "a1_authorization",
+      "path": "manifests/roadmap_9997/p0_loop28_onnx_operator_remediation/authorization.json",
+      "size_bytes": 5436,
+      "sha256": "ddfcf4a3cd3a2832bdc3cf8ed914ca5f319bd950ee8d1610f30729509cd0879c"
+    },
+    {
+      "name": "preflight_amendment",
+      "role": "scope_reduction",
+      "path": "manifests/roadmap_9997/p0_loop28_onnx_operator_remediation/preflight_amendment.json",
+      "size_bytes": 2829,
+      "sha256": "e8080061764a3312e09f353a192314f110e70b3e1f92ff354aeb0c3b8d970797"
+    },
+    {
+      "name": "parent_closure",
+      "role": "immutable_parent_closure",
+      "path": "manifests/roadmap_9997/p0_loop28_onnx_fidelity/post_manifest.json",
+      "size_bytes": 15473,
+      "sha256": "e36b720de8a20d137d740712242e67f4a102857b2365fdd2fdb7c8c5b2a5b719"
+    },
+    {
+      "name": "parent_evidence",
+      "role": "immutable_parent_evidence",
+      "path": "reports/roadmap_9997/p0_loop28_onnx_fidelity/localization_evidence.final.json",
+      "size_bytes": 2013412,
+      "sha256": "a3caf51b5354fb6c3725c09cb25bc2360ce91322934708e586d1bb576e72ced0"
+    },
+    {
+      "name": "goal_delta",
+      "role": "immutable_goal_delta",
+      "path": "reports/roadmap_9997/p0_loop28_onnx_operator_remediation/goal_delta.final.md",
+      "size_bytes": 4488,
+      "sha256": "cb833a593a891fe00627fe2f5b3e10a392a3e9dae6733c8d8d6eb7592e19b1ce"
+    },
+    {
+      "name": "journal_entry",
+      "role": "immutable_experiment_record",
+      "path": "reports/roadmap_9997/p0_loop28_onnx_operator_remediation/journal_entry.final.md",
+      "size_bytes": 3434,
+      "sha256": "ec81caa3bd61dcb0fa3e6c70f1b68f7b8ba02e60fdd36628596dd77f35f91ed6"
+    },
+    {
+      "name": "final_status",
+      "role": "immutable_owner_status",
+      "path": "reports/roadmap_9997/p0_loop28_onnx_operator_remediation/status.final.md",
+      "size_bytes": 1494,
+      "sha256": "05264eba667e01e393afc2f3896d170337aa3238bbffcd033de81d87eded1e68"
+    }
+  ],
+  "integrity": {
+    "artifact_count": 10,
+    "required_artifact_count": 10,
+    "all_required_present": true,
+    "candidate_root_absent": true,
+    "forbidden_execution_artifact_count": 0
+  },
+  "claim_boundary": {
+    "synthetic_static_preflight_claim_allowed": true,
+    "onnx_candidate_claim_allowed": false,
+    "population_parity_claim_allowed": false,
+    "quality_claim_allowed": false,
+    "raw_rerun_allowed": false,
+    "certification_claim_allowed": false
+  },
+  "decision": "post_operator_preflight_exact_tie_fallback_pytorch_native_no_execution"
+}

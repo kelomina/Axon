@@ -10,10 +10,12 @@ from __future__ import annotations
 
 import argparse
 import csv
+import gc
 import json
 import pickle
 import sys
 import time
+from itertools import islice
 from pathlib import Path
 from typing import Optional, Sequence
 
@@ -50,6 +52,7 @@ from train_loop61_override_classifier import (  # noqa: E402
 )
 from train_stage2_cache_matrix import (  # noqa: E402
     FeatureConfig,
+    append_feature_columns,
     assert_stage2_feature_names_safe,
     build_matrix,
     filter_model_candidates,
@@ -71,9 +74,31 @@ def _safe_logit(values: np.ndarray) -> np.ndarray:
     return np.log(clipped / (1.0 - clipped)).astype(np.float32, copy=False)
 
 
-def read_oof_rows(path: Path) -> list[dict]:
+def read_oof_rows(
+    path: Path,
+    max_rows: Optional[int] = None,
+    *,
+    expected_rows: Optional[int] = None,
+) -> list[dict]:
+    limit: Optional[int]
+    if max_rows is not None and max_rows < 0:
+        raise ValueError("max_rows must be non-negative")
+    if expected_rows is not None and expected_rows < 0:
+        raise ValueError("expected_rows must be non-negative")
+    if max_rows is None:
+        limit = expected_rows
+    elif expected_rows is None:
+        limit = max_rows
+    else:
+        limit = min(max_rows, expected_rows)
     with resolve_path(path).open("r", encoding="utf-8-sig", newline="") as handle:
-        return list(csv.DictReader(handle))
+        reader = csv.DictReader(handle)
+        if limit is None:
+            raise ValueError("read_oof_rows requires max_rows or expected_rows to avoid unbounded CSV reads")
+        rows = list(islice(reader, int(limit)))
+        if expected_rows is not None and len(rows) != int(expected_rows):
+            raise ValueError(f"OOF row count mismatch: {len(rows)} != {int(expected_rows)}")
+        return rows
 
 
 def _float_array(rows: Sequence[dict], column: str) -> np.ndarray:
@@ -111,31 +136,28 @@ def build_meta_score_features(
     candidate_logit = _safe_logit(candidate)
     allow_logit = _safe_logit(allow)
     final_logit = _safe_logit(final)
-    matrix = np.column_stack(
-        [
-            base,
-            candidate,
-            allow,
-            final,
-            candidate - base,
-            allow - base,
-            final - base,
-            np.abs(base - 0.5) * 2.0,
-            np.abs(candidate - 0.5) * 2.0,
-            np.abs(allow - 0.5) * 2.0,
-            np.abs(final - 0.5) * 2.0,
-            base_logit,
-            candidate_logit,
-            allow_logit,
-            final_logit,
-            candidate_logit - base_logit,
-            allow_logit - base_logit,
-            final_logit - base_logit,
-            final_predictions.astype(np.float32, copy=False),
-            override_mask.astype(np.float32, copy=False),
-            possible_mask.astype(np.float32, copy=False),
-        ]
-    ).astype(np.float32, copy=False)
+    matrix = np.empty((base.shape[0], 21), dtype=np.float32)
+    matrix[:, 0] = base
+    matrix[:, 1] = candidate
+    matrix[:, 2] = allow
+    matrix[:, 3] = final
+    matrix[:, 4] = candidate - base
+    matrix[:, 5] = allow - base
+    matrix[:, 6] = final - base
+    matrix[:, 7] = np.abs(base - 0.5) * 2.0
+    matrix[:, 8] = np.abs(candidate - 0.5) * 2.0
+    matrix[:, 9] = np.abs(allow - 0.5) * 2.0
+    matrix[:, 10] = np.abs(final - 0.5) * 2.0
+    matrix[:, 11] = base_logit
+    matrix[:, 12] = candidate_logit
+    matrix[:, 13] = allow_logit
+    matrix[:, 14] = final_logit
+    matrix[:, 15] = candidate_logit - base_logit
+    matrix[:, 16] = allow_logit - base_logit
+    matrix[:, 17] = final_logit - base_logit
+    matrix[:, 18] = final_predictions.astype(np.float32, copy=False)
+    matrix[:, 19] = override_mask.astype(np.float32, copy=False)
+    matrix[:, 20] = possible_mask.astype(np.float32, copy=False)
     names = [
         "meta_base_score",
         "meta_candidate_score",
@@ -308,6 +330,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     args = parse_args(argv)
     checkpoint = load_safe_checkpoint(resolve_path(args.checkpoint), map_location="cpu")
     checkpoint_config = AxonExperimentConfig.from_dict(dict(checkpoint["config"]))
+    del checkpoint
+    gc.collect()
     output_dir = resolve_path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -336,17 +360,16 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         checkpoint_config,
         feature_config,
     )
+    del train_rows
+    del val_rows
+    gc.collect()
     dropped_feature_count = 0
     if args.drop_base_prob_features:
         dropped_feature_count = 6
         train_x = train_x[:, dropped_feature_count:].astype(np.float32, copy=False)
         val_x = val_x[:, dropped_feature_count:].astype(np.float32, copy=False)
 
-    oof_rows = read_oof_rows(args.train_oof_predictions)
-    if args.max_train_rows is not None:
-        oof_rows = oof_rows[: int(args.max_train_rows)]
-    if len(oof_rows) != len(train_kept_rows):
-        raise ValueError(f"OOF row count mismatch: {len(oof_rows)} != {len(train_kept_rows)}")
+    oof_rows = read_oof_rows(args.train_oof_predictions, args.max_train_rows, expected_rows=len(train_kept_rows))
     oof_labels = _int_array(oof_rows, "label")
     if not np.array_equal(oof_labels, train_y):
         raise ValueError("OOF labels do not align with train rows")
@@ -357,6 +380,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     train_base_oof = _float_array(oof_rows, "base_oof_prob_malicious")
     train_candidate_oof = _float_array(oof_rows, "candidate_oof_prob_malicious")
     train_allow_oof = _float_array(oof_rows, "allow_oof_prob")
+    del oof_rows
+    del oof_labels
+    gc.collect()
     thresholds = parse_thresholds(args.thresholds)
     allow_thresholds = parse_thresholds(args.allow_thresholds)
     candidate_best = select_best_threshold(train_candidate_oof, train_y, thresholds)
@@ -389,8 +415,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     overlay_config = OverlayBoundaryConfig(cache_dir=str(resolve_path(args.overlay_boundary_cache_dir)))
     train_overlay = build_overlay_boundary_matrix(train_kept_rows, overlay_config)
     val_overlay = build_overlay_boundary_matrix(val_kept_rows, overlay_config)
-    train_candidate_x = np.hstack([train_x, train_overlay]).astype(np.float32, copy=False)
-    val_candidate_x = np.hstack([val_x, val_overlay]).astype(np.float32, copy=False)
+    del train_kept_rows
+    train_candidate_x = append_feature_columns(train_x, train_overlay)
+    val_candidate_x = append_feature_columns(val_x, val_overlay)
 
     base_specs = filter_model_candidates(model_candidates(int(args.seed)), args.base_model_candidate)
     candidate_specs = filter_model_candidates(model_candidates(int(args.seed)), args.candidate_model_candidate)
@@ -429,7 +456,15 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     if possible_train_x.shape[0] == 0 or len(np.unique(possible_train_y)) < 2:
         raise ValueError("Not enough two-class possible override rows for Loop70 override model")
     fit_with_optional_weights(override_model, possible_train_x, possible_train_y)
+    del possible_train_x
+    del possible_train_y
+    gc.collect()
     val_allow_scores = predict_scores(override_model, val_gate_x)
+    del train_gate_x
+    del val_gate_x
+    del train_overlay
+    del val_overlay
+    gc.collect()
     val_prev_pred, val_prev_scores, val_override = override_classifier_predictions(
         base_scores=val_base_scores,
         candidate_scores=val_candidate_scores,
@@ -472,7 +507,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     if not meta_candidates:
         raise ValueError("No Loop70 meta candidates selected")
 
-    fitted_results = []
+    best_key = None
+    selected = None
+    selected_model = None
+    selected_val_scores = None
     meta_reports = []
     for meta_name, prototype in meta_candidates:
         start = time.perf_counter()
@@ -490,15 +528,29 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             "delta_val_errors_vs_reference": int(val_best["errors"]) - int(args.reference_val_errors),
         }
         meta_reports.append(row)
-        fitted_results.append((float(val_best["f1"]), -int(val_best["errors"]), row, model, val_scores))
+        candidate_key = (float(val_best["f1"]), -int(val_best["errors"]))
+        if best_key is None or candidate_key > best_key:
+            if selected_model is not None:
+                del selected_model
+            if selected_val_scores is not None:
+                del selected_val_scores
+            best_key = candidate_key
+            selected = row
+            selected_model = model
+            selected_val_scores = val_scores.astype(np.float32, copy=True)
+        else:
+            del model
+            del val_scores
+        del train_scores
+        gc.collect()
         print(
             f"[loop70-val] {meta_name} f1={val_best['f1']:.6f} errors={val_best['errors']} "
             f"threshold={val_best['threshold']:.4f}",
             flush=True,
         )
 
-    fitted_results.sort(key=lambda item: (item[0], item[1]), reverse=True)
-    _best_f1, _neg_errors, selected, selected_model, selected_val_scores = fitted_results[0]
+    if selected is None or selected_model is None or selected_val_scores is None:
+        raise ValueError("No Loop70 meta candidate was fitted")
     selected_threshold = float(selected["val_best"]["threshold"])
     output_predictions = output_dir / "loop70_nested_oof_meta_val_predictions.csv"
     write_loop70_predictions(

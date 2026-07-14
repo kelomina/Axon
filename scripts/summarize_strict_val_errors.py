@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Summarize Val errors without path/name/directory grouping."""
+"""Summarize strict prediction errors without path/name/directory grouping."""
 
 from __future__ import annotations
 
@@ -19,9 +19,9 @@ def resolve_path(path: Path) -> Path:
     return path if path.is_absolute() else PROJECT_ROOT / path
 
 
-def read_rows(path: Path) -> list[dict[str, str]]:
+def iter_rows(path: Path):
     with resolve_path(path).open("r", encoding="utf-8-sig", newline="") as handle:
-        return list(csv.DictReader(handle))
+        yield from csv.DictReader(handle)
 
 
 def _float(value: object, default: float = 0.0) -> float:
@@ -38,9 +38,9 @@ def _int(value: object, default: int = 0) -> int:
         return default
 
 
-def error_type(row: dict[str, str], threshold: float) -> str:
+def error_type(row: dict[str, str], threshold: float, prob_column: str) -> str:
     label = _int(row.get("label"))
-    prob = _float(row.get("prob_malicious"))
+    prob = _float(row.get(prob_column))
     pred = 1 if prob >= threshold else 0
     if label == 0 and pred == 1:
         return "FP"
@@ -49,8 +49,8 @@ def error_type(row: dict[str, str], threshold: float) -> str:
     return ""
 
 
-def confidence_bucket(row: dict[str, str], kind: str, threshold: float) -> str:
-    prob = _float(row.get("prob_malicious"))
+def confidence_bucket(row: dict[str, str], kind: str, threshold: float, prob_column: str) -> str:
+    prob = _float(row.get(prob_column))
     if kind == "FP":
         if prob >= 0.90:
             return "fp_high_conf_ge_0.90"
@@ -64,41 +64,75 @@ def confidence_bucket(row: dict[str, str], kind: str, threshold: float) -> str:
     return f"fn_near_threshold_0.30_{threshold:.2f}"
 
 
-def summarize_errors(predictions_csv: Path, threshold: float) -> dict:
-    rows = read_rows(predictions_csv)
+def summarize_errors(
+    predictions_csv: Path,
+    threshold: float,
+    prob_column: str = "prob_malicious",
+    output_errors_csv: Optional[Path] = None,
+) -> dict:
     fp_probs: list[float] = []
     fn_probs: list[float] = []
     bucket_counts: Counter = Counter()
     examples = []
-    for row in rows:
-        kind = error_type(row, threshold)
-        if not kind:
-            continue
-        prob = _float(row.get("prob_malicious"))
-        if kind == "FP":
-            fp_probs.append(prob)
-        else:
-            fn_probs.append(prob)
-        bucket_counts[confidence_bucket(row, kind, threshold)] += 1
-        if len(examples) < 50:
-            examples.append(
-                {
-                    "error_type": kind,
-                    "sample_index": row.get("sample_index", ""),
-                    "split": row.get("split", ""),
-                    "label": row.get("label", ""),
-                    "source_sha256": row.get("source_sha256", ""),
-                    "prob_malicious": prob,
-                    "margin_to_threshold": abs(prob - threshold),
-                    "source_path": row.get("source_path", ""),
-                }
-            )
+    total_predictions = 0
+    error_writer = None
+    error_handle = None
+    if output_errors_csv is not None:
+        resolved_errors = resolve_path(output_errors_csv)
+        resolved_errors.parent.mkdir(parents=True, exist_ok=True)
+        error_handle = resolved_errors.open("w", encoding="utf-8", newline="")
+        error_fieldnames = [
+            "error_type",
+            "sample_index",
+            "split",
+            "label",
+            "source_sha256",
+            prob_column,
+            "threshold",
+            "margin_to_threshold",
+            "source_path",
+            "cache_path",
+        ]
+        error_writer = csv.DictWriter(error_handle, fieldnames=error_fieldnames, extrasaction="ignore", lineterminator="\n")
+        error_writer.writeheader()
+    try:
+        for row in iter_rows(predictions_csv):
+            total_predictions += 1
+            kind = error_type(row, threshold, prob_column)
+            if not kind:
+                continue
+            prob = _float(row.get(prob_column))
+            if kind == "FP":
+                fp_probs.append(prob)
+            else:
+                fn_probs.append(prob)
+            bucket_counts[confidence_bucket(row, kind, threshold, prob_column)] += 1
+            error_row = {
+                "error_type": kind,
+                "sample_index": row.get("sample_index", ""),
+                "split": row.get("split", ""),
+                "label": row.get("label", ""),
+                "source_sha256": row.get("source_sha256", ""),
+                prob_column: prob,
+                "threshold": float(threshold),
+                "margin_to_threshold": abs(prob - threshold),
+                "source_path": row.get("source_path", ""),
+                "cache_path": row.get("cache_path", ""),
+            }
+            if error_writer is not None:
+                error_writer.writerow(error_row)
+            if len(examples) < 50:
+                examples.append(error_row)
+    finally:
+        if error_handle is not None:
+            error_handle.close()
     total_errors = len(fp_probs) + len(fn_probs)
     return {
         "schema": "axon_strict_val_error_summary_v1",
         "predictions_csv": str(resolve_path(predictions_csv)),
         "threshold": float(threshold),
-        "total_predictions": len(rows),
+        "probability_column": prob_column,
+        "total_predictions": total_predictions,
         "error_count": total_errors,
         "false_positive_count": len(fp_probs),
         "false_negative_count": len(fn_probs),
@@ -114,6 +148,7 @@ def summarize_errors(predictions_csv: Path, threshold: float) -> dict:
         },
         "confidence_bucket_counts": dict(sorted(bucket_counts.items())),
         "error_examples": examples,
+        "errors_csv": str(resolve_path(output_errors_csv)) if output_errors_csv is not None else None,
         "identity_feature_policy": (
             "source_path and source_sha256 appear only so humans can locate rows after the summary; "
             "this summary does not group, rank, or decide by file name, path, directory, extension, hash, or sample_index."
@@ -122,16 +157,23 @@ def summarize_errors(predictions_csv: Path, threshold: float) -> dict:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Summarize strict Val errors without identity grouping.")
+    parser = argparse.ArgumentParser(description="Summarize strict prediction errors without identity grouping.")
     parser.add_argument("--predictions", type=Path, required=True)
     parser.add_argument("--threshold", type=float, required=True)
+    parser.add_argument("--prob-column", default="prob_malicious")
     parser.add_argument("--output-json", type=Path, required=True)
+    parser.add_argument("--output-errors-csv", type=Path, default=None)
     return parser
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
     args = build_parser().parse_args(argv)
-    payload = summarize_errors(args.predictions, float(args.threshold))
+    payload = summarize_errors(
+        args.predictions,
+        float(args.threshold),
+        prob_column=str(args.prob_column),
+        output_errors_csv=args.output_errors_csv,
+    )
     output_json = resolve_path(args.output_json)
     output_json.parent.mkdir(parents=True, exist_ok=True)
     output_json.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")

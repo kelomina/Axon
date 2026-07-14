@@ -11,6 +11,7 @@ fields only, never model features.
 from __future__ import annotations
 
 import argparse
+import gc
 import json
 import pickle
 import sys
@@ -52,6 +53,7 @@ from train_loop57_fn_overlay_gate import (  # noqa: E402
 )
 from train_stage2_cache_matrix import (  # noqa: E402
     FeatureConfig,
+    append_feature_columns,
     assert_stage2_feature_names_safe,
     build_matrix,
     filter_model_candidates,
@@ -296,6 +298,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     args = parse_args(argv)
     checkpoint = load_safe_checkpoint(resolve_path(args.checkpoint), map_location="cpu")
     checkpoint_config = AxonExperimentConfig.from_dict(dict(checkpoint["config"]))
+    del checkpoint
+    gc.collect()
     output_dir = resolve_path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -324,6 +328,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         checkpoint_config,
         feature_config,
     )
+    del train_rows
+    del val_rows
+    gc.collect()
     dropped_feature_count = 0
     if args.drop_base_prob_features:
         dropped_feature_count = 6
@@ -333,8 +340,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     overlay_config = OverlayBoundaryConfig(cache_dir=str(resolve_path(args.overlay_boundary_cache_dir)))
     train_overlay = build_overlay_boundary_matrix(train_kept_rows, overlay_config)
     val_overlay = build_overlay_boundary_matrix(val_kept_rows, overlay_config)
-    candidate_train_x = np.hstack([train_x, train_overlay]).astype(np.float32, copy=False)
-    candidate_val_x = np.hstack([val_x, val_overlay]).astype(np.float32, copy=False)
+    del train_kept_rows
+    candidate_train_x = append_feature_columns(train_x, train_overlay)
+    candidate_val_x = append_feature_columns(val_x, val_overlay)
     print(
         f"[matrix] base_train={train_x.shape} candidate_train={candidate_train_x.shape} val={val_x.shape}",
         flush=True,
@@ -359,6 +367,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         folds=folds,
         seed=int(args.seed),
     )
+    del _fitted_base_models
+    gc.collect()
     candidate_oof, candidate_val, fitted_candidate_models, candidate_reports_raw = oof_stage2_scores(
         train_x=candidate_train_x,
         train_y=train_y,
@@ -388,7 +398,13 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     if not override_candidates:
         raise ValueError("No override classifier candidates selected")
 
-    fitted_results = []
+    best_key = None
+    selected = None
+    selected_override_model = None
+    selected_allow_val_scores = None
+    selected_candidate_index = None
+    selected_candidate_val_scores = None
+    selected_override_feature_names = None
     candidate_reports = []
     for candidate_index, (candidate_name, _prototype) in enumerate(candidate_specs):
         candidate_train_scores = candidate_oof[:, candidate_index]
@@ -455,6 +471,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             try:
                 _fit_override_classifier(override_model, train_override_possible_x, train_override_possible_y)
             except ValueError as exc:
+                del override_model
                 override_model_reports.append(
                     {
                         "override_model": override_name,
@@ -502,20 +519,31 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 "delta_val_f1_vs_loop57_reference": float(val_best["f1"]) - float(args.reference_val_f1),
             }
             override_model_reports.append(report_row)
-            fitted_results.append(
-                (
-                    float(val_best["f1"]),
-                    -int(val_best["errors"]),
-                    -int(val_best["override_label0_count"]),
-                    int(val_best["override_label1_count"]),
-                    report_row,
-                    override_model,
-                    allow_val_scores,
-                    candidate_index,
-                    candidate_val_scores,
-                    override_feature_names,
-                )
+            candidate_key = (
+                float(val_best["f1"]),
+                -int(val_best["errors"]),
+                -int(val_best["override_label0_count"]),
+                int(val_best["override_label1_count"]),
             )
+            if best_key is None or candidate_key > best_key:
+                if selected_override_model is not None:
+                    del selected_override_model
+                if selected_allow_val_scores is not None:
+                    del selected_allow_val_scores
+                if selected_candidate_val_scores is not None:
+                    del selected_candidate_val_scores
+                best_key = candidate_key
+                selected = report_row
+                selected_override_model = override_model
+                selected_allow_val_scores = allow_val_scores.astype(np.float32, copy=True)
+                selected_candidate_index = candidate_index
+                selected_candidate_val_scores = candidate_val_scores.astype(np.float32, copy=True)
+                selected_override_feature_names = list(override_feature_names)
+            else:
+                del override_model
+                del allow_val_scores
+            del allow_train_scores
+            gc.collect()
             print(
                 f"[override-val] candidate={candidate_name} model={override_name} "
                 f"f1={val_best['f1']:.6f} errors={val_best['errors']} "
@@ -533,22 +561,19 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 "override_models": override_model_reports,
             }
         )
+        del train_override_x
+        del val_override_x
+        del train_override_possible_x
+        del train_override_possible_y
+        gc.collect()
 
-    if not fitted_results:
+    if selected is None or selected_override_model is None or selected_allow_val_scores is None:
         raise ValueError("No fitted override classifier results were produced")
-    fitted_results.sort(key=lambda item: (item[0], item[1], item[2], item[3]), reverse=True)
-    (
-        _best_f1,
-        _neg_errors,
-        _neg_label0_overrides,
-        _label1_overrides,
-        selected,
-        selected_override_model,
-        selected_allow_val_scores,
-        selected_candidate_index,
-        selected_candidate_val_scores,
-        override_feature_names,
-    ) = fitted_results[0]
+    if selected_candidate_index is None or selected_candidate_val_scores is None or selected_override_feature_names is None:
+        raise ValueError("Selected override classifier candidate is incomplete")
+    selected_candidate_model = fitted_candidate_models[int(selected_candidate_index)]
+    fitted_candidate_models = [selected_candidate_model]
+    override_feature_names = selected_override_feature_names
     selected_candidate_name = selected["candidate"]
     selected_candidate_threshold = float(selected["candidate_train_threshold"])
     selected_allow_threshold = float(selected["val_best"]["allow_threshold"])
@@ -582,7 +607,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 "schema": "axon_loop61_override_classifier_payload_v1",
                 # Keep Loop57-compatible names so the frozen evaluator can score Test-10k if Val passes.
                 "gate_model": selected_override_model,
-                "candidate_model": fitted_candidate_models[selected_candidate_index],
+                "candidate_model": selected_candidate_model,
                 "selected": selected,
                 "base_threshold": base_threshold,
                 "candidate_threshold": selected_candidate_threshold,

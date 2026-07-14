@@ -1,0 +1,276 @@
+{
+  "schema": "axon_loop166_phase_b1_step4096_recovery_contract_v2",
+  "loop_id": "loop166_code_section_foundation",
+  "claim_scope": "local_train_only_one_fail_closed_step4096_recovery_v2_continuation_not_model_quality",
+  "status": "source_closure_complete",
+  "authority": {
+    "user_directed_local_custody": true,
+    "public_key_required": false,
+    "external_signer_required": false,
+    "a2_or_a3_authority": false,
+    "val_test_or_full_authority": false,
+    "promotion_authority": false
+  },
+  "incident_binding": {
+    "path": "manifests/roadmap_9997/loop166_code_section_foundation/phase_b1_step4096_recovery_external_restart.json",
+    "sha256": "708e7c8c015dda2353c9ff4feb19e59130cfaa17b1de41d9eb4970c964fdfc9b"
+  },
+  "recovery_v1_failure_closure": {
+    "bindings": {
+      "incident": {
+        "path": "manifests/roadmap_9997/loop166_code_section_foundation/phase_b1_step4096_recovery_external_restart.json",
+        "sha256": "708e7c8c015dda2353c9ff4feb19e59130cfaa17b1de41d9eb4970c964fdfc9b"
+      },
+      "contract": {
+        "path": "manifests/roadmap_9997/loop166_code_section_foundation/phase_b1_step4096_recovery.json",
+        "sha256": "15d94c9ab63b75cdc56e11abf3d05f6e4eb54a5727eac3d9e849215ffcdd0391"
+      },
+      "authorization": {
+        "path": "manifests/roadmap_9997/loop166_code_section_foundation/phase_b1_step4096_recovery_authorization.json",
+        "sha256": "c156db642862b3362de615bf460cc6274f682c172d81ab1ccafac3a7da027f88"
+      },
+      "controller": {
+        "path": "scripts/run_loop166_phase_b1_step4096_recovery.py",
+        "sha256": "3ec5f8e8bc2987928dffa3a47da02a5f07db4228323f1b3748ac4498564c1ab0"
+      },
+      "windows_process_lineage": {
+        "path": "src/loop166/windows_process_lineage.py",
+        "sha256": "9bf5fa53c16a468e0fb1c990f9b83d01042d7aa700f42525e6c3ade4f0ba9599"
+      },
+      "recovery_tests": {
+        "path": "tests/test_loop166_phase_b1_step4096_recovery.py",
+        "sha256": "b251c0d17a7452c95b4034c31c48def9c1c34baa7382ce115e4b5bfaf65dc389"
+      },
+      "lineage_tests": {
+        "path": "tests/test_loop166_windows_process_lineage.py",
+        "sha256": "cb3bb05e14bd867dbbef3f75ef1bac63233095ff548e0833de9443df98d0dc78"
+      },
+      "consumed_marker": {
+        "path": "reports/roadmap_9997/loop166/phase_b1_step4096_recovery_consumed.json",
+        "sha256": "2108a4c963f4964da52733139e1bc182363ebfcb1c51093c00f96f751fa64e3b"
+      }
+    },
+    "permanently_absent_outputs": [
+      "models/roadmap_9997/loop166/phase_b1_step4096_recovered_tiny_mlm.pt",
+      "reports/roadmap_9997/loop166/phase_b1_step4096_recovery_report.json",
+      "reports/roadmap_9997/loop166/phase_b1_step4096_recovery_final_verify_receipt.json"
+    ],
+    "same_lease_retry_allowed": false,
+    "physical_raw_pass_completion_known": false
+  },
+  "origin_checkpoint_state": {
+    "completed_optimizer_steps": 4096,
+    "completed_sequence_count": 16384,
+    "next_permutation_cursor": 16384,
+    "permutation_prefix_original_bytes": 8200700,
+    "prepared_sequence_count": 115072,
+    "total_optimizer_steps": 28768,
+    "resume_pid": 0,
+    "checkpoint_cumulative_wall_seconds": 2554.2020570000022,
+    "exact_tensor_optimizer_scaler_rng_and_synthetic_logit_audit_required": true
+  },
+  "continuation": {
+    "resume_cursor": 16384,
+    "first_recovery_sequence_cursor": 16384,
+    "final_sequence_cursor": 115072,
+    "fresh_model_or_optimizer_initialization_allowed": false,
+    "fresh_tokenizer_fit_allowed": false,
+    "prefix_rewind_repeat_or_retrain_allowed": false,
+    "remaining_sequence_repeat_skip_or_padding_allowed": false,
+    "recipe_microbatch_precision_optimizer_or_schedule_change_allowed": false,
+    "durable_origin_cursor_lineage_exact": true,
+    "v2_suffix_cursor_lineage_exact": true,
+    "cross_attempt_physical_completion_exactness_claim_allowed": false
+  },
+  "raw_scope": {
+    "split_role": "train",
+    "outer_holdout_fold": 0,
+    "outer_holdout_raw_opens_allowed": 0,
+    "outer_holdout_raw_bytes_allowed": 0,
+    "outer_fit_folds": [1, 2, 3, 4],
+    "recovery_v2_full_fit_rebuild_passes_allowed": 1,
+    "same_lease_rescan_or_retry_allowed": false,
+    "final_verify_raw_access_allowed": false
+  },
+  "raw_pass_accounting": {
+    "original_confirmed_full_fit_raw_passes": 1,
+    "recovery_v1_full_fit_raw_passes": {
+      "minimum": 0,
+      "maximum": 1,
+      "status": "unknown",
+      "charged_full_pass_equivalents": 1
+    },
+    "recovery_v2_authorized_full_fit_raw_passes": 1,
+    "successful_completed_full_fit_raw_passes": {
+      "minimum": 2,
+      "maximum": 3,
+      "exact": false
+    },
+    "successful_charged_full_fit_raw_pass_equivalents": 3,
+    "physical_completion_count_exact": false,
+    "recovery_parent_or_preflight_raw_passes_allowed": 0,
+    "recovery_worker_raw_passes_allowed": 1,
+    "final_verifier_raw_passes_allowed": 0
+  },
+  "process_lineage": {
+    "maximum_allowed_intermediate_processes": 1,
+    "broad_ancestor_or_name_only_acceptance_allowed": false,
+    "child_default_or_self_reported_executable_allowed": false,
+    "windows_venv_redirector_is_the_only_allowed_intermediate_process": true,
+    "all_processes_must_remain_in_supervisor_job": true
+  },
+  "resource_gates": {
+    "checkpoint_cumulative_wall_seconds": 2554.2020570000022,
+    "prior_failed_handoff_debit_seconds": 300.0,
+    "v1_marker_parent_elapsed_seconds": 1.329434699997364,
+    "v1_marker_cumulative_wall_seconds": 2855.5314916999996,
+    "conservative_external_restart_debit_seconds": 900.0,
+    "recovery_budget_base_seconds": 3755.5314916999996,
+    "maximum_cumulative_wall_seconds": 28800.0,
+    "maximum_recovery_v2_elapsed_seconds": 25044.4685083,
+    "budget_reset_allowed": false,
+    "any_gate_failure_action": "phase_b1_step4096_recovery_v2_resource_gate_fail"
+  },
+  "raw_progress_ledger": {
+    "path": "reports/roadmap_9997/loop166/phase_b1_step4096_recovery_v2_raw_progress.jsonl",
+    "record_schema": "axon_loop166_raw_progress_ledger_record_v1",
+    "genesis_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "creation_policy": "atomic_O_EXCL_before_first_raw_intent",
+    "append_only": true,
+    "fsync_each_record": true,
+    "reopen_or_resume_allowed": false,
+    "raw_or_token_payload_allowed": false,
+    "successful_status_required": "complete",
+    "successful_terminal_record_count": 16000
+  },
+  "detached_supervisor": {
+    "required": true,
+    "launch_receipt": "reports/roadmap_9997/loop166/phase_b1_step4096_recovery_v2_launch_receipt.json",
+    "exit_receipt": "reports/roadmap_9997/loop166/phase_b1_step4096_recovery_v2_exit_receipt.json",
+    "stdout_log": "reports/roadmap_9997/loop166/phase_b1_step4096_recovery_v2_stdout.log",
+    "stderr_log": "reports/roadmap_9997/loop166/phase_b1_step4096_recovery_v2_stderr.log",
+    "launch_schema": "axon_loop166_phase_b1_step4096_recovery_v2_supervisor_launch_v1",
+    "exit_schema": "axon_loop166_phase_b1_step4096_recovery_v2_supervisor_exit_v1",
+    "timeout_seconds": 25044.0,
+    "maximum_combined_log_bytes": 67108864,
+    "creation_sequence": "create_suspended_assign_verify_receipt_fsync_resume",
+    "job_object_policy": "windows_kill_on_job_close",
+    "breakaway_allowed": false,
+    "controller_must_bind_launch_receipt_before_marker": true,
+    "internal_workers_must_remain_in_same_job": true
+  },
+  "one_shot_recovery_lease": {
+    "lease_id": "loop166-b1-step4096-recovery-v2",
+    "consumption_marker": "reports/roadmap_9997/loop166/phase_b1_step4096_recovery_v2_consumed.json",
+    "consume_before_any_raw_open": true,
+    "overwrite_delete_rename_or_reuse_marker_allowed": false,
+    "failed_attempt_consumes_lease": true,
+    "same_lease_process_or_raw_retry_allowed": false
+  },
+  "handoff_nonce": {
+    "minimum_entropy_bits": 256,
+    "direct_cli_value_allowed": false,
+    "plaintext_persistence_allowed": false,
+    "final_verify_must_prove_nonce_possession": true
+  },
+  "artifact_policy": {
+    "old_artifact_overwrite_delete_or_reuse_allowed": false,
+    "origin_tokenizer_read_only": true,
+    "origin_checkpoint_read_only": true,
+    "raw_progress_ledger_overwrite_delete_or_reuse_allowed": false
+  },
+  "forbidden": {
+    "outer_holdout_raw_access": true,
+    "val_test_or_full_access": true,
+    "quality_metrics": true,
+    "threshold_operations": true,
+    "original_artifact_mutation": true,
+    "public_key_dependency": true,
+    "same_lease_retry": true,
+    "raw_or_token_payload_persistence": true
+  },
+  "required_success_invariants": {
+    "origin_artifact_closure_unchanged": true,
+    "outer_holdout_raw_opens": 0,
+    "outer_holdout_raw_bytes": 0,
+    "recovery_v2_full_fit_raw_passes": 1,
+    "completed_full_fit_raw_passes_minimum": 2,
+    "completed_full_fit_raw_passes_maximum": 3,
+    "charged_full_fit_raw_pass_equivalents": 3,
+    "physical_completion_count_exact": false,
+    "raw_progress_ledger_complete": true,
+    "supervisor_launch_receipt_bound": true,
+    "raw_compact_and_shuffle_commitments_match": true,
+    "resume_cursor_started_at": 16384,
+    "final_cursor": 115072,
+    "final_optimizer_steps": 28768,
+    "dropped_content_tokens": 0,
+    "dropped_original_bytes": 0,
+    "overlength_windows_excluded": 0,
+    "quality_metrics_computed": false,
+    "threshold_operations_performed": false,
+    "final_verify_raw_access": false,
+    "pass_decision": "phase_b1_completed_via_authorized_step4096_recovery_v2_after_v1_external_termination",
+    "failure_decision": "phase_b1_step4096_recovery_v2_resource_gate_fail"
+  },
+  "recovery_execution_closure": {
+    "controller": {
+      "path": "scripts/run_loop166_phase_b1_step4096_recovery_v2.py",
+      "sha256": "08b65b7f9f39e43da49cd7dabe3b3f5733da538596449167d88d08cec1978ded"
+    },
+    "windows_process_lineage": {
+      "path": "src/loop166/windows_process_lineage.py",
+      "sha256": "9bf5fa53c16a468e0fb1c990f9b83d01042d7aa700f42525e6c3ade4f0ba9599"
+    },
+    "raw_progress_ledger": {
+      "path": "src/loop166/raw_progress_ledger.py",
+      "sha256": "e71e37bb86728c9cc49d9a0f8c214e9a99ffe77a1eb75cc7d33e70ac616c00d8"
+    },
+    "supervisor": {
+      "path": "scripts/run_loop166_phase_b1_step4096_recovery_v2_supervisor.py",
+      "sha256": "6d5e1568bc14c8e08868dadcc66de2b748fa390fc5040df8ac6433fd7d5738f1"
+    },
+    "windows_job": {
+      "path": "src/loop166/windows_job.py",
+      "sha256": "251d03ea98bfbf8384225a9691a23fb0c3e515dc5b204e40d303f2914f853620"
+    },
+    "powershell_launcher": {
+      "path": "scripts/run_loop166_phase_b1_step4096_recovery_v2_detached.ps1",
+      "sha256": "d6040cb9af9a05738dae15618dc62006f09bdfae8a5e0fe05f9d1c0951a567ad"
+    },
+    "contract_tests": {
+      "path": "tests/test_loop166_phase_b1_step4096_recovery_v2.py",
+      "sha256": "23cd31fa9783998e53c1b29c38d4bfc55ea100dd749e90a1bddbda17ef11ce47"
+    },
+    "lineage_tests": {
+      "path": "tests/test_loop166_windows_process_lineage.py",
+      "sha256": "cb3bb05e14bd867dbbef3f75ef1bac63233095ff548e0833de9443df98d0dc78"
+    },
+    "raw_progress_ledger_tests": {
+      "path": "tests/test_loop166_raw_progress_ledger.py",
+      "sha256": "0b64054afc1c5d643cde3f23dc012914ce9339409877c4e4cc6b68c152526141"
+    },
+    "supervisor_tests": {
+      "path": "tests/test_loop166_recovery_v2_supervisor.py",
+      "sha256": "6e6fe3e664c3d724d2154a358d7c044f3064a893d9449af607896a3aca1c81d6"
+    },
+    "windows_job_tests": {
+      "path": "tests/test_loop166_windows_job.py",
+      "sha256": "e0324e5213779e0fb81372e5ce256794efa52ed181897b4aa21b80a3ac0d5bf2"
+    },
+    "run_allowed_with_pending_binding": false,
+    "binding_drift_action": "fail_before_recovery_lease_consumption_or_raw_open"
+  },
+  "ready_for": {
+    "recovery_execution": true,
+    "final_verify_execution": true,
+    "five_fold_oof": false,
+    "val_test_or_full": false,
+    "promotion": false,
+    "blocked_by": []
+  },
+  "decision": "allow_one_step4096_recovery_v2_continuation_after_v1_external_termination",
+  "research_champion": "Loop151",
+  "target_f1": 0.9997,
+  "target_achieved": false
+}

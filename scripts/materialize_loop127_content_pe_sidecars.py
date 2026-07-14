@@ -9,9 +9,9 @@ import json
 import sys
 import time
 from collections import Counter
-from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures import FIRST_COMPLETED, ProcessPoolExecutor, wait
 from pathlib import Path
-from typing import Optional, Sequence
+from typing import Iterable, Optional, Sequence
 
 import numpy as np
 
@@ -26,23 +26,30 @@ from kvd_features.content_pe_v1 import CONTENT_PE_FEATURE_NAMES, _content_pe_fea
 from train_stage2_cache_matrix import (  # noqa: E402
     CONTENT_PE_V2_FEATURE_NAMES,
     _content_pe_v2_features_from_path,
+    is_valid_source_sha256,
     resolve_path,
     save_feature_npz_atomic,
+    verify_content_row_source_sha256,
 )
 
 
 REQUIRED_COLUMNS = ["source_path", "source_sha256", "cache_path", "label", "split", "sample_index"]
+MAX_FAILURE_EXAMPLES = 10
 
 
 def is_valid_sha256(value: object) -> bool:
-    text = str(value or "").strip().casefold()
-    return len(text) == 64 and all(char in "0123456789abcdef" for char in text)
+    return is_valid_source_sha256(value)
 
 
-def read_prediction_rows(path: Path) -> tuple[list[dict[str, str]], list[str]]:
+def iter_prediction_rows(path: Path) -> Iterable[dict[str, str]]:
+    with resolve_path(path).open("r", encoding="utf-8-sig", newline="") as handle:
+        yield from csv.DictReader(handle)
+
+
+def read_prediction_fieldnames(path: Path) -> list[str]:
     with resolve_path(path).open("r", encoding="utf-8-sig", newline="") as handle:
         reader = csv.DictReader(handle)
-        return list(reader), list(reader.fieldnames or [])
+        return list(reader.fieldnames or [])
 
 
 def _load_valid_cached_features(cache_path: Path, expected_dim: int) -> np.ndarray | None:
@@ -60,12 +67,16 @@ def _load_valid_cached_features(cache_path: Path, expected_dim: int) -> np.ndarr
     return features
 
 
-def _validate_rows(rows: Sequence[dict[str, str]], fieldnames: Sequence[str], expected_split: str) -> dict:
+def _audit_prediction_rows(path: Path, expected_split: str) -> tuple[dict, set[str]]:
+    fieldnames = read_prediction_fieldnames(path)
     missing_columns = [column for column in REQUIRED_COLUMNS if column not in fieldnames]
     issue_counts: Counter[str] = Counter()
     seen_sha: dict[str, str] = {}
     seen_index: set[str] = set()
-    for row in rows:
+    source_sha_set: set[str] = set()
+    row_count = 0
+    for row in iter_prediction_rows(path):
+        row_count += 1
         split = str(row.get("split") or "").strip()
         label = str(row.get("label") or "").strip()
         sha = str(row.get("source_sha256") or "").strip().casefold()
@@ -76,6 +87,8 @@ def _validate_rows(rows: Sequence[dict[str, str]], fieldnames: Sequence[str], ex
             issue_counts["invalid_label"] += 1
         if not is_valid_sha256(sha):
             issue_counts["invalid_source_sha256"] += 1
+        else:
+            source_sha_set.add(sha)
         if not sample_index.isdigit():
             issue_counts["invalid_sample_index"] += 1
         elif sample_index in seen_index:
@@ -90,34 +103,38 @@ def _validate_rows(rows: Sequence[dict[str, str]], fieldnames: Sequence[str], ex
                 issue_counts["duplicate_source_sha256"] += 1
     if missing_columns:
         issue_counts["missing_required_columns"] += 1
-    return {
-        "rows": len(rows),
-        "missing_columns": missing_columns,
-        "issue_counts": dict(sorted(issue_counts.items())),
-        "ready_for_materialization": not any(
-            key in issue_counts
-            for key in [
-                "unexpected_split",
-                "invalid_label",
-                "invalid_source_sha256",
-                "invalid_sample_index",
-                "duplicate_sample_index",
-                "missing_required_columns",
-            ]
-        ),
-    }
+    return (
+        {
+            "rows": row_count,
+            "missing_columns": missing_columns,
+            "issue_counts": dict(sorted(issue_counts.items())),
+            "ready_for_materialization": not any(
+                key in issue_counts
+                for key in [
+                    "unexpected_split",
+                    "invalid_label",
+                    "invalid_source_sha256",
+                    "invalid_sample_index",
+                    "duplicate_sample_index",
+                    "missing_required_columns",
+                ]
+            ),
+        },
+        source_sha_set,
+    )
 
 
-def _unique_rows_by_sha(rows: Sequence[dict[str, str]]) -> list[dict[str, str]]:
-    seen = set()
-    unique = []
-    for row in rows:
-        sha = str(row.get("source_sha256") or "").strip().casefold()
-        if not is_valid_sha256(sha) or sha in seen:
+def _overlap_summary(train_sha: set[str], val_sha: set[str]) -> tuple[int, list[str], int]:
+    smaller, larger = (train_sha, val_sha) if len(train_sha) <= len(val_sha) else (val_sha, train_sha)
+    overlap_count = 0
+    examples: list[str] = []
+    for sha in smaller:
+        if sha not in larger:
             continue
-        seen.add(sha)
-        unique.append(row)
-    return unique
+        overlap_count += 1
+        if len(examples) < MAX_FAILURE_EXAMPLES:
+            examples.append(sha)
+    return overlap_count, sorted(examples), len(train_sha) + len(val_sha) - overlap_count
 
 
 def _build_one(payload: tuple[dict[str, str], str, str, bool]) -> dict:
@@ -139,6 +156,13 @@ def _build_one(payload: tuple[dict[str, str], str, str, bool]) -> dict:
     if not source_path.is_file():
         result["failed"] = True
         result["failure_reason"] = "source_path_missing_or_not_file"
+        return result
+    try:
+        source_path, sha = verify_content_row_source_sha256(row)
+        result["source_sha256"] = sha
+    except ValueError as exc:
+        result["failed"] = True
+        result["failure_reason"] = str(exc)
         return result
 
     specs = [
@@ -178,6 +202,75 @@ def _build_one(payload: tuple[dict[str, str], str, str, bool]) -> dict:
     return result
 
 
+def _record_result(
+    result: dict,
+    counts: Counter[str],
+    zero_counts: Counter[str],
+    failure_examples: list[dict],
+) -> bool:
+    counts[f"v1_{result['v1_status']}"] += 1
+    counts[f"v2_{result['v2_status']}"] += 1
+    zero_counts["v1_zero"] += int(bool(result["v1_zero"]))
+    zero_counts["v2_zero"] += int(bool(result["v2_zero"]))
+    if result["failed"] and len(failure_examples) < MAX_FAILURE_EXAMPLES:
+        failure_examples.append(
+            {
+                "split": result["split"],
+                "sample_index": result["sample_index"],
+                "label": result["label"],
+                "source_sha256": result["source_sha256"],
+                "failure_reason": result["failure_reason"],
+            }
+        )
+    return bool(result["failed"])
+
+
+def _failure_result(row: dict[str, str], reason: str) -> dict:
+    return {
+        "source_sha256": str(row.get("source_sha256") or "").strip().casefold(),
+        "sample_index": str(row.get("sample_index") or ""),
+        "split": str(row.get("split") or ""),
+        "label": str(row.get("label") or ""),
+        "v1_status": "not_run",
+        "v2_status": "not_run",
+        "v1_zero": False,
+        "v2_zero": False,
+        "failed": True,
+        "failure_reason": reason,
+    }
+
+
+def _drain_completed(
+    pending: dict,
+    counts: Counter[str],
+    zero_counts: Counter[str],
+    failure_examples: list[dict],
+) -> tuple[dict, bool]:
+    done, _remaining = wait(set(pending), return_when=FIRST_COMPLETED)
+    had_failure = False
+    for future in done:
+        row = pending.pop(future)
+        try:
+            result = future.result()
+        except Exception as exc:
+            result = _failure_result(row, f"worker_exception:{type(exc).__name__}:{str(exc)[:300]}")
+        had_failure = _record_result(result, counts, zero_counts, failure_examples) or had_failure
+    return pending, had_failure
+
+
+def _drain_all(
+    pending: dict,
+    counts: Counter[str],
+    zero_counts: Counter[str],
+    failure_examples: list[dict],
+) -> bool:
+    had_failure = False
+    while pending:
+        pending, batch_failed = _drain_completed(pending, counts, zero_counts, failure_examples)
+        had_failure = had_failure or batch_failed
+    return had_failure
+
+
 def materialize_loop127_content_pe_sidecars(
     *,
     train_predictions: Path,
@@ -188,57 +281,74 @@ def materialize_loop127_content_pe_sidecars(
     workers: int = 4,
     refresh_invalid: bool = True,
 ) -> dict:
-    train_rows, train_fields = read_prediction_rows(train_predictions)
-    val_rows, val_fields = read_prediction_rows(val_predictions)
-    train_audit = _validate_rows(train_rows, train_fields, "train")
-    val_audit = _validate_rows(val_rows, val_fields, "val")
-    train_sha = {str(row.get("source_sha256") or "").strip().casefold() for row in train_rows if is_valid_sha256(row.get("source_sha256"))}
-    val_sha = {str(row.get("source_sha256") or "").strip().casefold() for row in val_rows if is_valid_sha256(row.get("source_sha256"))}
-    cross_split_overlap = sorted(train_sha & val_sha)
+    train_audit, train_sha = _audit_prediction_rows(train_predictions, "train")
+    val_audit, val_sha = _audit_prediction_rows(val_predictions, "val")
+    cross_split_overlap_count, cross_split_overlap_examples, unique_source_sha256_rows = _overlap_summary(
+        train_sha,
+        val_sha,
+    )
     blockers = []
     if not train_audit["ready_for_materialization"]:
         blockers.append("train_inputs_not_materializable")
     if not val_audit["ready_for_materialization"]:
         blockers.append("val_inputs_not_materializable")
-    if cross_split_overlap:
+    if cross_split_overlap_count:
         blockers.append("train_val_source_sha256_overlap")
 
-    unique_rows = _unique_rows_by_sha(train_rows + val_rows)
     content_pe_cache_dir = resolve_path(content_pe_cache_dir)
     content_pe_v2_cache_dir = resolve_path(content_pe_v2_cache_dir)
-    payloads = [(row, str(content_pe_cache_dir), str(content_pe_v2_cache_dir), bool(refresh_invalid)) for row in unique_rows]
     counts: Counter[str] = Counter()
     zero_counts: Counter[str] = Counter()
     failure_examples = []
-    results = []
     start = time.perf_counter()
     if blockers:
         pass
     else:
         worker_count = max(1, int(workers))
+        max_pending = max(1, worker_count * 8)
+        seen_materialized: set[str] = set()
+        materialization_failed = False
         if worker_count == 1:
-            iterator = map(_build_one, payloads)
-            for result in iterator:
-                results.append(result)
+            for path in (train_predictions, val_predictions):
+                for row in iter_prediction_rows(path):
+                    sha = str(row.get("source_sha256") or "").strip().casefold()
+                    if not is_valid_sha256(sha) or sha in seen_materialized:
+                        continue
+                    seen_materialized.add(sha)
+                    try:
+                        result = _build_one(
+                            (row, str(content_pe_cache_dir), str(content_pe_v2_cache_dir), bool(refresh_invalid))
+                        )
+                    except Exception as exc:
+                        result = _failure_result(row, f"worker_exception:{type(exc).__name__}:{str(exc)[:300]}")
+                    if _record_result(
+                        result,
+                        counts,
+                        zero_counts,
+                        failure_examples,
+                    ):
+                        materialization_failed = True
         else:
+            pending = {}
+            had_failure = False
             with ProcessPoolExecutor(max_workers=worker_count) as executor:
-                results = list(executor.map(_build_one, payloads, chunksize=32))
-        for result in results:
-            counts[f"v1_{result['v1_status']}"] += 1
-            counts[f"v2_{result['v2_status']}"] += 1
-            zero_counts["v1_zero"] += int(bool(result["v1_zero"]))
-            zero_counts["v2_zero"] += int(bool(result["v2_zero"]))
-            if result["failed"] and len(failure_examples) < 10:
-                failure_examples.append(
-                    {
-                        "split": result["split"],
-                        "sample_index": result["sample_index"],
-                        "label": result["label"],
-                        "source_sha256": result["source_sha256"],
-                        "failure_reason": result["failure_reason"],
-                    }
-                )
-        if any(result["failed"] for result in results):
+                for path in (train_predictions, val_predictions):
+                    for row in iter_prediction_rows(path):
+                        sha = str(row.get("source_sha256") or "").strip().casefold()
+                        if not is_valid_sha256(sha) or sha in seen_materialized:
+                            continue
+                        seen_materialized.add(sha)
+                        future = executor.submit(
+                            _build_one,
+                            (row, str(content_pe_cache_dir), str(content_pe_v2_cache_dir), bool(refresh_invalid)),
+                        )
+                        pending[future] = row
+                        if len(pending) >= max_pending:
+                            pending, batch_failed = _drain_completed(pending, counts, zero_counts, failure_examples)
+                            had_failure = had_failure or batch_failed
+                had_failure = _drain_all(pending, counts, zero_counts, failure_examples) or had_failure
+            materialization_failed = had_failure
+        if materialization_failed:
             blockers.append("sidecar_materialization_failures")
     elapsed = time.perf_counter() - start
 
@@ -256,10 +366,10 @@ def materialize_loop127_content_pe_sidecars(
         "refresh_invalid": bool(refresh_invalid),
         "train": train_audit,
         "val": val_audit,
-        "cross_split_source_sha256_overlap_count": len(cross_split_overlap),
-        "cross_split_source_sha256_overlap_examples": cross_split_overlap[:10],
-        "input_rows": len(train_rows) + len(val_rows),
-        "unique_source_sha256_rows": len(unique_rows),
+        "cross_split_source_sha256_overlap_count": cross_split_overlap_count,
+        "cross_split_source_sha256_overlap_examples": cross_split_overlap_examples,
+        "input_rows": int(train_audit["rows"]) + int(val_audit["rows"]),
+        "unique_source_sha256_rows": unique_source_sha256_rows,
         "counts": dict(sorted(counts.items())),
         "zero_counts": dict(sorted(zero_counts.items())),
         "failure_examples": failure_examples,

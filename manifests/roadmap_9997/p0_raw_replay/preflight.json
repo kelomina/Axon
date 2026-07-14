@@ -1,0 +1,29 @@
+{
+  "schema": "axon_roadmap_9997_preflight_v1",
+  "loop_id": "p0_raw_replay_001",
+  "preflight_role": "design_and_implementation_preflight",
+  "checks": {
+    "projectanalysis_doctor": "passed_with_node_25_2_1",
+    "truth_manifest_present": true,
+    "legacy_split_present": true,
+    "train_raw_sample_present": true,
+    "native_loop28_build_present": true,
+    "native_loop151_present": false,
+    "loop28_python_stage2_metadata_sidecar_present": true,
+    "server_owned_stage2_trust_manifest_present": true,
+    "logical_raw_root_bound_to_authorization": true,
+    "private_verified_raw_snapshot_required": true,
+    "complete_loop151_raw_dag_present": false,
+    "heavy_compute_requested": false,
+    "heldout_evaluation_requested": false,
+    "data_mutation_requested": false
+  },
+  "known_blockers": [
+    "Loop28 parity still must pass the frozen 1e-6 probability tolerance after guarded loading.",
+    "Loop127, Loop130, Loop134, and Loop136 only have historical models/evaluators, not one guarded per-file runtime.",
+    "Loop151 Authenticode evaluation consumes frozen prediction and signature CSVs rather than invoking a connected raw runtime.",
+    "A clean immutable execution bundle and A2/A3 authorization do not exist."
+  ],
+  "worktree_policy": "Record and hash relevant artifacts; do not revert unrelated changes. Dirty state blocks certification.",
+  "decision": "allow_A1_train_smoke_and_runner_tests_only"
+}

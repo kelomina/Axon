@@ -1,0 +1,212 @@
+{
+  "schema": "axon_loop28_onnx_operator_remediation_preflight_v1",
+  "loop_id": "p0_loop28_onnx_operator_remediation_001",
+  "generated_at_utc": "2026-07-11T22:43:46Z",
+  "lineage": {
+    "proposal": {
+      "path": "manifests/roadmap_9997/p0_loop28_onnx_operator_remediation/proposal.json",
+      "sha256": "21e0699a3c6ceb4667bdb1acd7152ebf0d3029fa9b9fb3908e532fbe93a70100"
+    },
+    "authorization": {
+      "path": "manifests/roadmap_9997/p0_loop28_onnx_operator_remediation/authorization.json",
+      "sha256": "ddfcf4a3cd3a2832bdc3cf8ed914ca5f319bd950ee8d1610f30729509cd0879c"
+    },
+    "amendment": {
+      "path": "manifests/roadmap_9997/p0_loop28_onnx_operator_remediation/preflight_amendment.json",
+      "sha256": "e8080061764a3312e09f353a192314f110e70b3e1f92ff354aeb0c3b8d970797"
+    },
+    "parent_closure": {
+      "path": "manifests/roadmap_9997/p0_loop28_onnx_fidelity/post_manifest.json",
+      "sha256": "e36b720de8a20d137d740712242e67f4a102857b2365fdd2fdb7c8c5b2a5b719"
+    },
+    "localization_evidence": {
+      "path": "reports/roadmap_9997/p0_loop28_onnx_fidelity/localization_evidence.final.json",
+      "sha256": "a3caf51b5354fb6c3725c09cb25bc2360ce91322934708e586d1bb576e72ced0"
+    }
+  },
+  "frozen_gate": {
+    "tolerance": 1e-06,
+    "topk_indices_exact_required": true,
+    "support_margin_guard": "pytorch_support_margin > 8 * measured_candidate_score_delta",
+    "tie_exception_allowed": false,
+    "gate_relaxation_allowed": false
+  },
+  "proof": {
+    "fixture_count": 4,
+    "shared_tied_occurrence": 15,
+    "shared_tied_node_index": 1739,
+    "fixture_proofs": [
+      {
+        "fixture": "pe32_numeric_resource_tls_callbacks",
+        "control_reproduced": true,
+        "route_count": 62,
+        "shared_blocking_route": {
+          "occurrence": 15,
+          "node_index": 1739,
+          "k": 4,
+          "query_count": 2048,
+          "exact_support_tie_count": 1,
+          "minimum_pytorch_support_margin": 0.0,
+          "margin_guard_multiplier": 8.0
+        },
+        "all_exact_support_ties": [
+          {
+            "occurrence": 15,
+            "node_index": 1739,
+            "k": 4,
+            "exact_support_tie_count": 1
+          },
+          {
+            "occurrence": 18,
+            "node_index": 2151,
+            "k": 12,
+            "exact_support_tie_count": 1
+          },
+          {
+            "occurrence": 19,
+            "node_index": 2194,
+            "k": 4,
+            "exact_support_tie_count": 1
+          }
+        ]
+      },
+      {
+        "fixture": "pe32_named_resource_tls_callbacks",
+        "control_reproduced": true,
+        "route_count": 62,
+        "shared_blocking_route": {
+          "occurrence": 15,
+          "node_index": 1739,
+          "k": 4,
+          "query_count": 2048,
+          "exact_support_tie_count": 1,
+          "minimum_pytorch_support_margin": 0.0,
+          "margin_guard_multiplier": 8.0
+        },
+        "all_exact_support_ties": [
+          {
+            "occurrence": 15,
+            "node_index": 1739,
+            "k": 4,
+            "exact_support_tie_count": 1
+          },
+          {
+            "occurrence": 19,
+            "node_index": 2194,
+            "k": 4,
+            "exact_support_tie_count": 1
+          }
+        ]
+      },
+      {
+        "fixture": "pe32_numeric_resource_zero_tls_callbacks",
+        "control_reproduced": true,
+        "route_count": 62,
+        "shared_blocking_route": {
+          "occurrence": 15,
+          "node_index": 1739,
+          "k": 4,
+          "query_count": 2048,
+          "exact_support_tie_count": 1,
+          "minimum_pytorch_support_margin": 0.0,
+          "margin_guard_multiplier": 8.0
+        },
+        "all_exact_support_ties": [
+          {
+            "occurrence": 15,
+            "node_index": 1739,
+            "k": 4,
+            "exact_support_tie_count": 1
+          },
+          {
+            "occurrence": 18,
+            "node_index": 2151,
+            "k": 12,
+            "exact_support_tie_count": 1
+          },
+          {
+            "occurrence": 19,
+            "node_index": 2194,
+            "k": 4,
+            "exact_support_tie_count": 1
+          }
+        ]
+      },
+      {
+        "fixture": "pe32_plus_named_resource_zero_tls_callbacks",
+        "control_reproduced": true,
+        "route_count": 62,
+        "shared_blocking_route": {
+          "occurrence": 15,
+          "node_index": 1739,
+          "k": 4,
+          "query_count": 2048,
+          "exact_support_tie_count": 1,
+          "minimum_pytorch_support_margin": 0.0,
+          "margin_guard_multiplier": 8.0
+        },
+        "all_exact_support_ties": [
+          {
+            "occurrence": 15,
+            "node_index": 1739,
+            "k": 4,
+            "exact_support_tie_count": 1
+          }
+        ]
+      }
+    ],
+    "formal_proof": {
+      "reference_support_margin": 0.0,
+      "candidate_score_delta_domain": "delta >= 0",
+      "frozen_guard": "margin > 8 * delta",
+      "reduced_guard": "0 > 8 * delta",
+      "evaluations": [
+        {
+          "candidate_score_delta": 0.0,
+          "left_margin": 0.0,
+          "right_bound": 0.0,
+          "strict_guard_passed": false
+        },
+        {
+          "candidate_score_delta": 1e-12,
+          "left_margin": 0.0,
+          "right_bound": 8e-12,
+          "strict_guard_passed": false
+        },
+        {
+          "candidate_score_delta": 1e-06,
+          "left_margin": 0.0,
+          "right_bound": 8e-06,
+          "strict_guard_passed": false
+        }
+      ],
+      "universal_result": "false for every delta >= 0",
+      "success_branch_reachable": false
+    }
+  },
+  "execution_audit": {
+    "checkpoint_load_count": 0,
+    "onnx_graph_load_count": 0,
+    "native_probe_subprocess_count": 0,
+    "candidate_graph_count": 0,
+    "lease_count": 0,
+    "raw_split_cache_heldout_access_count": 0,
+    "quality_metric_count": 0,
+    "f1_computation_count": 0
+  },
+  "next_route": {
+    "runtime_family": "pytorch_compatible_native_runtime",
+    "required_new_proposal": true,
+    "onnx_candidate_generation_forbidden": true,
+    "reuse_same_intermediate_and_topk_gates": true
+  },
+  "claim_boundary": {
+    "synthetic_static_preflight_claim_allowed": true,
+    "onnx_candidate_claim_allowed": false,
+    "population_parity_claim_allowed": false,
+    "quality_claim_allowed": false,
+    "raw_rerun_allowed": false,
+    "certification_claim_allowed": false
+  },
+  "decision": "operator_preflight_exact_tie_fallback_pytorch_native_no_execution"
+}

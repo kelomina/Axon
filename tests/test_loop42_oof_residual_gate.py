@@ -3,6 +3,7 @@ import pytest
 
 from scripts.train_loop42_oof_residual_gate import (
     RegionHashConfig,
+    align_external_scores,
     build_gate_score_features,
     gate_training_targets,
     oof_region_ngram_scores,
@@ -158,3 +159,29 @@ def test_oof_region_ngram_scores_aligns_fold_and_val_labels(monkeypatch: pytest.
     assert report["name"] == "region_byte_ngram_sgd"
     assert report["labels"].tolist() == [0, 1]
     assert len(report["folds"]) == 2
+
+
+def test_align_external_scores_streams_until_required_rows(tmp_path):
+    prediction_path = tmp_path / "predictions.csv"
+    prediction_path.write_text(
+        "sample_index,source_sha256,label,stage2_prob_malicious\n"
+        "skip,zzz,0,0.01\n"
+        "0,aaa,0,0.2\n"
+        "1,bbb,1,0.8\n"
+        "late,ccc,1,not-a-number\n",
+        encoding="utf-8",
+    )
+
+    scores, summary = align_external_scores(
+        rows=[
+            {"sample_index": "0", "source_sha256": "aaa", "label": "0"},
+            {"sample_index": "1", "source_sha256": "bbb", "label": "1"},
+        ],
+        prediction_path=prediction_path,
+        probability_column="stage2_prob_malicious",
+        key_column="sample_index",
+    )
+
+    np.testing.assert_allclose(scores, [0.2, 0.8])
+    assert summary["external_rows_scanned"] == 3
+    assert summary["matched_external_rows"] == 2

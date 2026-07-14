@@ -1,0 +1,12 @@
+{
+  "attempt_id": "p0_loop28_onnx_fidelity_001_attempt_001",
+  "consumed_at_utc": "2026-07-11T22:05:42Z",
+  "issued_at_utc": "2026-07-11T22:04:47Z",
+  "localization_authorization": {
+    "sha256": "96748cb281529886a3c15da9a8d2d1db361d97e5eb2ca2a5a2240bdfe8659bf5"
+  },
+  "loop_id": "p0_loop28_onnx_fidelity_001",
+  "original_lease_sha256": "46226d27bd5fd410436c391df07c054dc40016d293d2e434876225e18dc1251e",
+  "schema": "axon_loop28_onnx_fidelity_localization_lease_v1",
+  "status": "consumed_before_execution"
+}

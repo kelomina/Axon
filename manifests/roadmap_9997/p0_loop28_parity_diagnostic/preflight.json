@@ -1,0 +1,90 @@
+{
+  "schema": "axon_loop28_parity_diagnostic_preflight_v1",
+  "loop_id": "p0_loop28_parity_diagnostic_001",
+  "preflight_role": "static_preregistration_before_diagnostic_execution",
+  "parent_evidence": {
+    "truth_manifest": {
+      "path": "manifests/roadmap_9997/p0_truth_freeze/loop151_truth_manifest.json",
+      "sha256": "174861be850a681025a7040798c59b7157cc67ab5503437088359692dad5659d",
+      "sha256_verified": true
+    },
+    "train_smoke_receipt": {
+      "path": "manifests/roadmap_9997/p0_raw_replay/train_smoke_receipt.json",
+      "sha256": "3fbbd597dc14cf67a082203e680e83c1f521972e1bf1f36282ef847d9d4d2309",
+      "sha256_verified": true
+    },
+    "native_parity_receipt": {
+      "path": "manifests/roadmap_9997/p0_raw_replay/native_parity_receipt.json",
+      "sha256": "abeaeb0dd28060a09b7b23fbf0300b2ba6616ef040c4c4958f870aa5d13436b8",
+      "sha256_verified": true
+    },
+    "complete_replay_verify_receipt": {
+      "path": "manifests/roadmap_9997/p0_raw_replay/verify_receipt.json",
+      "sha256": "fc39b4a0289d4fc21955030157a8fb4beb437eba78d28dec6f5a665bcf0a5c94",
+      "sha256_verified": true
+    }
+  },
+  "current_facts": {
+    "truth_manifest_decision": "artifact_freeze_complete_raw_replay_pending",
+    "truth_manifest_blocker_count": 0,
+    "train_smoke_decision": "native_loop28_train_smoke_passed_full_loop151_blocked",
+    "complete_replay_verify_decision": "complete_loop151_raw_replay_blocked",
+    "sample_split": "train",
+    "sample_index": 0,
+    "sample_source_sha256": "09b6b8c80bc31846312bd6958e1d4bf1bcd72d25450d7f7dec2bce6ba81798cc",
+    "sample_size_bytes": 4218880,
+    "private_snapshot_sha_verified_in_parent_receipt": true,
+    "python_prediction": 0,
+    "native_prediction": 0,
+    "decision_match": true,
+    "python_base_prob_malicious": 0.059677254408597946,
+    "native_base_prob_malicious": 0.05981189,
+    "base_probability_delta": 0.00013463559140205333,
+    "python_stage2_prob_malicious": 0.00008279336255813035,
+    "native_stage2_prob_malicious": 0.00008765,
+    "stage2_probability_delta": 0.000004856637441869656,
+    "frozen_probability_tolerance": 0.000001,
+    "native_parity_decision": "native_loop28_parity_blocked"
+  },
+  "static_top3_candidates": [
+    {
+      "rank": 1,
+      "candidate": "feature_extraction_or_tensor_marshalling_drift",
+      "discriminator": "Compare keyed whole HMACs for byte, PE, and stat tensors first; drill only mismatched feature components into one-element HMAC blocks."
+    },
+    {
+      "rank": 2,
+      "candidate": "base_model_serialization_or_runtime_drift",
+      "discriminator": "Require all three input HMACs to match, then compare base-logit and probability HMACs between the Python checkpoint and ONNX Runtime."
+    },
+    {
+      "rank": 3,
+      "candidate": "stage2_feature_vector_or_hgb_numeric_drift",
+      "discriminator": "Compare the Stage-2 feature-vector HMAC and, if it matches, apply the frozen 1e-6 tolerance to Python-pickle versus native-JSON probabilities."
+    }
+  ],
+  "checks": {
+    "all_parent_sha256_values_match_current_files": true,
+    "single_train_identity_bound": true,
+    "heldout_raw_prediction_or_metric_access_requested": false,
+    "complete_split_metadata_identity_audit_requested": true,
+    "training_or_fitting_requested": false,
+    "data_cache_split_raw_model_or_onnx_mutation_requested": false,
+    "cpu_only": true,
+    "network_requests": 0,
+    "separate_run_authorization_present": false,
+    "one_shot_attempt_lease_present": false,
+    "hash_only_implementation_manifest_present": false,
+    "diagnostic_execution_performed": false,
+    "first_divergence_localized": false
+  },
+  "known_blockers": [
+    "The parent receipt reports a base probability delta of 0.00013463559140205333, above the frozen 1e-6 tolerance.",
+    "The parent receipt reports a Stage-2 probability delta of 0.000004856637441869656, above the frozen 1e-6 tolerance.",
+    "No final hash-only implementation manifest exists yet, so current implementation and binary hashes are not frozen.",
+    "No separate run authorization binds the final implementation manifest, generation, and output path.",
+    "Path hashes are reverified before receipt write, but same-handle artifact snapshots remain a later certification hardening requirement.",
+    "No diagnostic receipt exists, so the first divergent stage remains unknown."
+  ],
+  "decision": "allow_implementation_only_run_blocked_pending_final_hash_bound_authorization"
+}

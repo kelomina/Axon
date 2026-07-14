@@ -1,0 +1,115 @@
+{
+  "schema": "axon_loop166_phase_b0_resource_smoke_contract_v1",
+  "loop_id": "loop166_code_section_foundation",
+  "claim_scope": "local_train_only_outer_fit_subset_resource_smoke_not_model_quality",
+  "authority": {
+    "user_directed_local_custody": true,
+    "allowed_operation": "install_one_pinned_tokenizer_dependency_and_run_resource_smoke",
+    "public_key_required": false,
+    "a2_or_a3_authority": false
+  },
+  "bindings": {
+    "phase_a_decision": {
+      "path": "manifests/roadmap_9997/loop166_code_section_foundation/phase_a_decision.json",
+      "sha256": "8d4eadd530be1d09f7d5bd4e9594c6b2d223d046ca87fa0c46b778297a35253c"
+    },
+    "probe_bundle": {
+      "path": "reports/roadmap_9997/loop164/local_probe_bundle.jsonl",
+      "sha256": "90961bfed0460787e261965a3180e1b0569df0f9d275f9693daad1ccf53dc233"
+    },
+    "diagnostic_folds": {
+      "path": "reports/roadmap_9997/loop164/local_train_diagnostic_folds.jsonl",
+      "sha256": "00a31a1bd86d7b887447f3e86e5e753ebcaaee45be74311199332e073a3880a5"
+    },
+    "extractor": {
+      "path": "src/loop166/code_sections.py",
+      "sha256": "281a494ca5cabe2581a93733e218a181e2d11f579e109e221fc99c3ec215f607"
+    }
+  },
+  "dependency": {
+    "package": "tokenizers",
+    "version": "0.22.2",
+    "installation_scope": "existing_project_venv_runtime_only",
+    "project_dependency_manifest_change": false,
+    "additional_packages_allowed": "transitive_dependencies_of_exact_tokenizers_wheel_only"
+  },
+  "data_scope": {
+    "outer_holdout_fold": 0,
+    "holdout_raw_opens_allowed": 0,
+    "maximum_fit_records_opened": 64,
+    "selection": "probe_bundle_order_filtered_to_diagnostic_fold_not_equal_0_then_first_64",
+    "window_original_bytes": 512,
+    "maximum_windows_per_file": 8,
+    "window_selection": "nonoverlap_then_evenly_spaced_indices",
+    "sequence_overflow_policy": "lossless_bpe_token_chunking",
+    "raw_code_persistence": false
+  },
+  "tokenizer": {
+    "algorithm": "byte_bijective_bpe",
+    "base_alphabet": 256,
+    "merge_vocabulary": 1024,
+    "special_tokens": ["[PAD]", "[CLS]", "[SEP]", "[MASK]", "[UNK]"],
+    "expected_total_vocabulary": 1029,
+    "normalizer": "none",
+    "pre_tokenizer": "none",
+    "fit_scope": "selected_outer_fit_subset_only"
+  },
+  "model": {
+    "sequence_tokens": 512,
+    "layers": 6,
+    "hidden_dim": 384,
+    "heads": 6,
+    "ffn_dim": 1536,
+    "local_attention_window": 128,
+    "global_token_index": 0,
+    "dropout": 0.1,
+    "activation": "gelu",
+    "gradient_checkpointing": true,
+    "tied_input_output_embeddings": true,
+    "minimum_parameters": 10000000,
+    "maximum_parameters": 15000000
+  },
+  "training": {
+    "objective": "masked_language_modeling_resource_only",
+    "mask_ratio": 0.25,
+    "optimizer": "adamw",
+    "learning_rate": 0.0002,
+    "weight_decay": 0.01,
+    "microbatch": 2,
+    "gradient_accumulation_steps": 2,
+    "optimizer_steps": 8,
+    "gradient_clip_norm": 1.0,
+    "precision": "amp_fp16",
+    "gradient_scaler_initial_scale": 128.0,
+    "gradient_scaler_growth_interval": 1000,
+    "seed": 166,
+    "quality_metric_allowed": false,
+    "threshold_operation_allowed": false
+  },
+  "resource_gates": {
+    "maximum_wall_seconds": 600,
+    "maximum_cuda_allocated_bytes": 8000000000,
+    "maximum_cuda_reserved_bytes": 8000000000,
+    "maximum_process_rss_bytes": 12000000000,
+    "minimum_original_bytes_per_training_second": 2000,
+    "minimum_optimizer_steps": 8,
+    "nonfinite_allowed": 0,
+    "oom_allowed": 0,
+    "original_byte_coverage_exact_required": true,
+    "atomic_checkpoint_required": true,
+    "checkpoint_roundtrip_exact_logits_required": true
+  },
+  "forbidden": {
+    "val_test_or_full_access": true,
+    "outer_holdout_raw_access": true,
+    "labels_as_model_inputs": true,
+    "identity_as_model_inputs": true,
+    "quality_or_f1_claim": true,
+    "five_fold_oof_claim": true,
+    "promotion_claim": true
+  },
+  "decision": "install_pinned_tokenizers_then_implement_and_run_phase_b0_only",
+  "research_champion": "Loop151",
+  "target_f1": 0.9997,
+  "target_achieved": false
+}

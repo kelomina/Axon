@@ -1,0 +1,65 @@
+{
+  "schema": "axon_frontier_source_manifest_v1",
+  "verified_at_utc": "2026-07-12T06:20:00Z",
+  "verification_method": "Direct git ls-remote against the official repositories plus review of the repository README and linked paper metadata; no dependency was installed and no external code was executed.",
+  "sources": [
+    {
+      "id": "malconv2",
+      "role": "primary_algorithm_reference",
+      "repository": "https://github.com/FutureComputing4AI/MalConv2",
+      "verified_head": "b5a865420e984b22a2474834bd1748318e84b553",
+      "paper": "https://arxiv.org/abs/2012.09390",
+      "publication": "AAAI 2021",
+      "verified_claims": [
+        "LowMemConv processes extreme-length byte sequences in chunks with fixed-memory pooling.",
+        "Global Channel Gating is intended to capture interactions across distant regions of the input.",
+        "The upstream repository labels itself research-quality and documents a faulty non-negative training option, so Axon must not copy it without project-native tests and review."
+      ]
+    },
+    {
+      "id": "ember2024",
+      "role": "temporal_tabular_and_challenge_benchmark",
+      "repository": "https://github.com/FutureComputing4AI/EMBER2024",
+      "verified_head": "0ef753e81d98bf209f71b03cd331dfc190b5b54d",
+      "paper": "https://arxiv.org/abs/2506.05074",
+      "publication": "KDD 2025",
+      "verified_claims": [
+        "The dataset contains 3.2 million files across six formats.",
+        "The benchmark uses 52 training weeks followed by 12 test weeks rather than a random split.",
+        "Feature version 3 includes PE data directories, Authenticode, parser warnings, byte statistics, and string statistics.",
+        "A separate evasive challenge set is provided."
+      ]
+    },
+    {
+      "id": "tesseract",
+      "role": "evaluation_protocol_reference",
+      "repository": "https://github.com/s2labres/tesseract-ml-release",
+      "verified_head": "05132c83eccaa0be24b5403bfe9a73c22199ddef",
+      "paper": "https://www.usenix.org/conference/usenixsecurity19/presentation/pendlebury",
+      "publication": "USENIX Security 2019",
+      "verified_claims": [
+        "Random malware splits can induce temporal and spatial evaluation bias.",
+        "The reference implementation provides time-aware splits and AUT-style time-robustness evaluation."
+      ]
+    },
+    {
+      "id": "nebula",
+      "role": "deferred_dynamic_expert_reference",
+      "repository": "https://github.com/dtrizna/nebula",
+      "verified_head": "3d3b97e5b079d64371224db3dcfbdf175975e90d",
+      "paper": "https://arxiv.org/abs/2310.10664",
+      "publication": "IEEE TIFS 2024",
+      "verified_claims": [
+        "Nebula models tokenized dynamic behavior traces rather than using timeout as a benign rule.",
+        "The repository exposes Speakeasy trace extraction, pretrained objects, and per-sample entry-point aggregation.",
+        "Axon's previous timeout downgrade failure does not invalidate a future behavior-sequence expert, but trace coverage and failure semantics must be rebuilt."
+      ]
+    }
+  ],
+  "selection_implications": {
+    "selected_now": "MalConv2-style whole-file byte expert behind strict group-aware OOF and a residual fusion gate.",
+    "parallel_prerequisite": "EMBER2024/TESSERACT-style temporal evaluation reset and independent Loop157 annotations.",
+    "deferred": "Time-causal reputation and Nebula-style dynamic behavior remain higher-cost connected-system experts after the static diversity gate.",
+    "not_selected": "Another 8192/32768-prefix MHDSRA run, signer-term expansion, probability-only selector, byte n-gram linear micro-blend, or Speakeasy timeout downgrade."
+  }
+}

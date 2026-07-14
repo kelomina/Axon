@@ -1,0 +1,217 @@
+{
+  "schema": "axon_loop166_phase_b1_step4096_recovery_v2_failure_v1",
+  "loop_id": "loop166_code_section_foundation",
+  "recorded_at": "2026-07-13T20:58:10+08:00",
+  "claim_scope": "local_train_only_forensic_failure_closure_not_model_quality",
+  "status": "incomplete_fail_closed_nonfinite_gradient_after_complete_authorized_raw_scan_and_partial_durable_checkpoint",
+  "decision": "phase_b1_step4096_recovery_v2_failed_closed_nonfinite_gradient_after_complete_fit_scan_and_partial_checkpoint",
+  "failure_observation": {
+    "category": "nonfinite_gradient_norm_under_frozen_bpe1024_mlm_recipe",
+    "worker_exception_type": "B1FatalError",
+    "worker_exception_message": "B1 training produced a non-finite gradient norm",
+    "parent_exception_type": "RecoveryFatalError",
+    "parent_exception_message": "Bound Phase B1 recovery worker failed with exit code 1",
+    "controller_returncode": 1,
+    "supervisor_decision": "supervisor_controller_nonzero_exit_fail_closed",
+    "supervisor_started_at_utc": "2026-07-13T11:48:27.066135Z",
+    "supervisor_finished_at_utc": "2026-07-13T12:45:08.774909Z",
+    "last_durable_optimizer_step": 8192,
+    "next_scheduled_checkpoint_step": 12288,
+    "failure_attempted_step_minimum": 8193,
+    "failure_attempted_step_maximum": 12288,
+    "exact_failure_step_proven": false,
+    "resource_gate_failure_proven": false,
+    "timeout_proven": false,
+    "external_restart_proven": false,
+    "supervisor_failure_proven": false
+  },
+  "frozen_contract_failure_mapping": {
+    "contract_failure_decision": "phase_b1_step4096_recovery_v2_resource_gate_fail",
+    "applicable_to_observed_failure": false,
+    "reason": "The frozen contract names only the resource-gate branch; the observed exception is a distinct preregistered nonfinite kill condition.",
+    "frozen_contract_must_not_be_rewritten": true
+  },
+  "source_closure": {
+    "contract": {
+      "path": "manifests/roadmap_9997/loop166_code_section_foundation/phase_b1_step4096_recovery_v2.json",
+      "sha256": "aaca7c9bd24711da5637e0be1f969859f04db480a20ff5b811e5d7db02ac5657"
+    },
+    "authorization": {
+      "path": "manifests/roadmap_9997/loop166_code_section_foundation/phase_b1_step4096_recovery_v2_authorization.json",
+      "sha256": "81acfaeea2049d8079e7ab8d6af485adb02becca5567f9d8dd0abd2b483ba540"
+    },
+    "controller": {
+      "path": "scripts/run_loop166_phase_b1_step4096_recovery_v2.py",
+      "sha256": "08b65b7f9f39e43da49cd7dabe3b3f5733da538596449167d88d08cec1978ded"
+    },
+    "controller_tests": {
+      "path": "tests/test_loop166_phase_b1_step4096_recovery_v2.py",
+      "sha256": "23cd31fa9783998e53c1b29c38d4bfc55ea100dd749e90a1bddbda17ef11ce47"
+    },
+    "raw_progress_ledger_source": {
+      "path": "src/loop166/raw_progress_ledger.py",
+      "sha256": "e71e37bb86728c9cc49d9a0f8c214e9a99ffe77a1eb75cc7d33e70ac616c00d8"
+    },
+    "windows_job_source": {
+      "path": "src/loop166/windows_job.py",
+      "sha256": "251d03ea98bfbf8384225a9691a23fb0c3e515dc5b204e40d303f2914f853620"
+    },
+    "supervisor": {
+      "path": "scripts/run_loop166_phase_b1_step4096_recovery_v2_supervisor.py",
+      "sha256": "6d5e1568bc14c8e08868dadcc66de2b748fa390fc5040df8ac6433fd7d5738f1"
+    },
+    "powershell_launcher": {
+      "path": "scripts/run_loop166_phase_b1_step4096_recovery_v2_detached.ps1",
+      "sha256": "d6040cb9af9a05738dae15618dc62006f09bdfae8a5e0fe05f9d1c0951a567ad"
+    },
+    "unchanged_before_and_after_supervisor": true
+  },
+  "lease_closure": {
+    "lease_id": "loop166-b1-step4096-recovery-v2",
+    "path": "reports/roadmap_9997/loop166/phase_b1_step4096_recovery_v2_consumed.json",
+    "sha256": "bb684dbe772caf95c2fa959663a71fec6fe9ccf1ee473f77adb9956dd8a3d612",
+    "consumed": true,
+    "failed_attempt_consumes_lease": true,
+    "same_lease_retry_resume_or_rescan_allowed": false,
+    "delete_overwrite_rename_or_reuse_allowed": false
+  },
+  "raw_progress_ledger": {
+    "path": "reports/roadmap_9997/loop166/phase_b1_step4096_recovery_v2_raw_progress.jsonl",
+    "sha256": "14a2f2a11ac157e27d13cf24aae37e310ad91ea3735fea4169c0c8570e1e5a2c",
+    "validation_status": "complete",
+    "line_count": 32002,
+    "terminal_record_count": 16000,
+    "raw_open_attempts": 15988,
+    "raw_open_successes": 15988,
+    "raw_bytes_read": 19239582561,
+    "corpus_commitment_sha256": "880b9cb7a79f5253b4d7562280baeb9e8543ccae6f89791a8a97a3da91159ffc",
+    "final_record_sha256": "51ee9446ac3af97590b3a940b4114eff8c9b9da05d58dc873b58073ac4fc4dc4",
+    "outer_holdout_raw_opens": 0,
+    "outer_holdout_raw_bytes": 0,
+    "contains_raw_or_token_payload": false,
+    "immutable": true
+  },
+  "raw_pass_accounting": {
+    "original_confirmed_full_fit_raw_passes": 1,
+    "recovery_v1_physical_full_fit_raw_passes_minimum": 0,
+    "recovery_v1_physical_full_fit_raw_passes_maximum": 1,
+    "recovery_v1_charged_full_pass_equivalents": 1,
+    "recovery_v2_confirmed_complete_full_fit_raw_passes": 1,
+    "recovery_v2_charged_full_pass_equivalents": 1,
+    "physical_completed_full_fit_raw_passes_minimum": 2,
+    "physical_completed_full_fit_raw_passes_maximum": 3,
+    "physical_completed_full_fit_raw_passes_exact": false,
+    "charged_full_fit_raw_pass_equivalents": 3
+  },
+  "partial_checkpoint": {
+    "path": "models/roadmap_9997/loop166/phase_b1_step4096_recovery_v2_tiny_mlm.pt",
+    "sha256": "9077217b48c062733c5f505bbd3668f5f9ab5031e61285fbaa13208906301704",
+    "schema": "axon_loop166_phase_b1_tiny_mlm_checkpoint_v1",
+    "completed_optimizer_steps": 8192,
+    "total_optimizer_steps": 28768,
+    "completed_sequence_count": 32768,
+    "next_permutation_cursor": 32768,
+    "prepared_sequence_count": 115072,
+    "permutation_prefix_original_bytes": 16405658,
+    "cumulative_wall_seconds": 7053.1366560999995,
+    "checkpoint_recorded_nonfinite_events": 0,
+    "checkpoint_precedes_observed_nonfinite_event": true,
+    "weights_only_structural_and_finite_validation_passed": true,
+    "fresh_restore_synthetic_logits_bit_exact": true,
+    "forensic_validation_is_not_final_verify_receipt": true,
+    "final_verified": false,
+    "phase_b1_completion_checkpoint": false,
+    "resume_authorized": false,
+    "promotion_eligible": false,
+    "immutable": true
+  },
+  "scan_and_compact_accounting": {
+    "source_unavailable": 12,
+    "extraction_success": 14359,
+    "extraction_missing": 1641,
+    "prepared_sequence_count": 115072,
+    "compact_original_bytes": 57614320,
+    "dropped_content_tokens": 0,
+    "dropped_original_bytes": 0,
+    "overlength_windows_excluded": 0
+  },
+  "supervisor_closure": {
+    "launch_receipt": {
+      "path": "reports/roadmap_9997/loop166/phase_b1_step4096_recovery_v2_launch_receipt.json",
+      "sha256": "230ed5c4439b8d13176813f20c3096bfe5a5665c6579774f772f7a42fb3150fc"
+    },
+    "exit_receipt": {
+      "path": "reports/roadmap_9997/loop166/phase_b1_step4096_recovery_v2_exit_receipt.json",
+      "sha256": "53349114f0d7bd4b339307f3b2e0bc89d6ea40af7ce623841ab46fd46600631d"
+    },
+    "stdout_log": {
+      "path": "reports/roadmap_9997/loop166/phase_b1_step4096_recovery_v2_stdout.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size_bytes": 0
+    },
+    "stderr_log": {
+      "path": "reports/roadmap_9997/loop166/phase_b1_step4096_recovery_v2_stderr.log",
+      "sha256": "efd75b921c63c177ca10eec14c8030cbddbdc737cb93e183b0c7f5e1435b376e",
+      "size_bytes": 2098
+    },
+    "job_tree_empty_after_exit": true,
+    "timeout_termination": false,
+    "logs_within_cap": true,
+    "source_closure_unchanged": true,
+    "matching_recovery_processes_after_exit": 0
+  },
+  "absent_success_artifacts": [
+    {
+      "path": "reports/roadmap_9997/loop166/phase_b1_step4096_recovery_v2_report.json",
+      "exists": false,
+      "must_not_be_backfilled": true
+    },
+    {
+      "path": "reports/roadmap_9997/loop166/phase_b1_step4096_recovery_v2_final_verify_receipt.json",
+      "exists": false,
+      "must_not_be_backfilled": true
+    }
+  ],
+  "immutable_paths": [
+    "reports/roadmap_9997/loop166/phase_b1_step4096_recovery_v2_consumed.json",
+    "reports/roadmap_9997/loop166/phase_b1_step4096_recovery_v2_raw_progress.jsonl",
+    "models/roadmap_9997/loop166/phase_b1_step4096_recovery_v2_tiny_mlm.pt",
+    "reports/roadmap_9997/loop166/phase_b1_step4096_recovery_v2_launch_receipt.json",
+    "reports/roadmap_9997/loop166/phase_b1_step4096_recovery_v2_exit_receipt.json",
+    "reports/roadmap_9997/loop166/phase_b1_step4096_recovery_v2_stdout.log",
+    "reports/roadmap_9997/loop166/phase_b1_step4096_recovery_v2_stderr.log"
+  ],
+  "prohibited_claims": [
+    "phase_b1_complete",
+    "resource_cell_passed",
+    "model_quality_observed",
+    "f1_observed",
+    "threshold_selected",
+    "phase_c_authorized",
+    "five_fold_authorized",
+    "heldout_access_authorized",
+    "promotion_authorized"
+  ],
+  "future_authority_required": {
+    "current_bpe1024_mlm_recipe_retired": true,
+    "v2_retry_or_resume_possible": false,
+    "future_work_requires_new_loop_or_recipe_contract": true,
+    "new_contract_authorization_marker_ledger_and_output_paths_required": true,
+    "partial_checkpoint_may_be_used_without_new_authority": false,
+    "public_key_required_for_local_train_only_fallback": false
+  },
+  "ready_for": {
+    "phase_b1_complete": false,
+    "phase_c": false,
+    "five_fold_oof": false,
+    "val": false,
+    "test10k": false,
+    "legacy_full_test": false,
+    "promotion": false,
+    "certification": false
+  },
+  "research_champion": "Loop151",
+  "target_f1": 0.9997,
+  "target_achieved": false,
+  "promotion_evidence": false
+}

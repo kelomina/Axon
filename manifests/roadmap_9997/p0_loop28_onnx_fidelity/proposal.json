@@ -1,0 +1,139 @@
+{
+  "schema": "axon_loop28_onnx_fidelity_proposal_v1",
+  "loop_id": "p0_loop28_onnx_fidelity_001",
+  "created_at_utc": "2026-07-11T21:29:56Z",
+  "parent_closure": {
+    "path": "manifests/roadmap_9997/p0_loop28_parity_remediation/post_remediation_manifest.json",
+    "sha256": "005e3a37866818dc915cb4b0244ac6659c7f73ee647c336eb857f4220016e55d",
+    "decision": "synthetic_pre_run_blocked_closure_frozen_no_raw_execution"
+  },
+  "objective": "Localize the first reproducible PyTorch-to-frozen-ONNX activation divergence on the four frozen synthetic PE fixtures, determine whether discrete routing changes amplify kernel-level drift, and select a canonical native runtime path without opening any dataset, split, cache, prediction, or quality evidence.",
+  "scientific_questions": [
+    "Does the known PE32 failure and PE32+ pass reproduce under an independently instrumented ORT_DISABLE_ALL session?",
+    "Which semantic activation boundary first exceeds the frozen 1e-6 absolute tolerance?",
+    "Do any TopK routing indices diverge before the final byte representation diverges?",
+    "Is the frozen ONNX lineage sufficiently specified and numerically stable to remain the preferred deployment representation?"
+  ],
+  "parent_observation": {
+    "fixture_count": 4,
+    "pe32_failed": 3,
+    "pe32_plus_passed": 1,
+    "base_probability_max_absolute_delta": 0.0074248304705810675,
+    "stage2_probability_max_absolute_delta": 0.041100940333939406,
+    "base_inputs_exact": true,
+    "frozen_tolerance": 0.000001
+  },
+  "fixture_matrix": [
+    {
+      "name": "pe32_numeric_resource_tls_callbacks",
+      "pe_plus": false,
+      "named_resource": false,
+      "tls_callbacks": true,
+      "positive_control": "must_fail_base_probability_gate"
+    },
+    {
+      "name": "pe32_named_resource_tls_callbacks",
+      "pe_plus": false,
+      "named_resource": true,
+      "tls_callbacks": true,
+      "positive_control": "must_fail_base_probability_gate"
+    },
+    {
+      "name": "pe32_numeric_resource_zero_tls_callbacks",
+      "pe_plus": false,
+      "named_resource": false,
+      "tls_callbacks": false,
+      "positive_control": "must_fail_base_probability_gate"
+    },
+    {
+      "name": "pe32_plus_named_resource_zero_tls_callbacks",
+      "pe_plus": true,
+      "named_resource": true,
+      "tls_callbacks": false,
+      "positive_control": "must_pass_base_probability_gate"
+    }
+  ],
+  "probe_plan": {
+    "phase_1": "Compare byte encoder, PE projector, stat projector, fusion, classifier, logits, and every per-chunk input-projection/QKV/out-projection module boundary.",
+    "phase_2": "Compare every exported TopK value and index tensor, retaining exact index mismatch evidence and float32 ULP summaries.",
+    "mapping_basis": "Frozen ONNX node metadata namespaces plus deterministic PyTorch module hooks and torch.topk call order.",
+    "runtime_determinism_repeats": 3,
+    "graph_optimization": "ORT_DISABLE_ALL",
+    "intra_op_threads": 1,
+    "inter_op_threads": 1,
+    "execution_mode": "ORT_SEQUENTIAL"
+  },
+  "read_allowlist": [
+    "manifests/roadmap_9997/p0_loop28_parity_remediation/post_remediation_manifest.json",
+    "manifests/roadmap_9997/p0_loop28_parity_remediation/synthetic_pre_run_blocked.json",
+    "models/random_20w_8192/best_model.pt",
+    "models/random_20w_8192/axon_loop28_base.onnx",
+    "models/random_20w_8192/axon_loop28_base.onnx.data",
+    "models/random_20w_8192/axon_loop28_base.onnx.json",
+    "tools/axon_onnx_dll/build/bin/Release/onnxruntime.dll",
+    "scripts/export_onnx_model.py",
+    "tests/test_native_loop28_parity_source.py",
+    "src/config.py",
+    "src/model.py",
+    "src/security.py",
+    "src/predict_api.py",
+    "src/kvd_features/**",
+    "src/dsra/**"
+  ],
+  "write_allowlist": [
+    "manifests/roadmap_9997/p0_loop28_onnx_fidelity/**",
+    "reports/roadmap_9997/p0_loop28_onnx_fidelity/**",
+    "scripts/diagnose_loop28_onnx_fidelity.py",
+    "scripts/build_loop28_onnx_fidelity_manifest.py",
+    "tests/test_diagnose_loop28_onnx_fidelity.py",
+    "tests/test_build_loop28_onnx_fidelity_manifest.py",
+    "tools/axon_onnx_fidelity/**"
+  ],
+  "forbidden": [
+    "reading or hashing any train, Val, Test-10k, full-test, certification, or other dataset raw identity or payload",
+    "reading any split metadata, cache row, heldout prediction, heldout metric, error row, or model-selection payload",
+    "training, fitting, fine-tuning, calibration, threshold search, feature selection, or candidate selection",
+    "mutating the checkpoint, frozen ONNX graph/data, Stage-2 model, native DLL, old remediation closure, old governance artifacts, goal.md, recommendations, or experiment journal",
+    "dependency installation, GPU execution, deployment, commit, push, F1 computation, or quality claim",
+    "relaxing the 1e-6 gate or using decision agreement as a substitute for probability fidelity"
+  ],
+  "budget": {
+    "max_implementation_generations": 1,
+    "max_fixture_count": 4,
+    "max_probe_profiles": 2,
+    "max_native_subprocesses": 12,
+    "runtime_determinism_repeats": 3,
+    "per_subprocess_timeout_seconds": 180,
+    "total_wall_clock_seconds": 2400,
+    "max_retained_output_bytes": 536870912,
+    "cpu_only": true,
+    "gpu_executions": 0,
+    "network_requests_during_execution": 0
+  },
+  "success_gate": {
+    "known_failure_positive_control_reproduced": true,
+    "known_pass_control_reproduced": true,
+    "first_divergence_boundary_localized": true,
+    "all_repeated_ort_outputs_bit_exact": true,
+    "input_hashes_stable": true,
+    "baseline_artifact_hashes_stable": true,
+    "raw_split_heldout_access_count": 0,
+    "quality_metric_count": 0
+  },
+  "exit_decisions": [
+    "localized_negative_no_raw",
+    "synthetic_fidelity_verified_raw_still_requires_new_authorization",
+    "invalid_positive_control_or_lineage_drift",
+    "budget_exhausted_no_claim"
+  ],
+  "claim_boundary": {
+    "synthetic_cross_runtime_localization_allowed": true,
+    "population_parity_claim_allowed": false,
+    "quality_claim_allowed": false,
+    "native_loop28_ready_claim_allowed": false,
+    "native_loop151_ready_claim_allowed": false,
+    "raw_rerun_allowed": false,
+    "certification_claim_allowed": false
+  },
+  "decision": "propose_synthetic_only_intermediate_activation_localization"
+}

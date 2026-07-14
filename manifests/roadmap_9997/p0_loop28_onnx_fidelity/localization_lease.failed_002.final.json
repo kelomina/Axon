@@ -1,0 +1,25 @@
+{
+  "administrative_reissue": {
+    "authorization_path": "manifests/roadmap_9997/p0_loop28_onnx_fidelity/localization_lease_reissue_authorization.json",
+    "authorization_sha256": "1d474bb546fc4d6120b71adc8b114bc80e7ccabd2d3c25f55e58e828807e9aad",
+    "environment_delta": {
+      "PYTHONPATH": "."
+    },
+    "failed_consumed_lease_path": "manifests/roadmap_9997/p0_loop28_onnx_fidelity/localization_lease.failed_001.final.json",
+    "failed_consumed_lease_sha256": "3d7509ccf8071d1e8d2545c5b883d9dcc4456c95f04ea189a00397e0fd8b1ab7",
+    "failure_receipt_path": "reports/roadmap_9997/p0_loop28_onnx_fidelity/localization_attempt_001_failure.json",
+    "failure_receipt_sha256": "a7c6d26d58a608cc534b5a044bd542e8b3ccc09b4915ca7d8a0e790d16e1c222",
+    "further_reissue_allowed": false,
+    "reissue_count": 1
+  },
+  "attempt_id": "p0_loop28_onnx_fidelity_001_attempt_001",
+  "consumed_at_utc": "2026-07-11T22:09:33Z",
+  "issued_at_utc": "2026-07-11T22:08:47Z",
+  "localization_authorization": {
+    "sha256": "96748cb281529886a3c15da9a8d2d1db361d97e5eb2ca2a5a2240bdfe8659bf5"
+  },
+  "loop_id": "p0_loop28_onnx_fidelity_001",
+  "original_lease_sha256": "83d402d0cbd1587c469919dc679f2b3155b2ea8efa2ab8ecf1d6af1ed9f30a5a",
+  "schema": "axon_loop28_onnx_fidelity_localization_lease_v1",
+  "status": "consumed_before_execution"
+}

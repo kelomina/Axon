@@ -9,7 +9,7 @@
 使用方法：
     from kvd_features.extractor import extract_all_features
     
-    byte_seq, pe_features, stat_features, orig_len = extract_all_features(file_path)
+    byte_seq, pe_features, stat_features, lightweight_features, orig_len = extract_all_features(file_path)
 """
 
 from .extractor import (
@@ -19,6 +19,7 @@ from .extractor import (
     extract_statistical_features,
     extract_lightweight_features,
     PEFeatureExtractor,
+    ExtractionConfig,
 )
 
 __all__ = [
@@ -28,4 +29,5 @@ __all__ = [
     'extract_statistical_features',
     'extract_lightweight_features',
     'PEFeatureExtractor',
+    'ExtractionConfig',
 ]

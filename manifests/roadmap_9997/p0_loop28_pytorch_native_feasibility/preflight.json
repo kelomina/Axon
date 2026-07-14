@@ -1,0 +1,132 @@
+{
+  "schema": "axon_loop28_pytorch_native_feasibility_preflight_v1",
+  "loop_id": "p0_loop28_pytorch_native_feasibility_001",
+  "generated_at_utc": "2026-07-11T22:56:00Z",
+  "lineage": {
+    "proposal": {
+      "path": "manifests/roadmap_9997/p0_loop28_pytorch_native_feasibility/proposal.json",
+      "sha256": "6b7af1c9d9db275041a924e9f275705a20fdc708edc84130343434f7eac8a5e4"
+    },
+    "authorization": {
+      "path": "manifests/roadmap_9997/p0_loop28_pytorch_native_feasibility/authorization.json",
+      "sha256": "e4ee1b84bf9abba5efb172047b1b5ad8d7b28fb8bc863f401457192e6ed96589"
+    },
+    "parent_closure": {
+      "path": "manifests/roadmap_9997/p0_loop28_onnx_operator_remediation/post_manifest.json",
+      "sha256": "4eae028bdffa0683b273bfadf4ac46df6cb7388c3742dd6222b28fafb9056e6e"
+    }
+  },
+  "python_surface": {
+    "version": "3.14.4",
+    "executable": {
+      "path": "vnev/Scripts/python.exe",
+      "sha256": "4b8c3912806b3c1591ba3cb403bff77ad309c3fe5756f87c20b7a6f8f0174262"
+    },
+    "base_prefix": "C:/Users/Saika/AppData/Local/Python/pythoncore-3.14-64",
+    "python_import_library": {
+      "path": "C:/Users/Saika/AppData/Local/Python/pythoncore-3.14-64/libs/python314.lib",
+      "sha256": "d3e1766f345719f4fc11e3d49f87d42f767e4d7c00928370b6d300fe75bcb0d4"
+    },
+    "python_runtime": {
+      "path": "C:/Users/Saika/AppData/Local/Python/pythoncore-3.14-64/python314.dll",
+      "sha256": "a07f7d09c3121492bb066535c6d0811df5fbc2090cbca7031a97bb47ce1480c9"
+    },
+    "python_header": {
+      "path": "C:/Users/Saika/AppData/Local/Python/pythoncore-3.14-64/Include/Python.h",
+      "sha256": "efc2bc60c85031e8803fa5f5cf126f22958b275027a3de6ce17230e1d69fd228"
+    }
+  },
+  "torch_surface": {
+    "version": "2.12.0+cu132",
+    "commit": "7661cd9c6b841b62b7f411aa52ec51f05457263b",
+    "cpu_capability": "AVX512",
+    "cxx_standard": 202002,
+    "python_aoti_compile_api_present": true,
+    "python_aoti_load_api_present": true,
+    "torch_export_api_present": true,
+    "torchscript_trace_api_present": true,
+    "files": {
+      "torch_init": {
+        "path": "vnev/Lib/site-packages/torch/__init__.py",
+        "sha256": "b508de5a66ebc368fc8fa2161b1e0e88ae0034d9d9540e7c020460237a5464a9"
+      },
+      "inductor_init": {
+        "path": "vnev/Lib/site-packages/torch/_inductor/__init__.py",
+        "sha256": "0c1c784834917349c8bbf15ad3f15d947db138c07f0f7bf1c26e69492ac1b7f9"
+      },
+      "torch_c_extension": {
+        "path": "vnev/Lib/site-packages/torch/_C.cp314-win_amd64.pyd",
+        "sha256": "7810a83139fd5afad154182009fe0c02a9aaad933d60c2858b94a52f75048bd3"
+      },
+      "torch_config": {
+        "path": "vnev/Lib/site-packages/torch/share/cmake/Torch/TorchConfig.cmake",
+        "sha256": "9183cac26b1aef3339fe1ca208393b783f5ed534a866e16a2f9432d693504221"
+      },
+      "aoti_package_loader_header": {
+        "path": "vnev/Lib/site-packages/torch/include/torch/csrc/inductor/aoti_package/model_package_loader.h",
+        "sha256": "8fcd0f2123717b3a0f366244438e3c05053f729fc3a4152e65a0924309d2c7c5"
+      }
+    },
+    "import_libraries": {
+      "torch": "29d1371ffc604de7170c9536163bc7feb992dabb493ecd2438c5edf32712c8dd",
+      "torch_cpu": "94cc0220cc9d081507cb48af935d7d13ff6985b8e30a4c5fbf0332675b551974",
+      "torch_python": "0f78c351060fe54e28f9a465bfccbe39c4a6bd9c8e812688197912e2b164d8c1",
+      "c10": "095d726718b801aa440b8c3b768646cc10421d27d9c8dc9b9fc3f6bfd0c68657"
+    },
+    "runtime_libraries": {
+      "torch.dll": "8fb17215db80b7903a859ece29541b34180a64a7c2fff9f296199025c4502f1b",
+      "torch_cpu.dll": "1478079cdda83716237ba1599feeb148b47315e1113f051f0c534008ace2ad3e",
+      "torch_python.dll": "d217b392b9a7ddc1ebc4bcc4dae9c4d8df34ca21238712cbf9a1e2e2025f234b",
+      "c10.dll": "db80085f12c30fd2ae4521efdbbe850fdc8818978c03197697b520318ef02a20",
+      "libiomp5md.dll": "2299b0460e8118e8187fd57a8d17df836c2a3d59f2639c3681582070da66b7be"
+    }
+  },
+  "compiler_surface": {
+    "cmake_version": "4.2.3-msvc3",
+    "cmake_generator": "Visual Studio 18 2026",
+    "msvc_toolset": "14.51.36231",
+    "files": {
+      "cmake": {
+        "path": "C:/Program Files/Microsoft Visual Studio/18/Insiders/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/bin/cmake.exe",
+        "sha256": "d8173552e9d943c20feadd74d0437371f49d45c3d53a20dae2655ecc2493392c"
+      },
+      "cl": {
+        "path": "C:/Program Files/Microsoft Visual Studio/18/Insiders/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/cl.exe",
+        "sha256": "68844528d5917d57057a2196f610b71a30273b83af57fd519a8c3fcc14c8de4c"
+      },
+      "link": {
+        "path": "C:/Program Files/Microsoft Visual Studio/18/Insiders/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/link.exe",
+        "sha256": "d09a4f7c32a49891cedf79cec718e41ec57a008dfd6a26b11927889303be8e48"
+      },
+      "vcvars64": {
+        "path": "C:/Program Files/Microsoft Visual Studio/18/Insiders/VC/Auxiliary/Build/vcvars64.bat",
+        "sha256": "6b516d8fcf543c14b2d861e1f45661e0029230fe0dc48e86ce78522801822209"
+      }
+    }
+  },
+  "risk_register": {
+    "aoti_cpp_header_present": true,
+    "aoti_python_api_present": true,
+    "torch_python_import_library_present": true,
+    "python_development_surface_present": true,
+    "aoti_loader_link_symbol_unproven": true,
+    "windows_aoti_compile_support_unproven": true,
+    "python_runtime_dependency_may_remain": true,
+    "windows_loader_temp_cleanup_risk": "The PyTorch 2.12 Windows AOTI package loader may use the process TEMP directory itself as temp_dir_ and recursively remove it at destruction.",
+    "required_temp_containment": {
+      "python_aoti_loader_must_run_in_child_process": true,
+      "cpp_aoti_loader_must_run_in_child_process": true,
+      "TEMP_and_TMP": "one newly created empty work-root-confined directory per child",
+      "output_directory_must_be_outside_TEMP": true,
+      "canonical_containment_must_be_verified_before_launch": true,
+      "expected_after_loader_destruction": "only the disposable TEMP directory may be absent",
+      "normal_user_TEMP_use_forbidden": true
+    },
+    "required_resolution": "Build separate LibTorch-control and AOTI-loader targets. A LibTorch pass with an AOTI link failure selects the predeclared C++ loader surface-missing exit without packaging a tiny model. If linking succeeds, no AOTI load may occur until the implementation manifest binds the child-process TEMP containment guard."
+  },
+  "forbidden_project_artifact_access_count": 0,
+  "checkpoint_or_onnx_load_count": 0,
+  "gpu_execution_count": 0,
+  "network_request_count": 0,
+  "decision": "tiny_native_toolchain_surface_ready_for_single_implementation"
+}

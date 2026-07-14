@@ -1,11 +1,16 @@
 from __future__ import annotations
 
+import hashlib
 import struct
 
 import numpy as np
+import pytest
 
+from scripts import train_loop46_cert_structure as loop46
 from scripts.train_loop46_cert_structure import (
     CERT_STRUCTURE_FEATURE_NAMES,
+    CertStructureConfig,
+    build_cert_structure_matrix,
     cert_structure_features_from_blob,
 )
 
@@ -37,6 +42,10 @@ def _oid_value(text: str) -> bytes:
 def _win_cert(payload: bytes) -> bytes:
     total_len = len(payload) + 8
     return struct.pack("<IHH", total_len, 0x0200, 0x0002) + payload
+
+
+def _sha256_bytes(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()
 
 
 def test_cert_structure_features_parse_oid_and_time():
@@ -79,3 +88,81 @@ def test_cert_structure_feature_names_are_identity_safe():
         any(fragment in name for fragment in forbidden_fragments)
         for name in CERT_STRUCTURE_FEATURE_NAMES
     )
+
+
+def test_build_cert_structure_matrix_preallocates_stable_width(monkeypatch):
+    def fake_features(row, _cache_dir):
+        return np.full(len(CERT_STRUCTURE_FEATURE_NAMES), float(row["value"]), dtype=np.float32)
+
+    monkeypatch.setattr(loop46, "cert_structure_features_for_row", fake_features)
+
+    matrix = build_cert_structure_matrix(
+        [{"source_sha256": "a" * 64, "value": 1}, {"source_sha256": "b" * 64, "value": 2}],
+        CertStructureConfig(cache_dir=None),
+    )
+
+    assert matrix.shape == (2, len(CERT_STRUCTURE_FEATURE_NAMES))
+    assert matrix.dtype == np.float32
+    assert matrix[0, 0] == 1.0
+    assert matrix[1, 0] == 2.0
+
+
+def test_cert_structure_cache_path_rejects_invalid_source_sha256(tmp_path):
+    with pytest.raises(ValueError, match="invalid source_sha256"):
+        loop46._cert_structure_cache_path(
+            {"source_path": str(tmp_path / "sample.exe"), "source_sha256": "../escape"},
+            str(tmp_path / "cache"),
+        )
+
+    assert not (tmp_path / "escape.npz").exists()
+
+
+def test_cert_structure_cache_path_is_namespaced(tmp_path):
+    source_sha = "a" * 64
+    cache_path = loop46._cert_structure_cache_path(
+        {"source_path": str(tmp_path / "sample.exe"), "source_sha256": source_sha},
+        str(tmp_path / "cache"),
+    )
+
+    assert cache_path is not None
+    assert cache_path.name == f"cert_structure_v1_{source_sha}.npz"
+
+
+def test_cert_structure_features_reject_source_sha256_mismatch_before_writing(tmp_path, monkeypatch):
+    source_path = tmp_path / "sample.exe"
+    source_path.write_bytes(b"actual-content")
+    wrong_sha = _sha256_bytes(b"different-content")
+    cache_dir = tmp_path / "cache"
+
+    def fail_if_extractor_is_called(_path):
+        raise AssertionError("extractor should not run when source_sha256 mismatches source_path bytes")
+
+    monkeypatch.setattr(loop46, "cert_structure_features_from_path", fail_if_extractor_is_called)
+
+    with pytest.raises(ValueError, match="source_sha256_mismatch"):
+        loop46.cert_structure_features_for_row(
+            {"source_path": str(source_path), "source_sha256": wrong_sha},
+            str(cache_dir),
+        )
+
+    assert not (cache_dir / f"{wrong_sha}.npz").exists()
+
+
+def test_cert_structure_features_reject_existing_cache_when_source_sha256_mismatches(tmp_path, monkeypatch):
+    source_path = tmp_path / "sample.exe"
+    source_path.write_bytes(b"actual-content")
+    wrong_sha = _sha256_bytes(b"different-content")
+    cache_dir = tmp_path / "cache"
+    row = {"source_path": str(source_path), "source_sha256": wrong_sha}
+    cache_path = loop46._cert_structure_cache_path(row, str(cache_dir))
+    assert cache_path is not None
+    cache_path.parent.mkdir(parents=True, exist_ok=True)
+    np.savez(cache_path, features=np.ones(len(CERT_STRUCTURE_FEATURE_NAMES), dtype=np.float32))
+
+    def fail_if_extractor_is_called(_path):
+        raise AssertionError("extractor should not run when source_sha256 mismatches source_path bytes")
+
+    monkeypatch.setattr(loop46, "cert_structure_features_from_path", fail_if_extractor_is_called)
+
+    with pytest.raises(ValueError, match="source_sha256_mismatch"):
+        loop46.cert_structure_features_for_row(row, str(cache_dir))

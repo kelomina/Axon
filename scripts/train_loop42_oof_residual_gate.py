@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import gc
 import json
 import pickle
 import sys
@@ -49,6 +50,7 @@ from train_loop44_region_byte_ngram import (  # noqa: E402
 )
 from train_stage2_cache_matrix import (  # noqa: E402
     FeatureConfig,
+    append_feature_columns,
     assert_stage2_feature_names_safe,
     build_matrix,
     clean_slice_metrics,
@@ -80,19 +82,18 @@ def build_gate_score_features(base_scores: np.ndarray, candidate_scores: np.ndar
 
     base = np.clip(base_scores.astype(np.float32, copy=False), 1.0e-6, 1.0 - 1.0e-6)
     candidate = np.clip(candidate_scores.astype(np.float32, copy=False), 1.0e-6, 1.0 - 1.0e-6)
-    features = np.column_stack(
-        [
-            base,
-            candidate,
-            candidate - base,
-            np.abs(candidate - base),
-            np.abs(base - 0.5) * 2.0,
-            np.abs(candidate - 0.5) * 2.0,
-            _safe_logit(base),
-            _safe_logit(candidate),
-            _safe_logit(candidate) - _safe_logit(base),
-        ]
-    ).astype(np.float32, copy=False)
+    base_logit = _safe_logit(base)
+    candidate_logit = _safe_logit(candidate)
+    features = np.empty((base.shape[0], 9), dtype=np.float32)
+    features[:, 0] = base
+    features[:, 1] = candidate
+    features[:, 2] = candidate - base
+    features[:, 3] = np.abs(candidate - base)
+    features[:, 4] = np.abs(base - 0.5) * 2.0
+    features[:, 5] = np.abs(candidate - 0.5) * 2.0
+    features[:, 6] = base_logit
+    features[:, 7] = candidate_logit
+    features[:, 8] = candidate_logit - base_logit
     names = [
         "gate_base_score",
         "gate_candidate_score",
@@ -120,8 +121,8 @@ def build_gate_matrix(
         return score_features, score_names
     content_names = [f"gate_content_feature_{index}" for index in range(content_matrix.shape[1])]
     assert_no_identity_feature_names(content_names, context="Loop42 gate content feature aliases")
-    matrix = np.hstack([score_features, content_matrix.astype(np.float32, copy=False)])
-    return matrix.astype(np.float32, copy=False), score_names + content_names
+    matrix = append_feature_columns(score_features, content_matrix)
+    return matrix, score_names + content_names
 
 
 def gate_model_candidates(seed: int) -> list[tuple[str, object]]:
@@ -477,9 +478,32 @@ def align_external_scores(
     probability_column: str,
     key_column: str,
 ) -> tuple[np.ndarray, dict]:
+    needed_keys = {_prediction_key(row, key_column) for row in rows}
+    by_key: dict[str, dict] = {}
+    scanned_rows = 0
+    if not needed_keys:
+        return np.empty(0, dtype=np.float32), {
+            "path": str(resolve_path(prediction_path)),
+            "probability_column": probability_column,
+            "key_column": key_column,
+            "rows": 0,
+            "external_rows": 0,
+            "external_rows_scanned": 0,
+            "matched_external_rows": 0,
+            "sha_checked": 0,
+        }
     with resolve_path(prediction_path).open("r", encoding="utf-8-sig", newline="") as handle:
-        external_rows = list(csv.DictReader(handle))
-    by_key = {_prediction_key(row, key_column): row for row in external_rows}
+        reader = csv.DictReader(handle)
+        for external_row in reader:
+            scanned_rows += 1
+            key = _prediction_key(external_row, key_column)
+            if key not in needed_keys:
+                continue
+            if key in by_key:
+                raise ValueError(f"External prediction duplicate key {key!r} in {prediction_path}")
+            by_key[key] = external_row
+            if len(by_key) == len(needed_keys):
+                break
     scores = np.empty(len(rows), dtype=np.float32)
     sha_checked = 0
     for index, row in enumerate(rows):
@@ -501,7 +525,9 @@ def align_external_scores(
         "probability_column": probability_column,
         "key_column": key_column,
         "rows": len(rows),
-        "external_rows": len(external_rows),
+        "external_rows": scanned_rows,
+        "external_rows_scanned": scanned_rows,
+        "matched_external_rows": len(by_key),
         "sha_checked": sha_checked,
     }
 
@@ -642,6 +668,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     args = parse_args(argv)
     checkpoint = load_safe_checkpoint(resolve_path(args.checkpoint), map_location="cpu")
     checkpoint_config = AxonExperimentConfig.from_dict(dict(checkpoint["config"]))
+    del checkpoint
+    gc.collect()
     output_dir = resolve_path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -685,6 +713,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     val_x, val_y, val_base_exported, val_kept_rows, val_counts = build_matrix(
         val_rows, checkpoint_config, feature_config
     )
+    del train_rows
+    del val_rows
+    gc.collect()
     dropped_feature_count = 0
     if args.drop_base_prob_features:
         dropped_feature_count = 6
@@ -843,7 +874,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     if not selected_gate_candidates:
         raise ValueError("No gate model candidates selected")
 
-    fitted_results = []
+    best_key = None
+    selected = None
+    selected_gate_model = None
+    selected_gate_scores = None
+    selected_candidate = None
+    selected_gate_feature_names = None
     candidate_reports = []
     include_content_for_gate = bool(args.gate_content_features)
     for candidate in candidate_score_sets:
@@ -920,17 +956,23 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 "delta_val_f1_vs_loop28_locked": float(val_gate_best["f1"]) - LOOP28_VAL_F1,
             }
             gate_model_reports.append(report_row)
-            fitted_results.append(
-                (
-                    float(val_gate_best["f1"]),
-                    -int(val_gate_best["errors"]),
-                    report_row,
-                    gate_model,
-                    gate_val_scores,
-                    candidate,
-                    gate_feature_names,
-                )
-            )
+            candidate_key = (float(val_gate_best["f1"]), -int(val_gate_best["errors"]))
+            if best_key is None or candidate_key > best_key:
+                if selected_gate_model is not None:
+                    del selected_gate_model
+                if selected_gate_scores is not None:
+                    del selected_gate_scores
+                best_key = candidate_key
+                selected = report_row
+                selected_gate_model = gate_model
+                selected_gate_scores = gate_val_scores.astype(np.float32, copy=True)
+                selected_candidate = candidate
+                selected_gate_feature_names = list(gate_feature_names)
+            else:
+                del gate_model
+                del gate_val_scores
+            del gate_train_scores
+            gc.collect()
             print(
                 f"[gate-val] candidate={candidate_name} gate={gate_name} "
                 f"f1={val_gate_best['f1']:.6f} errors={val_gate_best['errors']} "
@@ -952,13 +994,28 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 ),
             }
         )
+        del train_gate_x
+        del val_gate_x
+        gc.collect()
 
-    if not fitted_results:
+    if selected is None or selected_gate_model is None or selected_gate_scores is None or selected_candidate is None:
         raise ValueError("No gate candidate was fitted")
-    fitted_results.sort(key=lambda item: (item[0], item[1]), reverse=True)
-    _best_f1, _neg_errors, selected, selected_gate_model, selected_gate_scores, selected_candidate, gate_feature_names = (
-        fitted_results[0]
-    )
+    if selected_gate_feature_names is None:
+        raise ValueError("Selected gate feature names are missing")
+    gate_feature_names = selected_gate_feature_names
+    base_model = fitted_stage2_models[0]
+    selected_candidate_model = selected_candidate.get("model")
+    for candidate in candidate_score_sets:
+        if candidate is not selected_candidate and "model" in candidate:
+            candidate["model"] = None
+    candidate_score_sets = [selected_candidate]
+    byte_model = selected_candidate_model if selected_candidate["kind"] == "byte_ngram" else None
+    region_model = selected_candidate_model if selected_candidate["kind"] == "region_byte_ngram" else None
+    if selected_candidate["kind"] == "stage2":
+        fitted_stage2_models = [base_model, selected_candidate_model]
+    else:
+        fitted_stage2_models = [base_model]
+    gc.collect()
 
     final_predictions, final_scores, override_mask = override_predictions(
         base_scores=base_val_scores,
@@ -988,10 +1045,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             {
                 "schema": "axon_loop42_oof_residual_gate_payload_v1",
                 "base_name": base_name,
-                "base_model": fitted_stage2_models[0],
+                "base_model": base_model,
                 "selected_candidate": selected_candidate["name"],
                 "selected_candidate_kind": selected_candidate["kind"],
-                "selected_candidate_model": selected_candidate.get("model"),
+                "selected_candidate_model": selected_candidate_model,
                 "gate_model": selected_gate_model,
                 "selected": selected,
                 "feature_config": feature_config,
@@ -1000,9 +1057,6 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 "gate_content_features": include_content_for_gate,
                 "gate_feature_names": gate_feature_names,
                 "checkpoint_config": checkpoint_config.to_dict(),
-                "stage2_models": {
-                    name: model for (name, _prototype), model in zip(stage2_specs, fitted_stage2_models)
-                },
                 "byte_ngram_model": byte_model,
                 "region_ngram_model": region_model,
                 "identity_feature_policy": (

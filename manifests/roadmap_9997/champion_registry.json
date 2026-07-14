@@ -1,0 +1,142 @@
+{
+  "schema": "axon_champion_registry_v1",
+  "generated_at_utc": "2026-07-13T13:14:45.564982+00:00",
+  "generation_policy": "Generated only from frozen aggregate manifests and receipts. Research, native, and connected scopes are not comparable or interchangeable; no metric is hand-entered by this builder.",
+  "source_artifacts": {
+    "truth_manifest": {
+      "path": "manifests/roadmap_9997/p0_truth_freeze/loop151_truth_manifest.json",
+      "sha256": "174861be850a681025a7040798c59b7157cc67ab5503437088359692dad5659d"
+    },
+    "native_smoke_receipt": {
+      "path": "manifests/roadmap_9997/p0_raw_replay/train_smoke_receipt.json",
+      "sha256": "3fbbd597dc14cf67a082203e680e83c1f521972e1bf1f36282ef847d9d4d2309"
+    },
+    "native_parity_receipt": {
+      "path": "manifests/roadmap_9997/p0_raw_replay/native_parity_receipt.json",
+      "sha256": "abeaeb0dd28060a09b7b23fbf0300b2ba6616ef040c4c4958f870aa5d13436b8"
+    },
+    "loop28_pause": {
+      "path": "manifests/roadmap_9997/p0_loop28_pytorch_native_decode_compat/paused_without_execution.json",
+      "sha256": "8fafd1167a8220fe515d581e74befc2c4d2d4e3570357d8ccca8a3a03b3391c1"
+    },
+    "recommendation_status": {
+      "path": "reports/model_review/final_model_selection/ml_recommendation_status.json",
+      "sha256": "5b009a411b618563877d7399053a537705e697044b785bfe99e484a3b7e22e16"
+    }
+  },
+  "champions": {
+    "research": {
+      "candidate_id": "Loop151",
+      "status": "current_strict_best",
+      "protocol_role": "legacy_development_leaderboard",
+      "classification_scope": "prediction_level_policy_freeze",
+      "metrics": {
+        "val": {
+          "f1": 0.9919193934557063,
+          "errors": 162,
+          "fp": 105,
+          "fn": 57,
+          "rows": 20000
+        },
+        "test10k": {
+          "f1": 0.9921921921921922,
+          "errors": 78,
+          "fp": 49,
+          "fn": 29,
+          "rows": 10000
+        },
+        "legacy_full_test": {
+          "f1": 0.9908541911012403,
+          "errors": 1466,
+          "fp": 879,
+          "fn": 587,
+          "rows": 160000
+        }
+      },
+      "lineage": [
+        "Loop127",
+        "Loop130",
+        "Loop134",
+        "Loop136",
+        "Loop151"
+      ],
+      "raw_file_to_report_ready": false,
+      "native_ready": false,
+      "deployment_parity": false,
+      "next_candidate": {
+        "candidate_id": "Loop167",
+        "status": "preregistered_phase_a_static_only_phase_b_source_closure_pending",
+        "decision": "grant_phase_a_static_only_and_withhold_phase_b_until_new_source_closed_authorization"
+      },
+      "recently_closed_candidate": {
+        "candidate_id": "Loop166",
+        "status": "closed_b1_nonfinite_current_recipe_retired",
+        "decision": "close_loop166_bpe1024_mlm_recipe_and_preregister_loop167_ember_v3_novel_delta_control"
+      },
+      "recently_parked_candidate": {
+        "candidate_id": "Loop164",
+        "status": "parked_surrogate_negative_formal_gate_not_run",
+        "decision": "park_current_loop164_recipe_surrogate_negative_exact_loop151_gate_not_run"
+      }
+    },
+    "native_offline": {
+      "candidate_id": "Loop28",
+      "status": "native_reference_parity_blocked_not_quality_champion",
+      "protocol_role": "train_only_native_smoke",
+      "raw_executable": true,
+      "smoke_decision": "native_loop28_train_smoke_passed_full_loop151_blocked",
+      "parity_decision": "native_loop28_parity_blocked",
+      "parity_requested": 1,
+      "parity_passed": 0,
+      "quality_claim_allowed": false,
+      "artifacts": [
+        {
+          "path": "models/random_20w_8192/axon_loop28_base.onnx",
+          "sha256": "3199b158fc8f7e3a53a516b2681aef8b5d5aa4a210baf66152fded72a3ff07f4",
+          "size_bytes": 12231310
+        },
+        {
+          "path": "models/random_20w_8192/axon_loop28_base.onnx.data",
+          "sha256": "4865d52d861d780627ca9aea4b16f83d8c2df62dd5b2136217d1e42547b8c7fa",
+          "size_bytes": 29556736
+        },
+        {
+          "path": "models/random_20w_8192/loop28_stage2_hgb.json",
+          "sha256": "c2c0cb0f39d12892891f9949e6f765e03fb1188f8fa3f3e574c0c4f73c63c648",
+          "size_bytes": 2062474
+        },
+        {
+          "path": "tools/axon_onnx_dll/src/axon_onnx_predict.cpp",
+          "sha256": "38a13a037a520fc5560d60c08da0a0bf3f95e2c11a109828227683d55f27ea6a",
+          "size_bytes": 104424
+        }
+      ],
+      "decode_compat_branch": "paused_without_execution",
+      "deployment_parity": false
+    },
+    "connected_system": {
+      "candidate_id": null,
+      "status": "no_connected_champion",
+      "ready": false,
+      "certification_ready": false,
+      "blockers": [
+        "The fail-closed raw replay runner exists, but Loop127 through Loop151 are not connected as one raw runtime.",
+        "Loop151 still consumes frozen Loop136 prediction CSVs rather than raw files.",
+        "Guarded Python/native Loop28 decisions match on the first train smoke row, but probability deltas exceed the <=1e-6 contract.",
+        "The Authenticode signer guard is not serialized into the Loop28 native bundle.",
+        "The legacy full-test is a repeatedly observed development leaderboard, not a sealed holdout.",
+        "An immutable clean execution bundle and independently repeated empty-workdir replay are still required."
+      ]
+    }
+  },
+  "invariants": {
+    "research_champion_is_not_native": true,
+    "native_reference_is_not_research_champion": true,
+    "no_connected_champion_without_full_runtime": true,
+    "legacy_metrics_are_development_only": true,
+    "loop164_is_parked_not_champion": true,
+    "loop166_is_closed_not_champion": true,
+    "loop167_is_candidate_not_champion": true
+  },
+  "decision": "registry_current_scopes_separated_no_connected_champion"
+}

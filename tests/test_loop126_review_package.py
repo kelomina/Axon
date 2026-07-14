@@ -119,6 +119,43 @@ def test_build_loop126_review_template_rejects_public_identity_columns():
     assert "focus_contains_identity_or_model_columns" in payload["blockers"]
 
 
+def test_build_loop126_review_template_allows_resource_feature_columns():
+    with _case_dir("loop126_review_template_resource_columns") as tmp_path:
+        focus = tmp_path / "focus.csv"
+        annotations = tmp_path / "annotations.csv"
+        summary = tmp_path / "template.json"
+        row = _focus_row(
+            content_resource_entry_count_log="4.2",
+            v2_resource_type_version_count_log="1.0",
+            string_version_resource_count_log="2.0",
+        )
+        fieldnames = [
+            "review_focus_id",
+            "focus_rank",
+            "priority_band",
+            "current_label",
+            "error_type",
+            "review_lane",
+            "content_resource_entry_count_log",
+            "v2_resource_type_version_count_log",
+            "string_version_resource_count_log",
+        ]
+        with focus.open("w", encoding="utf-8-sig", newline="") as handle:
+            writer = csv.DictWriter(handle, fieldnames=fieldnames, extrasaction="ignore", lineterminator="\n")
+            writer.writeheader()
+            writer.writerow(row)
+
+        payload = build_loop126_review_template(
+            focus_blinded_csv=focus,
+            output_annotations_csv=annotations,
+            output_json=summary,
+            expected_rows=1,
+        )
+
+    assert payload["template_ready"] is True
+    assert payload["forbidden_columns"] == []
+
+
 def test_loop126_preflight_accepts_content_evidence_verdicts():
     with _case_dir("loop126_review_preflight_good") as tmp_path:
         annotations = tmp_path / "annotations.csv"
@@ -143,6 +180,47 @@ def test_loop126_preflight_accepts_content_evidence_verdicts():
     assert payload["actionable_rows"] == 1
     assert rows[0]["loop126_status"] == "label_correct_model_blindspot"
     assert rows[0]["loop126_training_policy_allowed"] == "false"
+
+
+def test_loop126_preflight_allows_resource_feature_columns():
+    with _case_dir("loop126_review_preflight_resource_columns") as tmp_path:
+        annotations = tmp_path / "annotations.csv"
+        validated = tmp_path / "validated.csv"
+        summary = tmp_path / "preflight.json"
+        row = _focus_row(
+            content_resource_entry_count_log="4.2",
+            v2_resource_type_version_count_log="1.0",
+            manual_label_verdict="label_correct",
+            manual_verdict_note="PE resource table and section entropy evidence support the current label.",
+            recommended_action="model_blindspot",
+        )
+        fieldnames = [
+            "review_focus_id",
+            "focus_rank",
+            "priority_band",
+            "current_label",
+            "error_type",
+            "review_lane",
+            "content_resource_entry_count_log",
+            "v2_resource_type_version_count_log",
+            "manual_label_verdict",
+            "manual_verdict_note",
+            "recommended_action",
+        ]
+        with annotations.open("w", encoding="utf-8-sig", newline="") as handle:
+            writer = csv.DictWriter(handle, fieldnames=fieldnames, extrasaction="ignore", lineterminator="\n")
+            writer.writeheader()
+            writer.writerow(row)
+
+        payload = preflight_loop126_review_annotations(
+            annotations_csv=annotations,
+            output_csv=validated,
+            output_json=summary,
+            expected_rows=1,
+        )
+
+    assert payload["ready_for_private_mapping"] is True
+    assert payload["forbidden_columns"] == []
 
 
 def test_loop126_preflight_rejects_identity_or_score_only_notes():

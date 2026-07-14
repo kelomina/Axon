@@ -1,0 +1,127 @@
+{
+  "schema": "axon_loop28_parity_remediation_preflight_v1",
+  "loop_id": "p0_loop28_parity_remediation_001",
+  "generated_at_utc": "2026-07-11T19:53:12Z",
+  "amended_at_utc": "2026-07-11T21:10:16Z",
+  "git": {
+    "head": "2070bb979e3510d6c1459edd8682eedc11055718",
+    "branch": "codex/exp/loop145-noise-focus",
+    "dirty_worktree_acknowledged": true,
+    "unrelated_changes_must_be_preserved": true
+  },
+  "runtime": {
+    "verification_status": "declared_from_local_preflight_not_cryptographically_verified_by_manifest_builder",
+    "python": "3.14.4",
+    "numpy": "2.4.4",
+    "pefile": "2024.8.26",
+    "project_analysis_doctor": "passed_windows_node_25.2.1",
+    "project_analysis_supported_sources": 0,
+    "project_analysis_scan_preview_stopped_after": 5000
+  },
+  "governance_binding": {
+    "proposal": {
+      "path": "manifests/roadmap_9997/p0_loop28_parity_remediation/proposal.json",
+      "sha256": "d6c1451e73b5de5bf6aa737cf188d71cda338945a9434d64d74b265cd6ecfeeb"
+    },
+    "authorization": {
+      "path": "manifests/roadmap_9997/p0_loop28_parity_remediation/authorization.json",
+      "sha256": "8304abe401bb5714a2b0edba40ea1866659f7cce05c9182ba5f359857fbe54c5"
+    }
+  },
+  "parent_integrity": {
+    "post_diagnostic_manifest_sha256": "9f57dee431d61a1a1ebc99f64ed9bcb9f65804fca8426c748d51b468e81e6d31",
+    "post_diagnostic_artifacts": 8,
+    "post_diagnostic_blockers": 0,
+    "immutable_parent_hashes_reverified": true
+  },
+  "candidate_root_causes": {
+    "evidence_scope": "source_audit_and_single_synthetic_fixture_not_population_wide_causal_proof",
+    "pe": [
+      "observed mismatch is consistent with float64 aggregate versus native float32 aggregate",
+      "observed mismatch is consistent with connect/send/recv prefix-only semantics versus substring matching"
+    ],
+    "stat": [
+      "observed mismatch is consistent with NumPy float32 pairwise reduction versus native sequential float reduction"
+    ],
+    "byte_summary": [
+      "observed mismatch is consistent with float32 log1p/log2 and pairwise entropy reduction versus native double math"
+    ],
+    "content_pe": [
+      "synthetic mismatch is consistent with fixed-zero native resource and relocation approximations",
+      "synthetic mismatch is consistent with TLS directory presence not matching AddressOfCallbacks presence"
+    ],
+    "stage2_hgb": [
+      "score drift is plausibly affected by JSON baseline, thresholds, and leaves being narrowed to float before double scoring"
+    ]
+  },
+  "source_evidence": {
+    "numpy_pairwise_sum": "https://github.com/numpy/numpy/blob/v2.4.4/numpy/_core/src/umath/loops_utils.h.src",
+    "numpy_pairwise_block_size": 128,
+    "native_source_sha256_before_remediation": "b712d4993f6d27a62bf638d4f66ed8892bd76f5d658cb3637ae13566b3fdd79b",
+    "causal_claim_allowed": false
+  },
+  "synthetic_discovery_budget": {
+    "status": "expanded_matrix_completed_and_failed_closed_before_raw_access",
+    "recorded_verification_commands": 4,
+    "recorded_duration_seconds": 241.08,
+    "expanded_integrations_passed": 21,
+    "expanded_integrations_failed": 3,
+    "counts_fully_audited": true,
+    "consumes_future_one_shot_train_budget": false
+  },
+  "future_one_shot_train_budget": {
+    "authorization_status": "revoked_before_raw_access",
+    "max_remediation_generations": 0,
+    "max_verified_raw_snapshots": 0,
+    "max_python_executions": 0,
+    "max_native_executions": 0,
+    "max_crossfeed_executions": 0,
+    "per_execution_timeout_seconds": 120,
+    "total_wall_clock_seconds": 1200,
+    "cpu_only": true,
+    "gpu_executions": 0,
+    "network_requests": 0,
+    "max_output_bytes": 67108864
+  },
+  "productization_performance_gate": {
+    "blocking_for_one_shot_train_parity": true,
+    "required_before_native_product_promotion": true,
+    "status": "blocked_by_input_dependent_base_inference_drift_before_performance_evaluation"
+  },
+  "post_remediation_closure": {
+    "builder_status": "blocked_mode_implemented_and_focused_tests_passed",
+    "implementation_inventory_binding_required": false,
+    "structured_chain": [
+      "final_proposal_authorization_preflight",
+      "superseded_synthetic_discovery",
+      "expanded_synthetic_pre_run_blocked_evidence",
+      "implementation_and_post_closure_builders_and_tests",
+      "verified_native_source_test_binary_selftest_runtime_and_onnx_artifacts",
+      "final_recommendations",
+      "final_experiment_journal",
+      "final_goal"
+    ],
+    "output_path": "manifests/roadmap_9997/p0_loop28_parity_remediation/post_remediation_manifest.json",
+    "output_status": "pending_root_generation_after_final_hash_verification",
+    "manifest_self_hashed": false
+  },
+  "synthetic_pre_run_block": {
+    "path": "manifests/roadmap_9997/p0_loop28_parity_remediation/synthetic_pre_run_blocked.json",
+    "sha256": "72f7c00a107e9eebcffbc14269815bdaacf3843d2dee70dfd70443c080adef7e",
+    "decision": "block_train_rerun_input_dependent_onnx_base_drift",
+    "train_raw_rerun_allowed": false
+  },
+  "pre_implementation_checks": {
+    "proposal_present": true,
+    "authorization_present": true,
+    "implementation_manifest_present": false,
+    "new_run_authorization_present": false,
+    "new_attempt_lease_present": false,
+    "remediation_receipt_present": false,
+    "remediation_runner_status": "hard_blocked_by_synthetic_pre_run_evidence",
+    "raw_accessed": false,
+    "model_payloads_parsed_by_closure_builder": false,
+    "heldout_accessed": false
+  },
+  "decision": "synthetic_pre_run_blocked_closure_ready"
+}

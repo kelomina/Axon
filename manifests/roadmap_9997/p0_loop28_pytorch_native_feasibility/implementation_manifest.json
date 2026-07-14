@@ -1,0 +1,167 @@
+{
+  "schema": "axon_loop28_pytorch_native_feasibility_implementation_manifest_v1",
+  "loop_id": "p0_loop28_pytorch_native_feasibility_001",
+  "generated_at_utc": "2026-07-11T23:29:38Z",
+  "contract": {
+    "structured_chain_validation": true,
+    "duplicate_json_keys_rejected": true,
+    "single_implementation_generation": true,
+    "direct_aten_is_toolchain_control": true,
+    "torchscript_is_optional_diagnostic": true,
+    "normal_user_temp_for_aoti_forbidden": true,
+    "manifest_self_hashed": false,
+    "output_replace_allowed": false
+  },
+  "lineage": {
+    "proposal_sha256": "6b7af1c9d9db275041a924e9f275705a20fdc708edc84130343434f7eac8a5e4",
+    "authorization_sha256": "e4ee1b84bf9abba5efb172047b1b5ad8d7b28fb8bc863f401457192e6ed96589",
+    "preflight_sha256": "825ab5a1ec25e885bcf11602d70f654659bde75063c937b704435a7bd78e8119",
+    "design_amendment_sha256": "594360c471967ce2734244cf1991376d0949cf7dfb0e5262acf896c70ed612bf",
+    "parent_closure_sha256": "4eae028bdffa0683b273bfadf4ac46df6cb7388c3742dd6222b28fafb9056e6e"
+  },
+  "build_contract": {
+    "generator": "Visual Studio 18 2026",
+    "configuration": "Release",
+    "cpp_standard": 20,
+    "required_targets": [
+      "axon_tiny_aten_probe",
+      "axon_tiny_aoti_probe"
+    ],
+    "optional_targets": [
+      "axon_tiny_libtorch_probe"
+    ],
+    "aoti_link_libraries": [
+      "torch_cpu.lib",
+      "c10.lib"
+    ],
+    "forbidden_aoti_link_libraries": [
+      "torch.lib",
+      "torch_python.lib",
+      "python314.lib",
+      "torch_cuda.lib"
+    ]
+  },
+  "validation_contract": {
+    "focused_pytest_command": "vnev/Scripts/python.exe -m pytest -q tests/test_run_loop28_pytorch_native_feasibility.py tests/test_build_loop28_pytorch_native_feasibility_manifest.py",
+    "required_test_count": 8,
+    "ruff_check_required": true,
+    "ruff_format_required": true,
+    "py_compile_required": true
+  },
+  "artifacts": [
+    {
+      "name": "proposal",
+      "role": "frozen_tiny_proposal",
+      "path": "manifests/roadmap_9997/p0_loop28_pytorch_native_feasibility/proposal.json",
+      "size_bytes": 7218,
+      "sha256": "6b7af1c9d9db275041a924e9f275705a20fdc708edc84130343434f7eac8a5e4"
+    },
+    {
+      "name": "authorization",
+      "role": "a1_scope_authorization",
+      "path": "manifests/roadmap_9997/p0_loop28_pytorch_native_feasibility/authorization.json",
+      "size_bytes": 3236,
+      "sha256": "e4ee1b84bf9abba5efb172047b1b5ad8d7b28fb8bc863f401457192e6ed96589"
+    },
+    {
+      "name": "preflight",
+      "role": "toolchain_and_safety_preflight",
+      "path": "manifests/roadmap_9997/p0_loop28_pytorch_native_feasibility/preflight.json",
+      "size_bytes": 6623,
+      "sha256": "825ab5a1ec25e885bcf11602d70f654659bde75063c937b704435a7bd78e8119"
+    },
+    {
+      "name": "design_amendment",
+      "role": "adversarial_contract_correction",
+      "path": "manifests/roadmap_9997/p0_loop28_pytorch_native_feasibility/design_amendment.json",
+      "size_bytes": 3801,
+      "sha256": "594360c471967ce2734244cf1991376d0949cf7dfb0e5262acf896c70ed612bf"
+    },
+    {
+      "name": "parent_closure",
+      "role": "immutable_onnx_stop_parent",
+      "path": "manifests/roadmap_9997/p0_loop28_onnx_operator_remediation/post_manifest.json",
+      "size_bytes": 4693,
+      "sha256": "4eae028bdffa0683b273bfadf4ac46df6cb7388c3742dd6222b28fafb9056e6e"
+    },
+    {
+      "name": "runner",
+      "role": "governed_build_package_execution_runner",
+      "path": "scripts/run_loop28_pytorch_native_feasibility.py",
+      "size_bytes": 45694,
+      "sha256": "b2c61788e0e7ae1348090fcc41e7eeb2efecb3be3efa912fd6560ad030935166"
+    },
+    {
+      "name": "runner_test",
+      "role": "focused_runner_tests",
+      "path": "tests/test_run_loop28_pytorch_native_feasibility.py",
+      "size_bytes": 3533,
+      "sha256": "40abcc960c2ac393e4a5b2994e53eb91417b417dba6792abe8fd53de25d7f287"
+    },
+    {
+      "name": "manifest_builder",
+      "role": "manifest_builder",
+      "path": "scripts/build_loop28_pytorch_native_feasibility_manifest.py",
+      "size_bytes": 25667,
+      "sha256": "fe6592b6e520c62ed653520814c38786668080ce49a9ef947a11913bf5170492"
+    },
+    {
+      "name": "manifest_builder_test",
+      "role": "focused_builder_tests",
+      "path": "tests/test_build_loop28_pytorch_native_feasibility_manifest.py",
+      "size_bytes": 2297,
+      "sha256": "3b3423f819a2f4b3f3134471d29ecbd1086a57a616c9227ad6d4602cf8787c3d"
+    },
+    {
+      "name": "cmake",
+      "role": "lean_windows_build_contract",
+      "path": "tools/axon_tiny_pytorch_native/CMakeLists.txt",
+      "size_bytes": 1883,
+      "sha256": "634977ab5442f1d8314ac4bcf46c7bd2eb16b7d165741cc8e10c089470186c2d"
+    },
+    {
+      "name": "probe_common",
+      "role": "native_io_and_repeat_contract",
+      "path": "tools/axon_tiny_pytorch_native/src/probe_common.h",
+      "size_bytes": 10235,
+      "sha256": "56d7be76d20d3d817e645d7e4d23efa3da2322613e21d533210103d0e038971d"
+    },
+    {
+      "name": "aten_source",
+      "role": "direct_aten_toolchain_control",
+      "path": "tools/axon_tiny_pytorch_native/src/aten_probe.cpp",
+      "size_bytes": 2044,
+      "sha256": "9211de0104b9ca6796f4bf1fdc8db73b7b8e70e239a2d0e201e6aabcfa03e939"
+    },
+    {
+      "name": "aoti_source",
+      "role": "aoti_package_loader_probe",
+      "path": "tools/axon_tiny_pytorch_native/src/aoti_probe.cpp",
+      "size_bytes": 987,
+      "sha256": "fb1d44c87741db447ae3e68bfaf9ba3447c181a3978c1a7d8000d1c8d6c33ba6"
+    },
+    {
+      "name": "libtorch_source",
+      "role": "optional_torchscript_diagnostic",
+      "path": "tools/axon_tiny_pytorch_native/src/libtorch_probe.cpp",
+      "size_bytes": 1154,
+      "sha256": "a6754cf1e7f76e26cdf5c44c2a8c965ec16b3e9e56f13a1fd5e335a6fd40a1fd"
+    }
+  ],
+  "integrity": {
+    "artifact_count": 14,
+    "required_artifact_count": 14,
+    "all_required_present": true
+  },
+  "claim_boundary": {
+    "tiny_runtime_feasibility_claim_allowed": true,
+    "current_host_only": true,
+    "cross_version_topk_stability_claim_allowed": false,
+    "axon_checkpoint_access_allowed": false,
+    "axon_runtime_parity_claim_allowed": false,
+    "population_parity_claim_allowed": false,
+    "quality_claim_allowed": false,
+    "certification_claim_allowed": false
+  },
+  "decision": "tiny_native_feasibility_source_frozen_build_requires_authorization"
+}

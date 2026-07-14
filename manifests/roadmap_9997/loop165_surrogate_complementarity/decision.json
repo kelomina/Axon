@@ -1,0 +1,47 @@
+{
+  "schema": "axon_loop165_surrogate_complementarity_decision_manifest_v1",
+  "loop_id": "loop165_loop69_loop164_surrogate_complementarity",
+  "claim_scope": "local_train_cross_snapshot_surrogate_negative_not_formal_loop151_gate",
+  "protocol": {
+    "training_performed": false,
+    "threshold_sweep_performed": false,
+    "val_test_or_full_access": false,
+    "promotion_evidence": false
+  },
+  "artifacts": {
+    "auditor": {
+      "path": "scripts/audit_loop165_loop69_loop164_surrogate_complementarity.py",
+      "sha256": "57947c94e52943c23e29bd56e03de2a9f4528020790add9f8f97744e6984872b"
+    },
+    "tests": {
+      "path": "tests/test_audit_loop165_loop69_loop164_surrogate_complementarity.py",
+      "sha256": "2a7b160bc836723808781e0863b4c10dcdf3273573f109273589ea0150e54d91"
+    },
+    "report": {
+      "path": "reports/roadmap_9997/loop165/loop69_loop164_surrogate_complementarity.json",
+      "sha256": "d0aa06074f0123ba5a9ad89a31e3912dfde261eca71d97ed0f2df7d73b5c92ec"
+    },
+    "documentation": {
+      "path": "docs/phase3_loop165_loop69_loop164_surrogate_complementarity.md",
+      "sha256": "9a2c68a12d2fa7faeca4ffe8a28b33d37f6efae48bfe0c44defc84f4c10adaa8"
+    }
+  },
+  "surrogate_result": {
+    "common_sha256_rows": 19996,
+    "supported_common_rows": 19540,
+    "repairs": 75,
+    "breaks": 595,
+    "decision_changes": 670,
+    "blind_switch_precision": 0.11194029850746269,
+    "net_error_reduction": -520,
+    "cost_fuse_passed": false
+  },
+  "formal_loop151_gate": {
+    "status": "not_run",
+    "decision": "blocked_wrong_base_lineage_and_fold_scope"
+  },
+  "decision": "park_current_loop164_recipe_surrogate_negative_exact_loop151_gate_not_run",
+  "research_champion": "Loop151",
+  "target_f1": 0.9997,
+  "target_achieved": false
+}

@@ -1,0 +1,139 @@
+{
+  "schema": "axon_loop28_parity_remediation_authorization_v1",
+  "loop_id": "p0_loop28_parity_remediation_001",
+  "issued_at_utc": "2026-07-11T19:53:12Z",
+  "amended_at_utc": "2026-07-11T21:10:16Z",
+  "amendment_scope": "Fail-closed amendment after the repaired four-fixture matrix exposed input-dependent PE32 ONNX base-inference drift; revoke all raw execution and authorize only governance closure plus synthetic-only fidelity localization.",
+  "authorization_level": "A1_synthetic_only_fidelity_localization",
+  "basis": "The expanded authenticated matrix has exact byte, PE, stat, and Stage-2 non-probability features but fails three of four runtime-parity integrations, so the preregistered stop condition applies before any raw access.",
+  "proposal": {
+    "path": "manifests/roadmap_9997/p0_loop28_parity_remediation/proposal.json",
+    "sha256": "d6c1451e73b5de5bf6aa737cf188d71cda338945a9434d64d74b265cd6ecfeeb"
+  },
+  "parent_evidence": {
+    "post_diagnostic_manifest": "9f57dee431d61a1a1ebc99f64ed9bcb9f65804fca8426c748d51b468e81e6d31",
+    "diagnostic_receipt": "de8f0c5885df08646298f67f59b5427696252f7cb921d84eeb6527bef6878bc7",
+    "historical_truth_manifest": "174861be850a681025a7040798c59b7157cc67ab5503437088359692dad5659d"
+  },
+  "frozen_sample": {
+    "split": "train",
+    "sample_index": 0,
+    "source_sha256": "09b6b8c80bc31846312bd6958e1d4bf1bcd72d25450d7f7dec2bce6ba81798cc",
+    "size_bytes": 4218880
+  },
+  "allowed_splits": [],
+  "allowed_logical_raw_root": null,
+  "allowed_resolved_raw_roots": [],
+  "frozen_tolerance": 0.000001,
+  "timeout_enforcement": {
+    "native_subprocess": "hard_timeout",
+    "verified_snapshot": "post_return_elapsed_rejection",
+    "python_inference": "post_return_elapsed_rejection",
+    "total_flow": "checkpointed_elapsed_rejection_outer_watchdog_required"
+  },
+  "allowed": [
+    "preserve the exact native feature implementation and add fail-closed guards to the implementation and post-remediation manifest builders",
+    "run only the enumerated static, synthetic, formatting, lint, and compile checks without opening raw, split, heldout, cache, prediction, or metric payloads",
+    "hash the blocked evidence and its enumerated model/runtime artifacts opaquely without parsing model payloads",
+    "update remediation governance, goal, recommendations, and experiment journal to record the synthetic pre-run block",
+    "build one fixed blocked post-remediation manifest only after final documentation exists and only while implementation manifest, run authorization, lease, and receipt remain absent",
+    "begin a separately governed synthetic-only PyTorch-versus-ONNX intermediate-activation localization loop"
+  ],
+  "authorized_edit_paths": [
+    "tools/axon_onnx_dll/src/axon_onnx_predict.cpp",
+    "tools/axon_onnx_dll/include/axon_onnx_predict.h",
+    "tools/axon_onnx_dll/examples/axon_onnx_selftest.cpp",
+    "tools/axon_onnx_dll/CMakeLists.txt",
+    "scripts/remediate_loop28_parity.py",
+    "scripts/build_loop28_parity_remediation_manifest.py",
+    "scripts/build_loop28_parity_post_remediation_manifest.py",
+    "tests/test_remediate_loop28_parity.py",
+    "tests/test_native_loop28_parity_source.py",
+    "tests/test_build_loop28_parity_remediation_manifest.py",
+    "tests/test_build_loop28_parity_post_remediation_manifest.py",
+    "goal.md",
+    "docs/ml_improvement_recommendations.md",
+    "reports/hard_family_finetune/experiment_journal.md",
+    "manifests/roadmap_9997/p0_loop28_parity_remediation/proposal.json",
+    "manifests/roadmap_9997/p0_loop28_parity_remediation/authorization.json",
+    "manifests/roadmap_9997/p0_loop28_parity_remediation/preflight.json",
+    "manifests/roadmap_9997/p0_loop28_parity_remediation/synthetic_discovery.json",
+    "manifests/roadmap_9997/p0_loop28_parity_remediation/synthetic_pre_run_blocked.json"
+  ],
+  "authorized_static_synthetic_tests": [
+    "tests/test_build_loop28_parity_remediation_manifest.py",
+    "tests/test_remediate_loop28_parity.py",
+    "tests/test_native_loop28_parity_source.py",
+    "tests/test_diagnose_loop28_parity.py",
+    "tests/test_build_loop28_parity_post_remediation_manifest.py"
+  ],
+  "authorized_generated_paths": [
+    "manifests/roadmap_9997/p0_loop28_parity_remediation/post_remediation_manifest.json"
+  ],
+  "not_authorized": [
+    "training, fitting, fine-tuning, calibration, threshold search, feature selection, or model selection",
+    "cache creation, rebuild, replacement, split mutation, label mutation, raw mutation, model mutation, checkpoint mutation, ONNX mutation, or Stage-2 JSON mutation",
+    "opening Val, Test-10k, legacy full-test, certification, or any other heldout raw file, prediction, metric, cache, or row-level evidence",
+    "reading any raw identity, split metadata, heldout evidence, cache rows, predictions, or metrics",
+    "generating an implementation manifest, run authorization, attempt lease, or remediation receipt while the synthetic pre-run block exists",
+    "running any non-enumerated Python test or an unscoped full test suite under this authorization",
+    "changing the 1e-6 tolerance, Loop151 policy, trusted signer terms, or promotion gates",
+    "GPU execution, dependency installation, deployment, commit, or push",
+    "F1 estimation, candidate promotion, product-readiness, native Loop151 readiness, or certification claims"
+  ],
+  "immutable_parent_artifacts": [
+    "manifests/roadmap_9997/p0_loop28_parity_diagnostic/implementation_manifest.json",
+    "manifests/roadmap_9997/p0_loop28_parity_diagnostic/run_authorization.json",
+    "manifests/roadmap_9997/p0_loop28_parity_diagnostic/run_attempt.final.json",
+    "reports/roadmap_9997/p0_loop28_parity_diagnostic/diagnostic_receipt.final.json",
+    "manifests/roadmap_9997/p0_loop28_parity_diagnostic/post_diagnostic_manifest.json"
+  ],
+  "synthetic_discovery_budget": {
+    "status": "expanded_matrix_completed_and_failed_closed_before_raw_access",
+    "recorded_verification_commands": 4,
+    "recorded_duration_seconds": 241.08,
+    "expanded_integrations_passed": 21,
+    "expanded_integrations_failed": 3,
+    "counts_fully_audited": true,
+    "consumes_future_one_shot_train_budget": false
+  },
+  "budget": {
+    "authorization_status": "revoked_before_raw_access",
+    "max_remediation_generations": 0,
+    "max_verified_raw_snapshots": 0,
+    "max_python_executions": 0,
+    "max_native_executions": 0,
+    "max_crossfeed_executions": 0,
+    "per_execution_timeout_seconds": 120,
+    "total_wall_clock_seconds": 1200,
+    "cpu_only": true,
+    "gpu_executions": 0,
+    "network_requests": 0,
+    "max_output_bytes": 67108864
+  },
+  "productization_performance_gate": {
+    "blocking_for_one_shot_train_parity": true,
+    "required_before_native_product_promotion": true,
+    "required_evidence": [
+      "latency distribution",
+      "throughput",
+      "peak RSS or working set",
+      "binary and runtime hashes"
+    ],
+    "causal_claim": "ORT_DISABLE_ALL is not a sufficient general remedy: all three PE32 fixtures fail while PE32+ passes, and the responsible internal operator boundary remains unlocalized."
+  },
+  "synthetic_pre_run_block": {
+    "path": "manifests/roadmap_9997/p0_loop28_parity_remediation/synthetic_pre_run_blocked.json",
+    "sha256": "72f7c00a107e9eebcffbc14269815bdaacf3843d2dee70dfd70443c080adef7e",
+    "decision": "block_train_rerun_input_dependent_onnx_base_drift",
+    "train_raw_rerun_allowed": false
+  },
+  "accepted_residual_risks": [
+    "Expanded synthetic feature exactness does not establish population parity or product readiness.",
+    "The current evidence localizes the remaining drift only to base inference, not to a unique ONNX operator or runtime mechanism.",
+    "A canonical runtime or re-export decision may require architecture changes, but no model mutation is authorized by this closure."
+  ],
+  "execution_requires_separate_run_authorization": false,
+  "success_gate": "failed_closed_three_of_four_expanded_synthetic_integrations_failed",
+  "decision": "allow_synthetic_only_onnx_fidelity_localization_raw_rerun_blocked"
+}

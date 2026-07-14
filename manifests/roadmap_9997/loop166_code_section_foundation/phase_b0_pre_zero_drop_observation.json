@@ -1,0 +1,53 @@
+{
+  "schema": "axon_loop166_phase_b0_pre_zero_drop_observation_v1",
+  "loop_id": "loop166_code_section_foundation",
+  "claim_scope": "superseded_local_train_only_resource_observation_not_model_quality",
+  "superseded_artifacts": {
+    "contract_sha256": "12c9af49b838fa4d1668fa03feec6afc75146a003fcf741744fa6d82945e7038",
+    "controller_sha256": "991a53143ff511c7c24f5a42f686c35f0198eeaad8eab12a3f43df585c56188c",
+    "report_sha256": "78b5dcbdf5b50e58a6afa8db352aba1f2ae183478dbbf8bd402ccc8946b15070",
+    "report_retained_at_original_path": false
+  },
+  "stable_resource_run": {
+    "selected_outer_fit_rows": 64,
+    "outer_holdout_raw_opens": 0,
+    "selected_windows": 510,
+    "prepared_sequences": 499,
+    "overlength_windows_excluded": 11,
+    "selected_window_original_bytes": 260628,
+    "optimizer_steps": 8,
+    "original_training_bytes": 16384,
+    "original_bytes_per_training_second": 10850.945533681306,
+    "peak_cuda_allocated_bytes": 265512960,
+    "peak_cuda_reserved_bytes": 293601280,
+    "peak_process_rss_bytes": 1993129984,
+    "elapsed_seconds": 11.621835700001611,
+    "oom_events": 0,
+    "nonfinite_events": 0,
+    "checkpoint_roundtrip_exact_logits": true
+  },
+  "failed_default_scaler_attempt": {
+    "artifact_retained": false,
+    "failure_stage": "first_optimizer_boundary_after_unscale_gradient_norm",
+    "optimizer_steps": 0,
+    "backward_microbatches": 2,
+    "original_training_bytes": 2048,
+    "loss_and_logits_finite_before_backward": true,
+    "gradient_norm_finite": false,
+    "nonfinite_events": 1,
+    "fatal_reason": "nonfinite_training",
+    "remediation": "freeze_grad_scaler_init_scale_128_growth_interval_1000"
+  },
+  "methodology_blocker": {
+    "name": "overlength_window_selection_bias",
+    "observed_fraction": 0.021568627450980392,
+    "risk": "Whole 512-byte windows with weak BPE compression are dropped, systematically underrepresenting high-entropy or packed code.",
+    "required_remediation": "lossless_bpe_token_chunking_with_exact_original_byte_conservation"
+  },
+  "decision": "resource_feasible_but_full_outer_blocked_pending_zero_drop_remediation",
+  "quality_metrics_computed": false,
+  "threshold_operations_performed": false,
+  "research_champion": "Loop151",
+  "target_f1": 0.9997,
+  "target_achieved": false
+}

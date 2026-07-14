@@ -1,0 +1,52 @@
+{
+  "schema": "axon_loop28_pytorch_native_official_pytorch_v213_source_manifest_v1",
+  "loop_id": "p0_loop28_pytorch_native_decode_compat_001",
+  "generated_at_utc": "2026-07-12T02:18:30Z",
+  "lineage": {
+    "parent_post_sha256": "71110ee310a340fb231051df3c4fe3be865e4fa28a0281d96cdf3ddf2ef115cc",
+    "upstream_research_sha256": "280c8fc1792ae4affaf6252a0c0dfbd3f053a7d544100d1832b267a6678fa608",
+    "proposal_sha256": "abc5f7e03f5c1051a6ba64dc641e2ff6a2e6e514bff5e542c703796b076ba1c1",
+    "authorization_sha256": "a7971b575335c6e31b3c2cf8a037f7e738c72d0552bc886fe018fa0462e519dc"
+  },
+  "official_source": {
+    "repository": "pytorch/pytorch",
+    "tag": "v2.13.0",
+    "tag_commit": "cf30153c4c131c8164ee7798e5022d810682e2cb",
+    "path": "torch/_inductor/cpp_builder.py",
+    "url": "https://raw.githubusercontent.com/pytorch/pytorch/v2.13.0/torch/_inductor/cpp_builder.py",
+    "source_payload_sha256": "cb369b351ac1021ecd6127e536ef35c1a6d57de6ae3689e95d097c9ab3ebad02",
+    "normalized_excerpt": "SUBPROCESS_DECODE_ARGS = ((locale.getpreferredencoding(), \"replace\") if _IS_WINDOWS else ())",
+    "normalized_excerpt_sha256": "e53c891435fab7d062d7bf64b95631cb2869ddc3e60477b07c58e1d663c297fd",
+    "symbol": "SUBPROCESS_DECODE_ARGS",
+    "semantic_delta": "windows_decode_adds_errors_replace",
+    "issue_url": "https://github.com/pytorch/pytorch/issues/157673"
+  },
+  "contract": {
+    "protected_stage_network_requests": 0,
+    "installed_torch_mutation_allowed": false,
+    "process_local_semantic_mirror_only": true,
+    "actual_v213_runtime_qualified": false,
+    "production_upgrade_qualified": false
+  },
+  "artifacts": [
+    {
+      "name": "parent_post",
+      "role": "negative_parent_closure",
+      "path": "manifests/roadmap_9997/p0_loop28_pytorch_native_feasibility/post_manifest.json",
+      "size_bytes": 2565,
+      "sha256": "71110ee310a340fb231051df3c4fe3be865e4fa28a0281d96cdf3ddf2ef115cc"
+    },
+    {
+      "name": "upstream_research",
+      "role": "frozen_official_research",
+      "path": "reports/roadmap_9997/p0_loop28_pytorch_native_feasibility/upstream_decode_compatibility_research.final.json",
+      "size_bytes": 2933,
+      "sha256": "280c8fc1792ae4affaf6252a0c0dfbd3f053a7d544100d1832b267a6678fa608"
+    }
+  ],
+  "integrity": {
+    "artifact_count": 2,
+    "all_required_present": true
+  },
+  "decision": "official_pytorch_v213_decoder_source_frozen_for_local_compatibility"
+}

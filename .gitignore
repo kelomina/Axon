@@ -17,6 +17,7 @@ data/
 *.npz
 *.csv
 *.txt
+!requirements.txt
 
 # Models
 models/
@@ -27,6 +28,7 @@ models/
 reports/
 *.log
 *.json
+!manifests/**/*.json
 
 # Jupyter
 .ipynb_checkpoints/
@@ -49,3 +51,10 @@ agents.md
 dist/
 build/
 *.egg-info/
+/.project-analysis/
+/.qoder/
+NUL
+tools/axon_tiny_pytorch_native/build.failed_*/
+tools/archive_scanner/target/
+tools/predict_dll/target/
+tmp_archive_scanner_demo/

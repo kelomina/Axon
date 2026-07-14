@@ -1,0 +1,53 @@
+{
+  "schema": "axon_loop164_a2_training_request_v1",
+  "document_kind": "custodian_request_not_authorization",
+  "loop_id": "loop164_whole_file_residual_expert",
+  "request_state": "blocked_pending_metadata_and_static_review",
+  "authorization_granted": false,
+  "target_authorization_schema": "axon_loop164_training_authorization_v2",
+  "target_paths": {
+    "authorization": "manifests/roadmap_9997/loop164_whole_file_residual_expert/a2_training_authorization.json",
+    "final_lease": "reports/roadmap_9997/loop164/training_lease_consumption.final.json",
+    "execution_receipt": "reports/roadmap_9997/loop164/loop164_train_oof_execution_receipt.json"
+  },
+  "custodian_required_bindings": [
+    "external_trust_anchor",
+    "authority_attestation",
+    "runtime_binding",
+    "canonical_argv",
+    "all_prerequisite_bindings",
+    "output_binding",
+    "one_shot_lease"
+  ],
+  "forbidden_operations": [
+    "val",
+    "test10k",
+    "legacy_full_test",
+    "sentinel",
+    "confirmation",
+    "certification"
+  ],
+  "allowed_split_roles": [
+    "train_anchor",
+    "train_oof"
+  ],
+  "forbidden_split_roles": [
+    "val_a",
+    "val_b",
+    "test10k",
+    "legacy_full_test",
+    "sentinel",
+    "confirmation",
+    "certification"
+  ],
+  "outer_run_budget": 15,
+  "prerequisites": [
+    "metadata_isolation_receipt_pass",
+    "fold_scope_plan_validation_pass",
+    "independently_authorized_implementation_manifest",
+    "loop151_train_oof_manifest",
+    "train_only_input_bundle",
+    "fresh_training_resource_guard",
+    "controller_source_closure"
+  ]
+}

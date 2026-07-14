@@ -8,10 +8,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 from search_feature_subset_ga import (  # noqa: E402
     FeatureMaskSpec,
     FitnessConfig,
+    GeneticConfig,
     compute_fitness,
     choose_best_metrics,
+    collect_eval_batches,
     export_mask_from_report,
     load_feature_mask,
+    load_json_object,
     parse_thresholds,
     repair_individual,
     run_genetic_search,
@@ -148,13 +151,14 @@ def test_run_genetic_search_accepts_synthetic_evaluator():
 
     result = run_genetic_search(
         spec=spec,
-        ga_config=__import__("search_feature_subset_ga").GeneticConfig(
+        ga_config=GeneticConfig(
             population_size=8,
             generations=2,
             elite_size=2,
             mutation_rate=0.05,
             min_pe_features=1,
             min_stat_features=1,
+            max_leaderboard_size=3,
         ),
         fitness_config=FitnessConfig(objective="f1", feature_penalty=0.0),
         evaluate_individual=evaluate,
@@ -163,6 +167,7 @@ def test_run_genetic_search_accepts_synthetic_evaluator():
 
     assert result["best"]["metrics"]["f1"] == 1.0
     assert result["evaluated_candidates"] >= 1
+    assert len(result["leaderboard"]) <= 3
 
 
 def test_split_batches_stratified_creates_balanced_holdout():
@@ -187,6 +192,87 @@ def test_split_batches_stratified_creates_balanced_holdout():
     assert search_labels.tolist().count(1) == 3
     assert holdout_labels.tolist().count(0) == 1
     assert holdout_labels.tolist().count(1) == 1
+
+
+def test_collect_eval_batches_keeps_cached_tensors_on_cpu():
+    torch = __import__("torch")
+    loader = [
+        (
+            torch.arange(2 * 4).reshape(2, 4),
+            torch.ones(2, 3),
+            torch.ones(2, 2),
+            torch.tensor([0, 1]),
+        )
+    ]
+
+    batches, labels = collect_eval_batches(loader, torch.device("cuda"), max_batches=None)
+
+    assert labels.tolist() == [0, 1]
+    assert len(batches) == 1
+    for tensor in batches[0]:
+        assert tensor.device.type == "cpu"
+
+
+def test_split_batches_stratified_does_not_concatenate_all_batches(monkeypatch):
+    torch = __import__("torch")
+
+    def fail_cat(*_args, **_kwargs):
+        raise AssertionError("split should not concatenate all eval batches")
+
+    monkeypatch.setattr(torch, "cat", fail_cat)
+    batches = [
+        (
+            torch.arange(4 * 4).reshape(4, 4),
+            torch.arange(4 * 3, dtype=torch.float32).reshape(4, 3),
+            torch.arange(4 * 2, dtype=torch.float32).reshape(4, 2),
+        ),
+        (
+            torch.arange(4 * 4, 8 * 4).reshape(4, 4),
+            torch.arange(4 * 3, 8 * 3, dtype=torch.float32).reshape(4, 3),
+            torch.arange(4 * 2, 8 * 2, dtype=torch.float32).reshape(4, 2),
+        ),
+    ]
+    labels = np.array([0, 0, 0, 0, 1, 1, 1, 1], dtype=np.int64)
+
+    search_batches, search_labels, holdout_batches, holdout_labels = split_batches_stratified(
+        batches,
+        labels,
+        holdout_ratio=0.25,
+        seed=11,
+    )
+
+    assert sum(batch[0].shape[0] for batch in search_batches) == 6
+    assert sum(batch[0].shape[0] for batch in holdout_batches) == 2
+    assert search_labels.tolist().count(0) == 3
+    assert search_labels.tolist().count(1) == 3
+    assert holdout_labels.tolist().count(0) == 1
+    assert holdout_labels.tolist().count(1) == 1
+
+
+def test_feature_mask_scripts_load_checkpoints_on_cpu():
+    root = Path(__file__).resolve().parents[1]
+    with (root / "scripts" / "search_feature_subset_ga.py").open("r", encoding="utf-8") as handle:
+        search_source = handle.read(200000)
+    with (root / "scripts" / "evaluate_feature_mask.py").open("r", encoding="utf-8") as handle:
+        eval_source = handle.read(200000)
+
+    assert 'load_safe_checkpoint(args.checkpoint, map_location="cpu")' in search_source
+    assert 'load_safe_checkpoint(args.checkpoint, map_location="cpu")' in eval_source
+    assert "del checkpoint, model_state_dict" in search_source
+    assert "del checkpoint, model_state_dict" in eval_source
+
+
+def test_load_json_object_rejects_oversized_input(tmp_path, monkeypatch):
+    path = tmp_path / "large.json"
+    path.write_text('{"payload":"' + ("x" * 128) + '"}', encoding="utf-8")
+    monkeypatch.setattr("search_feature_subset_ga.MAX_JSON_INPUT_BYTES", 32)
+
+    try:
+        load_json_object(path)
+    except ValueError as exc:
+        assert "too large" in str(exc)
+    else:
+        raise AssertionError("Expected oversized JSON input to be rejected")
 
 
 def test_export_mask_from_report_round_trips_selected_indices(tmp_path):

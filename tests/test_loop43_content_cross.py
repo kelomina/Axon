@@ -4,10 +4,14 @@ import csv
 import numpy as np
 import pytest
 
+from scripts import train_loop43_content_cross as loop43
 from scripts.train_loop43_content_cross import (
     CONTENT_CROSS_FEATURE_NAMES,
     CONTENT_PE_FEATURE_NAMES,
     CONTENT_PE_V2_FEATURE_NAMES,
+    CrossConfig,
+    build_content_cross_matrix,
+    build_parser,
     content_cross_features_from_arrays,
     run_strict_readiness_preflight,
 )
@@ -166,3 +170,45 @@ def test_strict_readiness_preflight_blocks_missing_sidecar_before_training(tmp_p
 
     with pytest.raises(RuntimeError, match="preflight blocked training"):
         run_strict_readiness_preflight(args, tmp_path / "out")
+
+
+def test_build_content_cross_matrix_preallocates_stable_width(monkeypatch):
+    pe1 = np.zeros(len(CONTENT_PE_FEATURE_NAMES), dtype=np.float32)
+    pe2 = np.zeros(len(CONTENT_PE_V2_FEATURE_NAMES), dtype=np.float32)
+    monkeypatch.setattr(loop43, "content_pe_features_for_row", lambda _row, _cache_dir: pe1)
+    monkeypatch.setattr(loop43, "content_pe_v2_features_for_row", lambda _row, _cache_dir: pe2)
+
+    matrix = build_content_cross_matrix(
+        [{"source_sha256": "a" * 64}, {"source_sha256": "b" * 64}],
+        CrossConfig(content_pe_cache_dir="v1", content_pe_v2_cache_dir="v2"),
+    )
+
+    assert matrix.shape == (2, len(CONTENT_CROSS_FEATURE_NAMES))
+    assert matrix.dtype == np.float32
+
+
+def test_loop43_parser_accepts_row_limits(tmp_path):
+    parser = build_parser()
+    args = parser.parse_args(
+        [
+            "--checkpoint",
+            str(tmp_path / "model.pt"),
+            "--train-predictions",
+            str(tmp_path / "train.csv"),
+            "--val-predictions",
+            str(tmp_path / "val.csv"),
+            "--output-dir",
+            str(tmp_path / "out"),
+            "--content-pe-cache-dir",
+            str(tmp_path / "v1"),
+            "--content-pe-v2-cache-dir",
+            str(tmp_path / "v2"),
+            "--max-train-rows",
+            "3",
+            "--max-val-rows",
+            "2",
+        ]
+    )
+
+    assert args.max_train_rows == 3
+    assert args.max_val_rows == 2

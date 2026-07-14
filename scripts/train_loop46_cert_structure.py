@@ -9,7 +9,7 @@ not model features.
 from __future__ import annotations
 
 import argparse
-import hashlib
+import gc
 import json
 import math
 import pickle
@@ -20,6 +20,7 @@ from pathlib import Path
 from typing import Optional, Sequence
 
 import numpy as np
+from sklearn.base import clone
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS_DIR = PROJECT_ROOT / "scripts"
@@ -33,10 +34,13 @@ from identity_feature_guard import assert_no_identity_feature_names  # noqa: E40
 from security import load_safe_checkpoint  # noqa: E402
 from train_stage2_cache_matrix import (  # noqa: E402
     FeatureConfig,
+    append_feature_columns,
     assert_stage2_feature_names_safe,
     build_matrix,
     clean_slice_metrics,
+    content_cache_path_for_row,
     filter_model_candidates,
+    load_valid_feature_npz,
     metrics_at_threshold,
     model_candidates,
     parse_thresholds,
@@ -44,9 +48,11 @@ from train_stage2_cache_matrix import (  # noqa: E402
     read_prediction_rows,
     resolve_path,
     sample_weights,
+    save_feature_npz_atomic,
     select_best_threshold,
     summarize_noise,
     summarize_weights,
+    verify_content_row_source_sha256,
     write_predictions,
     _read_certificate_blob,
 )
@@ -364,42 +370,34 @@ def cert_structure_features_from_path(file_path: Path) -> np.ndarray:
 
 
 def _cert_structure_cache_path(row: dict, cache_dir: Optional[str]) -> Optional[Path]:
-    if not cache_dir:
+    cache_path = content_cache_path_for_row(row, cache_dir)
+    if cache_path is None:
         return None
-    key = (row.get("source_sha256") or "").strip().lower()
-    if not key:
-        source_path = row.get("source_path", "")
-        key = hashlib.sha256(str(resolve_path(Path(source_path))).encode("utf-8", errors="ignore")).hexdigest()
-    return resolve_path(Path(cache_dir)) / f"{key}.npz"
-
-
-def _save_feature_npz_atomic(cache_path: Path, features: np.ndarray) -> None:
-    temp_path = cache_path.with_name(f"{cache_path.stem}.{time.time_ns()}.tmp.npz")
-    np.savez(temp_path, features=features.astype(np.float32, copy=False))
-    temp_path.replace(cache_path)
+    return cache_path.with_name(f"cert_structure_v1_{cache_path.name}")
 
 
 def cert_structure_features_for_row(row: dict, cache_dir: Optional[str]) -> np.ndarray:
+    source_path, _source_sha = verify_content_row_source_sha256(row)
     cache_path = _cert_structure_cache_path(row, cache_dir)
     if cache_path is not None and cache_path.exists():
-        with np.load(cache_path, allow_pickle=False) as data:
-            features = data["features"].astype(np.float32, copy=False)
-        if features.shape == (len(CERT_STRUCTURE_FEATURE_NAMES),):
+        features = load_valid_feature_npz(cache_path, len(CERT_STRUCTURE_FEATURE_NAMES))
+        if features is not None:
             return features
 
-    source_path = resolve_path(Path(row["source_path"]))
     features = cert_structure_features_from_path(source_path)
     if cache_path is not None:
         cache_path.parent.mkdir(parents=True, exist_ok=True)
-        _save_feature_npz_atomic(cache_path, features)
+        save_feature_npz_atomic(cache_path, features)
     return features
 
 
 def build_cert_structure_matrix(rows: Sequence[dict], config: CertStructureConfig) -> np.ndarray:
-    features = [cert_structure_features_for_row(row, config.cache_dir) for row in rows]
-    if not features:
+    if not rows:
         raise ValueError("No cert structure rows were loaded")
-    return np.vstack(features).astype(np.float32, copy=False)
+    matrix = np.empty((len(rows), len(CERT_STRUCTURE_FEATURE_NAMES)), dtype=np.float32)
+    for index, row in enumerate(rows):
+        matrix[index] = cert_structure_features_for_row(row, config.cache_dir)
+    return matrix
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -429,6 +427,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     args = build_parser().parse_args(argv)
     checkpoint = load_safe_checkpoint(resolve_path(args.checkpoint), map_location="cpu")
     checkpoint_config = AxonExperimentConfig.from_dict(dict(checkpoint["config"]))
+    del checkpoint
+    gc.collect()
     output_dir = resolve_path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -453,13 +453,24 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         train_rows, checkpoint_config, feature_config
     )
     val_x, val_y, val_base, val_kept_rows, val_counts = build_matrix(val_rows, checkpoint_config, feature_config)
+    del train_rows
+    del val_rows
 
     cert_structure_cache_dir = resolve_path(args.cert_structure_cache_dir or (output_dir / "cert_structure_cache_v1"))
     structure_config = CertStructureConfig(cache_dir=str(cert_structure_cache_dir))
     train_struct = build_cert_structure_matrix(train_kept_rows, structure_config)
     val_struct = build_cert_structure_matrix(val_kept_rows, structure_config)
-    train_x = np.hstack([train_x, train_struct]).astype(np.float32, copy=False)
-    val_x = np.hstack([val_x, val_struct]).astype(np.float32, copy=False)
+    base_feature_dim = int(train_x.shape[1])
+    cert_structure_feature_dim = int(train_struct.shape[1])
+    train_struct_rows = int(train_struct.shape[0])
+    val_struct_rows = int(val_struct.shape[0])
+    signed_train = int((train_struct[:, 0] > 0).sum())
+    signed_val = int((val_struct[:, 0] > 0).sum())
+    train_x = append_feature_columns(train_x, train_struct)
+    val_x = append_feature_columns(val_x, val_struct)
+    del train_struct
+    del val_struct
+    gc.collect()
     print(f"[matrix] train={train_x.shape} val={val_x.shape}", flush=True)
 
     thresholds = parse_thresholds(args.thresholds)
@@ -467,11 +478,15 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     candidates = filter_model_candidates(model_candidates(int(args.seed)), args.model_candidates)
     noise_modes = [item.strip() for item in args.noise_modes.split(",") if item.strip()]
     results = []
-    fitted = []
+    best_key = None
+    selected = None
+    selected_model = None
+    selected_val_scores = None
     for noise_mode in noise_modes:
         weights = sample_weights(train_y, train_base, noise_mode)
         weight_summary = summarize_weights(train_y, weights)
-        for model_name, model in candidates:
+        for model_name, model_template in candidates:
+            model = clone(model_template)
             start = time.perf_counter()
             fit_kwargs = {}
             if model_name != "logreg_l2_c1":
@@ -497,15 +512,28 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 "delta_val_f1_vs_loop28": float(val_best["f1"]) - float(args.baseline_val_f1),
             }
             results.append(result)
-            fitted.append((float(val_best["f1"]), -int(val_best["errors"]), result, model, val_scores))
+            candidate_key = (float(val_best["f1"]), -int(val_best["errors"]))
+            if best_key is None or candidate_key > best_key:
+                if selected_model is not None:
+                    del selected_model
+                if selected_val_scores is not None:
+                    del selected_val_scores
+                best_key = candidate_key
+                selected = result
+                selected_model = model
+                selected_val_scores = val_scores.astype(np.float32, copy=True)
+            else:
+                del model
+            del val_scores
+            gc.collect()
             print(
                 f"[val] {result['name']} f1={val_best['f1']:.6f} "
                 f"errors={val_best['errors']} threshold={val_best['threshold']:.4f}",
                 flush=True,
             )
 
-    fitted.sort(key=lambda item: (item[0], item[1]), reverse=True)
-    _selected_f1, _neg_errors, selected, selected_model, selected_val_scores = fitted[0]
+    if selected is None or selected_model is None or selected_val_scores is None:
+        raise ValueError("No fitted Loop46 candidate was available for selection")
     selected_threshold = float(selected["val_best"]["threshold"])
     val_predictions_path = output_dir / "loop46_cert_structure_val_predictions.csv"
     write_predictions(val_predictions_path, val_kept_rows, val_y, selected_val_scores, selected_threshold)
@@ -528,8 +556,6 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             handle,
         )
 
-    signed_train = int((train_struct[:, 0] > 0).sum())
-    signed_val = int((val_struct[:, 0] > 0).sum())
     val_kept_count = int(val_counts.get("kept", 0)) if isinstance(val_counts, dict) else int(len(val_y))
     if val_kept_count < 20000:
         test_gate_decision = "smoke_only_not_eligible_for_test10k"
@@ -554,15 +580,15 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             **safe_feature_name_groups,
             "cert_structure_feature_names": CERT_STRUCTURE_FEATURE_NAMES,
         },
-        "base_feature_dim": int(train_x.shape[1] - train_struct.shape[1]),
-        "cert_structure_feature_dim": int(train_struct.shape[1]),
+        "base_feature_dim": base_feature_dim,
+        "cert_structure_feature_dim": cert_structure_feature_dim,
         "feature_dim": int(train_x.shape[1]),
         "cert_structure_cache_dir": str(cert_structure_cache_dir),
         "cert_structure_coverage": {
             "train_present": signed_train,
             "val_present": signed_val,
-            "train_zero": int(train_struct.shape[0] - signed_train),
-            "val_zero": int(val_struct.shape[0] - signed_val),
+            "train_zero": int(train_struct_rows - signed_train),
+            "val_zero": int(val_struct_rows - signed_val),
         },
         "baseline_val_best": baseline_val_best,
         "loop28_reference": {

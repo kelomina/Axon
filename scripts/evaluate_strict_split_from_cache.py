@@ -7,6 +7,7 @@ import argparse
 import csv
 import gc
 import json
+import os
 import sys
 from collections import Counter, defaultdict
 from pathlib import Path
@@ -26,7 +27,7 @@ if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
 from config import AxonExperimentConfig  # noqa: E402
-from dataset import _load_cached_feature_npz, _resolve_manifest_cache_path  # noqa: E402
+from dataset import _iter_manifest_sample_entries, _load_cached_feature_npz, _resolve_manifest_cache_path  # noqa: E402
 from feature_mask import apply_feature_mask_to_tensors, load_feature_mask_tensors, summarize_feature_mask  # noqa: E402
 from model import AxonMalwareModel  # noqa: E402
 from security import load_safe_checkpoint  # noqa: E402
@@ -39,12 +40,22 @@ def resolve_path(path: Path) -> Path:
     return path if path.is_absolute() else PROJECT_ROOT / path
 
 
+def cache_eval_num_workers(num_workers: int) -> int:
+    value = max(0, int(num_workers))
+    if os.name == "nt" and value > 0:
+        raise ValueError(
+            "Strict cache split evaluation keeps an in-memory record index; on Windows "
+            "num_workers > 0 would spawn worker copies of that index. Use 0."
+        )
+    return value
+
+
 def is_valid_sha256(value: object) -> bool:
     text = str(value or "").strip().casefold()
     return len(text) == 64 and all(char in "0123456789abcdef" for char in text)
 
 
-def read_split_rows(path: Path, split: str) -> list[dict[str, str]]:
+def _iter_exact_split_rows(path: Path, split: str, max_rows: Optional[int] = None):
     with resolve_path(path).open("r", encoding="utf-8-sig", newline="") as handle:
         reader = csv.DictReader(handle)
         fieldnames = set(reader.fieldnames or [])
@@ -52,20 +63,40 @@ def read_split_rows(path: Path, split: str) -> list[dict[str, str]]:
         missing = sorted(required - fieldnames)
         if missing:
             raise ValueError(f"Split CSV missing strict columns: {missing}")
-        rows = [dict(row) for row in reader]
-    if split != "all":
-        rows = [row for row in rows if str(row.get("split", "")).strip() == split]
-    return rows
+        yielded = 0
+        for row in reader:
+            if split != "all" and str(row.get("split", "")).strip() != split:
+                continue
+            yield dict(row)
+            yielded += 1
+            if max_rows is not None and yielded >= max_rows:
+                return
+
+
+def iter_split_rows(path: Path, split: str, max_rows: Optional[int] = None):
+    if split != "test10k":
+        yield from _iter_exact_split_rows(path, split, max_rows=max_rows)
+        return
+
+    yielded_explicit = 0
+    for row in _iter_exact_split_rows(path, "test10k", max_rows=max_rows):
+        yielded_explicit += 1
+        yield row
+    if yielded_explicit:
+        return
+
+    fallback_limit = 10_000 if max_rows is None else min(int(max_rows), 10_000)
+    yield from _iter_exact_split_rows(path, "test", max_rows=fallback_limit)
+
+
+def read_split_rows(path: Path, split: str) -> list[dict[str, str]]:
+    return list(iter_split_rows(path, split))
 
 
 def read_manifest_by_sha(path: Path) -> tuple[dict[str, list[dict[str, Any]]], Counter]:
-    payload = json.loads(resolve_path(path).read_text(encoding="utf-8"))
-    samples = payload.get("samples")
-    if not isinstance(samples, list):
-        raise ValueError("Manifest must contain a samples list")
     by_sha: dict[str, list[dict[str, Any]]] = defaultdict(list)
     issue_counts: Counter = Counter()
-    for sample in samples:
+    for sample in _iter_manifest_sample_entries(resolve_path(path)):
         source_sha = str(sample.get("source_sha256") or "").strip().casefold()
         if not is_valid_sha256(source_sha):
             issue_counts["manifest_invalid_source_sha256"] += 1
@@ -74,9 +105,11 @@ def read_manifest_by_sha(path: Path) -> tuple[dict[str, list[dict[str, Any]]], C
         if label not in {"0", "1"}:
             issue_counts["manifest_invalid_label"] += 1
             continue
-        normalized = dict(sample)
-        normalized["source_sha256"] = source_sha
-        normalized["label"] = label
+        normalized = {
+            "source_sha256": source_sha,
+            "label": label,
+            "cache_path": sample.get("cache_path", ""),
+        }
         by_sha[source_sha].append(normalized)
     return by_sha, issue_counts
 
@@ -112,9 +145,6 @@ def collect_strict_records(
     split: str,
     max_rows: Optional[int] = None,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
-    rows = read_split_rows(split_csv, split)
-    if max_rows is not None:
-        rows = rows[:max_rows]
     manifest_by_sha, manifest_issue_counts = read_manifest_by_sha(manifest_json)
     cache_dir = resolve_path(manifest_json).parent
 
@@ -123,8 +153,10 @@ def collect_strict_records(
     issue_counts: Counter = Counter(manifest_issue_counts)
     label_counts: Counter = Counter()
     match_counts: Counter = Counter()
+    raw_rows = 0
 
-    for row_index, row in enumerate(rows):
+    for row_index, row in enumerate(iter_split_rows(split_csv, split, max_rows=max_rows)):
+        raw_rows += 1
         issues: list[str] = []
         sample, row_issues = select_manifest_sample(row, manifest_by_sha)
         issues.extend(row_issues)
@@ -165,7 +197,7 @@ def collect_strict_records(
             )
 
     summary = {
-        "raw_rows": len(rows),
+        "raw_rows": raw_rows,
         "records": len(records),
         "label_counts": dict(sorted(label_counts.items())),
         "manifest_match_counts": dict(sorted(match_counts.items())),
@@ -196,7 +228,7 @@ class StrictCachedSplitDataset(Dataset):
             expected_source_sha256=str(record["source_sha256"]),
         )
         return (
-            torch.from_numpy(byte_seq).long(),
+            torch.from_numpy(byte_seq),
             torch.from_numpy(pe_features).float(),
             torch.from_numpy(stat_features).float(),
             int(label),
@@ -306,7 +338,8 @@ def evaluate_strict_split_from_cache(
         }
         resolved_output = resolve_path(output_json)
         resolved_output.parent.mkdir(parents=True, exist_ok=True)
-        resolved_output.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+        with resolved_output.open("w", encoding="utf-8") as handle:
+            json.dump(payload, handle, indent=2, ensure_ascii=False)
         return payload
 
     device = torch.device(device_name if device_name == "cpu" or torch.cuda.is_available() else "cpu")
@@ -334,11 +367,12 @@ def evaluate_strict_split_from_cache(
         labels: list[int] = []
         probs: list[float] = []
         dataset = StrictCachedSplitDataset(records, config)
+        worker_count = cache_eval_num_workers(num_workers)
         loader = DataLoader(
             dataset,
             batch_size=int(batch_size),
             shuffle=False,
-            num_workers=max(0, int(num_workers)),
+            num_workers=worker_count,
             pin_memory=(device.type == "cuda"),
             persistent_workers=False,
         )
@@ -384,7 +418,7 @@ def evaluate_strict_split_from_cache(
             "path_used_for_lookup": False,
             "predicted_samples": len(labels),
             "batch_size": int(batch_size),
-            "num_workers": int(num_workers),
+            "num_workers": int(worker_count),
             "max_rows": max_rows,
             "device": str(device),
             "metrics": primary,
@@ -406,7 +440,8 @@ def evaluate_strict_split_from_cache(
         }
         resolved_output = resolve_path(output_json)
         resolved_output.parent.mkdir(parents=True, exist_ok=True)
-        resolved_output.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+        with resolved_output.open("w", encoding="utf-8") as handle:
+            json.dump(payload, handle, indent=2, ensure_ascii=False)
         return payload
     finally:
         byte_seq = pe_features = stat_features = batch_labels = logits = batch_probs = None

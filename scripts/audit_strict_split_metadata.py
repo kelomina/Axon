@@ -6,9 +6,17 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import sys
 from collections import Counter, defaultdict
 from pathlib import Path
-from typing import Any, Optional, Sequence
+from typing import Any, Iterable, Optional, Sequence
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from src.dataset import _iter_manifest_sample_entries  # noqa: E402
 
 
 EXPECTED_20W_SPLIT_COUNTS = {"train": 20000, "val": 20000, "test": 160000}
@@ -39,7 +47,7 @@ def scalar_text(value: Any) -> str:
     return str(value)
 
 
-def read_split_rows(path: Path) -> list[dict]:
+def iter_split_rows(path: Path) -> Iterable[dict]:
     with resolve_path(path).open("r", encoding="utf-8-sig", newline="") as handle:
         reader = csv.DictReader(handle)
         fieldnames = set(reader.fieldnames or [])
@@ -47,15 +55,13 @@ def read_split_rows(path: Path) -> list[dict]:
         missing = sorted(required - fieldnames)
         if missing:
             raise ValueError(f"Split CSV missing required strict metadata columns: {missing}")
-        return [dict(row) for row in reader if row.get("source_path")]
+        for row in reader:
+            if row.get("source_path"):
+                yield dict(row)
 
 
-def read_manifest_samples(path: Path) -> list[dict]:
-    payload = json.loads(resolve_path(path).read_text(encoding="utf-8"))
-    samples = payload.get("samples")
-    if not isinstance(samples, list):
-        raise ValueError("Manifest must contain a samples list")
-    return [dict(sample) for sample in samples]
+def iter_manifest_samples(path: Path) -> Iterable[dict]:
+    yield from _iter_manifest_sample_entries(resolve_path(path))
 
 
 def resolve_cache_path(cache_path_text: str, manifest_json: Path) -> Path:
@@ -94,10 +100,12 @@ def read_npz_metadata(cache_path: Path) -> tuple[Optional[int], Optional[str], l
     return label, source_sha256, issues
 
 
-def validate_manifest(samples: Sequence[dict]) -> tuple[dict[str, list[dict]], Counter]:
+def validate_manifest(samples: Iterable[dict]) -> tuple[dict[str, list[dict]], Counter, int]:
     by_sha: dict[str, list[dict]] = defaultdict(list)
     issue_counts: Counter = Counter()
+    sample_count = 0
     for sample in samples:
+        sample_count += 1
         source_sha = str(sample.get("source_sha256") or "").strip().casefold()
         if not is_valid_sha256(source_sha):
             issue_counts["manifest_invalid_source_sha256"] += 1
@@ -114,7 +122,7 @@ def validate_manifest(samples: Sequence[dict]) -> tuple[dict[str, list[dict]], C
         normalized["label"] = label
         normalized["source_sha256"] = source_sha
         by_sha[source_sha].append(normalized)
-    return by_sha, issue_counts
+    return by_sha, issue_counts, sample_count
 
 
 def audit_strict_split_metadata(
@@ -125,11 +133,11 @@ def audit_strict_split_metadata(
     expect_20w: bool = False,
     strict_unique_source_sha256: bool = False,
 ) -> dict:
-    split_rows = read_split_rows(split_csv)
-    manifest_samples = read_manifest_samples(manifest_json)
-    manifest_by_sha, manifest_issue_counts = validate_manifest(manifest_samples)
+    manifest_by_sha, manifest_issue_counts, manifest_sample_count = validate_manifest(iter_manifest_samples(manifest_json))
 
-    row_issues = []
+    row_issue_count = 0
+    row_issue_examples = []
+    total_rows = 0
     split_counts: Counter = Counter()
     label_counts: Counter = Counter()
     label_split_counts: dict[str, Counter] = defaultdict(Counter)
@@ -137,7 +145,8 @@ def audit_strict_split_metadata(
     match_counts: Counter = Counter()
     metadata_issue_counts: Counter = Counter(manifest_issue_counts)
 
-    for row_index, row in enumerate(split_rows):
+    for row_index, row in enumerate(iter_split_rows(split_csv)):
+        total_rows += 1
         issues = []
         split = str(row.get("split") or "").strip()
         label_text = str(row.get("label") or "").strip()
@@ -189,14 +198,16 @@ def audit_strict_split_metadata(
         if issues:
             for issue in issues:
                 metadata_issue_counts[issue] += 1
-            row_issues.append({
-                "row_index": row_index,
-                "sample_index": row.get("sample_index", ""),
-                "split": split,
-                "label": label_text,
-                "source_sha256": source_sha,
-                "issues": issues,
-            })
+            row_issue_count += 1
+            if len(row_issue_examples) < 50:
+                row_issue_examples.append({
+                    "row_index": row_index,
+                    "sample_index": row.get("sample_index", ""),
+                    "split": split,
+                    "label": label_text,
+                    "source_sha256": source_sha,
+                    "issues": issues,
+                })
 
     shape_failures = []
     if expect_20w:
@@ -212,7 +223,7 @@ def audit_strict_split_metadata(
         if duplicate_hashes:
             shape_failures.append(f"duplicate_source_sha256:{duplicate_hashes}")
 
-    audit_ready = not row_issues and not shape_failures
+    audit_ready = row_issue_count == 0 and not shape_failures
     return {
         "schema": "axon_strict_split_metadata_audit_v1",
         "identity_feature_policy": (
@@ -224,8 +235,8 @@ def audit_strict_split_metadata(
         "validate_npz": bool(validate_npz),
         "expect_20w": bool(expect_20w),
         "strict_unique_source_sha256": bool(strict_unique_source_sha256),
-        "rows": len(split_rows),
-        "manifest_samples": len(manifest_samples),
+        "rows": total_rows,
+        "manifest_samples": manifest_sample_count,
         "split_counts": dict(sorted(split_counts.items())),
         "label_counts": dict(sorted(label_counts.items())),
         "label_split_counts": {
@@ -233,8 +244,8 @@ def audit_strict_split_metadata(
         },
         "match_counts": dict(sorted(match_counts.items())),
         "metadata_issue_counts": dict(sorted(metadata_issue_counts.items())),
-        "row_issue_count": len(row_issues),
-        "row_issue_examples": row_issues[:50],
+        "row_issue_count": row_issue_count,
+        "row_issue_examples": row_issue_examples,
         "shape_failures": shape_failures,
         "audit_ready": audit_ready,
         "ready_for": {
@@ -272,8 +283,16 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     )
     output_path = resolve_path(args.output_json)
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
-    print(json.dumps(payload, indent=2, ensure_ascii=False))
+    with output_path.open("w", encoding="utf-8") as handle:
+        json.dump(payload, handle, indent=2, ensure_ascii=False)
+    print(json.dumps({
+        "audit_ready": payload["audit_ready"],
+        "rows": payload["rows"],
+        "manifest_samples": payload["manifest_samples"],
+        "row_issue_count": payload["row_issue_count"],
+        "shape_failures": payload["shape_failures"],
+        "output_json": str(output_path),
+    }, indent=2, ensure_ascii=False))
     return 0 if payload["audit_ready"] or not args.strict else 2
 
 

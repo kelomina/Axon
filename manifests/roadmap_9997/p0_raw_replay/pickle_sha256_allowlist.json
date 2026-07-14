@@ -1,0 +1,77 @@
+{
+  "schema": "axon_pickle_sha256_allowlist_v1",
+  "contract": "Digest inventory only. An entry is not permission to deserialize: the caller must also require an exact SHA-bound metadata sidecar, an allowed project root, and the mode-specific authorization gate.",
+  "generated_from": "Existing frozen local research artifacts; no pickle was opened to create this inventory.",
+  "entries": [
+    {
+      "artifact_id": "loop28_stage2_hgb",
+      "path": "reports/random_20w_split/stage2_loop28_content_pe_valonly/stage2_selected_model.pkl",
+      "sha256": "34d76eaf015e6750ca080f80a8ae528e8e10f2261ff9f1c001dc2f243672a5c2",
+      "metadata_path": "manifests/roadmap_9997/p0_raw_replay/loop28_stage2.metadata.json",
+      "metadata_sha256": "0a24dcf1ec5bab43d6afd004df006e4c8008bace854265cdd5f8cc4c79ba80f4",
+      "provenance_report_path": "reports/random_20w_split/stage2_loop28_content_pe_valonly/stage2_cache_matrix_report.json",
+      "provenance_report_sha256": "8cdcbe3f9f250efc3e809aa8e5eb8f7710aa84797e1b8f129c2a4ff4bb5bc520",
+      "load_authorized": true,
+      "authorized_modes": [
+        "native-parity"
+      ],
+      "blocker": null
+    },
+    {
+      "artifact_id": "loop127_primary_with_logreg",
+      "path": "reports/phase3_loop127/oof_fixed_v2_all_valonly_with_logreg/stage2_oof_stacker_selected_model.pkl",
+      "sha256": "2429cc21a5f43c79b484e421ec4fbc5da92f0322ad8fcefbde03f2b60e2ecec9",
+      "metadata_path": null,
+      "metadata_sha256": null,
+      "provenance_report_path": "reports/phase3_loop127/oof_fixed_v2_all_valonly_with_logreg/stage2_oof_stacker_report.json",
+      "provenance_report_sha256": "21a7c223024da0fa9e4fb6c58f035824064f6300ddd221878f0b2bc3c6febf5f",
+      "load_authorized": false,
+      "blocker": "no_guarded_raw_runtime_metadata"
+    },
+    {
+      "artifact_id": "loop127_conservative_no_logreg",
+      "path": "reports/phase3_loop127/oof_fixed_v2_all_valonly_no_logreg/stage2_oof_stacker_selected_model.pkl",
+      "sha256": "4c17e2b38ecea6f8f02aeebfaf4002fb8cd517adcebafbee84bd60a12a05fd8b",
+      "metadata_path": null,
+      "metadata_sha256": null,
+      "provenance_report_path": "reports/phase3_loop127/oof_fixed_v2_all_valonly_no_logreg/stage2_oof_stacker_report.json",
+      "provenance_report_sha256": "c0da667fabcbe092fed3b907881275657e01a9974e1951c1defaccf6bf6093d6",
+      "load_authorized": false,
+      "blocker": "no_guarded_raw_runtime_metadata"
+    },
+    {
+      "artifact_id": "loop127_content_cross_hgb_local",
+      "path": "reports/phase3_loop127/phase1_content_cross_hgb_local_valonly/loop43_content_cross_selected_model.pkl",
+      "sha256": "43c09a9db391606d98084d60fc1ca21f6f797387a9c511dcfbde6577b73c9372",
+      "metadata_path": null,
+      "metadata_sha256": null,
+      "provenance_report_path": "reports/phase3_loop127/phase1_content_cross_hgb_local_valonly/loop43_content_cross_report.json",
+      "provenance_report_sha256": "919463102177fdadf8e90ef357d102fd68179227637fec73e89ca3d82df8e408",
+      "load_authorized": false,
+      "blocker": "no_guarded_raw_runtime_metadata"
+    },
+    {
+      "artifact_id": "loop134_oof_noise",
+      "path": "reports/phase3_loop134/oof_fixed_v2_string_noise_valonly/stage2_oof_stacker_selected_model.pkl",
+      "sha256": "7eee28e5c324d42e45ed8bc47c1b7c76b26993a9b5eb9d31c94625337b588339",
+      "metadata_path": null,
+      "metadata_sha256": null,
+      "provenance_report_path": "reports/phase3_loop134/oof_fixed_v2_string_noise_valonly/stage2_oof_stacker_report.json",
+      "provenance_report_sha256": "f6c95c549bbe5b3af24703f938784245dafdd11d110309b3798deda9b5978742",
+      "load_authorized": false,
+      "blocker": "no_guarded_raw_runtime_metadata"
+    },
+    {
+      "artifact_id": "loop136_pairwise_selector",
+      "path": "reports/phase3_loop136/r5_oof_noise_pairwise_selector_recall_valonly/loop135_pairwise_selector.pkl",
+      "sha256": "cdc838d64d55ce2697c5b46c8a85e04e32a3ecdba21f18f6e905888d93424516",
+      "metadata_path": null,
+      "metadata_sha256": null,
+      "provenance_report_path": "reports/phase3_loop136/r5_oof_noise_pairwise_selector_recall_valonly/loop135_pairwise_selector_report.json",
+      "provenance_report_sha256": "dba85c5e48108a77981f9ed10e37bd6756ac128190b9c45280bcf11db9e68575",
+      "load_authorized": false,
+      "blocker": "no_guarded_raw_runtime_metadata"
+    }
+  ],
+  "decision": "loop28_guarded_load_ready_other_research_pickles_blocked"
+}

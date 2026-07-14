@@ -1,0 +1,126 @@
+{
+  "schema": "axon_loop28_pytorch_native_decode_compat_authorization_v1",
+  "loop_id": "p0_loop28_pytorch_native_decode_compat_001",
+  "created_at_utc": "2026-07-12T00:13:00Z",
+  "proposal": {
+    "path": "manifests/roadmap_9997/p0_loop28_pytorch_native_decode_compat/proposal.json",
+    "sha256": "abc5f7e03f5c1051a6ba64dc641e2ff6a2e6e514bff5e542c703796b076ba1c1",
+    "decision": "propose_upstream_v213_decode_compat_package_only_successor"
+  },
+  "authorization_level": "A1_scoped_change",
+  "authorized_scope": {
+    "implementation_generations": 1,
+    "official_source_manifest_generations": 1,
+    "reused_binaries_manifest_generations": 1,
+    "preflight_attempts": 1,
+    "package_attempts": 1,
+    "allowed_actions": [
+      "create the proposal-bound decode-compat runner, manifest builder, and focused tests",
+      "build and verify one official PyTorch v2.13 source/tag/excerpt manifest and one artifact-only reused C++ binaries manifest before preflight authorization",
+      "run one lease-gated isolated default-locale compiler-decoder preflight that imports installed Torch, mirrors the exact upstream v2.13 decode tuple in memory, constructs no model, and invokes no package API",
+      "freeze one implementation manifest after the preflight passes",
+      "after a separately bound package authorization and lease, generate and audit one fresh tiny_v2 package without loading it",
+      "write only this successor loop's manifests, synthetic artifacts, reports, and immutable final documents"
+    ]
+  },
+  "authorized_stage_budgets": {
+    "preflight": {
+      "worker_processes": 1,
+      "vcvars_activations": 1,
+      "torch_imports": 1,
+      "compiler_help_processes_max": 4,
+      "wall_clock_seconds_max": 1800,
+      "model_constructions": 0,
+      "torch_export_calls": 0,
+      "aoti_compile_and_package_calls": 0,
+      "package_load_calls": 0,
+      "native_probe_execution_count": 0,
+      "gpu_execution_count": 0,
+      "network_request_count": 0,
+      "quality_metric_count": 0
+    },
+    "package": {
+      "worker_processes": 1,
+      "vcvars_activations": 1,
+      "compiler_help_processes_max": 4,
+      "dumpbin_processes_max": 64,
+      "wall_clock_seconds_max": 1800,
+      "max_retained_output_bytes": 536870912,
+      "torch_imports": 1,
+      "model_constructions": 1,
+      "torch_export_calls": 1,
+      "torch_export_completed": 1,
+      "aoti_compile_and_package_calls": 1,
+      "aoti_compile_and_package_completed": 1,
+      "torchscript_export_calls": 0,
+      "package_load_calls": 0,
+      "native_probe_execution_count": 0,
+      "gpu_execution_count": 0,
+      "network_request_count": 0,
+      "quality_metric_count": 0
+    }
+  },
+  "terminal_evidence_contract": {
+    "source_record_fields": [
+      "path",
+      "size_bytes",
+      "sha256"
+    ],
+    "source_before_and_after_exact_authorization_match": true,
+    "worker_temp_and_work_roots_removed": true,
+    "console_code_pages_utf8_around_started_child_and_exactly_restored": true,
+    "process_tree_termination_must_be_confirmed": true,
+    "windows_job_object_containment_required": true,
+    "job_assignment_gate_before_worker_start_required": true,
+    "taskkill_fallback_pre_gate_zero_journal_only": true,
+    "structured_worker_receipt_required_for_every_terminal": true,
+    "administrative_failure_zero_counter_receipt_required": true,
+    "frozen_python_torch_cuda_shim_hashes_required_when_torch_imported": true,
+    "worker_telemetry_counter_reconciliation_required": true,
+    "durable_worker_journal_hash_chain_required": true,
+    "journal_reconstruction_must_preserve_last_counters": true,
+    "journal_corruption_zero_fallback_forbidden": true,
+    "partial_inventory_error_forbidden_in_terminal_manifest": true,
+    "failure_reason_exact_classification_required": true,
+    "finite_budget_actual_reconciliation_required": true
+  },
+  "execution_gates": {
+    "official_source_manifest_required_before_preflight_authorization": true,
+    "reused_binaries_manifest_required_before_preflight_authorization": true,
+    "preflight_authorization_and_single_use_lease_required": true,
+    "preflight_must_pass_before_implementation_manifest": true,
+    "implementation_manifest_required_before_package_authorization": true,
+    "package_authorization_and_single_use_lease_required": true,
+    "package_manifest_required_before_any_future_runtime_loop": true,
+    "package_load_in_this_loop_forbidden": true,
+    "ready_lease_reuse_forbidden": true,
+    "output_replacement_forbidden": true
+  },
+  "terminal_closure": {
+    "preflight_failure_must_close_without_package_authorization": true,
+    "package_failure_classes": [
+      "administrative",
+      "pre_export",
+      "protected_call",
+      "dependency",
+      "static_audit",
+      "budget"
+    ],
+    "package_success_or_failure_must_bind_authorization_consumed_lease_budget_and_partials": true
+  },
+  "explicitly_not_authorized": [
+    "modification of any parent, installed PyTorch, frozen runner/controller, native binary, model, config, split, data, or prior closure",
+    "reading or reusing the parent tiny_v1 partial input or any other parent partial package artifact",
+    "checkpoint, ONNX, Stage-2, raw, split, cache, heldout, prediction, error-row, training, fitting, model selection, F1, or quality access",
+    "package loading, native inference, GPU use, dependency installation, network use, deployment, commit, or push"
+  ],
+  "claim_boundary": {
+    "decoder_compatibility_claim_allowed": true,
+    "tiny_package_generation_claim_allowed": true,
+    "tiny_runtime_feasibility_claim_allowed": false,
+    "package_load_allowed": false,
+    "quality_claim_allowed": false,
+    "certification_claim_allowed": false
+  },
+  "decision": "authorize_single_upstream_v213_decode_compat_package_only_loop"
+}

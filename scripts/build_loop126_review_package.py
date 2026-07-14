@@ -85,10 +85,15 @@ def _forbidden_public_columns(fieldnames: Sequence[str]) -> list[str]:
     for fieldname in fieldnames:
         if fieldname in allowed or fieldname in MANUAL_FIELDS:
             continue
-        folded = fieldname.casefold()
-        if any(token in folded for token in FORBIDDEN_PUBLIC_FIELD_TOKENS):
+        if any(_field_has_forbidden_token(fieldname, token) for token in FORBIDDEN_PUBLIC_FIELD_TOKENS):
             found.append(fieldname)
     return sorted(set(found))
+
+
+def _field_has_forbidden_token(fieldname: str, token: str) -> bool:
+    folded = fieldname.casefold()
+    parts = [part for part in folded.replace("-", "_").split("_") if part]
+    return token in parts
 
 
 def build_loop126_review_template(

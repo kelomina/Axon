@@ -1,0 +1,8 @@
+{
+  "schema": "axon_loop151_raw_replay_verify_authorization_v1",
+  "authorization_level": "A1_scoped_change",
+  "allow_complete_loop151_raw_replay": false,
+  "truth_manifest_sha256": "174861be850a681025a7040798c59b7157cc67ab5503437088359692dad5659d",
+  "basis": "Negative control only: prove that complete Loop151 replay is rejected before stage artifacts, models, pickle payloads, or raw samples are opened.",
+  "decision": "deny_complete_loop151_raw_replay"
+}

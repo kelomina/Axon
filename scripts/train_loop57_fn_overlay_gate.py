@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import gc
 import json
 import pickle
 import sys
@@ -44,6 +45,7 @@ from train_loop55_overlay_boundary import (  # noqa: E402
 )
 from train_stage2_cache_matrix import (  # noqa: E402
     FeatureConfig,
+    append_feature_columns,
     assert_stage2_feature_names_safe,
     build_matrix,
     filter_model_candidates,
@@ -74,19 +76,18 @@ def build_fn_gate_matrix(
     """Build non-identity gate features for FN-specific override decisions."""
 
     score_features, score_names = build_gate_score_features(base_scores, candidate_scores)
-    parts = [score_features]
+    matrix = score_features.astype(np.float32, copy=False)
     names = list(score_names)
     if include_overlay_features:
         overlay_names = [f"gate_{name}" for name in OVERLAY_BOUNDARY_FEATURE_NAMES]
         assert_no_identity_feature_names(overlay_names, context="Loop57 gate overlay feature aliases")
-        parts.append(overlay_matrix.astype(np.float32, copy=False))
+        matrix = append_feature_columns(matrix, overlay_matrix)
         names.extend(overlay_names)
     if include_content_features:
         content_names = [f"gate_content_feature_{index}" for index in range(content_matrix.shape[1])]
         assert_no_identity_feature_names(content_names, context="Loop57 gate content feature aliases")
-        parts.append(content_matrix.astype(np.float32, copy=False))
+        matrix = append_feature_columns(matrix, content_matrix)
         names.extend(content_names)
-    matrix = np.hstack(parts)
     return matrix.astype(np.float32, copy=False), names
 
 
@@ -197,9 +198,32 @@ def align_external_scores(
     probability_column: str,
     key_column: str,
 ) -> tuple[np.ndarray, dict]:
+    needed_keys = {_prediction_key(row, key_column) for row in rows}
+    by_key: dict[str, dict] = {}
+    scanned_rows = 0
+    if not needed_keys:
+        return np.empty(0, dtype=np.float32), {
+            "path": str(resolve_path(prediction_path)),
+            "probability_column": probability_column,
+            "key_column": key_column,
+            "rows": 0,
+            "external_rows": 0,
+            "external_rows_scanned": 0,
+            "matched_external_rows": 0,
+            "sha_checked": 0,
+        }
     with resolve_path(prediction_path).open("r", encoding="utf-8-sig", newline="") as handle:
-        external_rows = list(csv.DictReader(handle))
-    by_key = {_prediction_key(row, key_column): row for row in external_rows}
+        reader = csv.DictReader(handle)
+        for external_row in reader:
+            scanned_rows += 1
+            key = _prediction_key(external_row, key_column)
+            if key not in needed_keys:
+                continue
+            if key in by_key:
+                raise ValueError(f"External prediction duplicate key {key!r} in {prediction_path}")
+            by_key[key] = external_row
+            if len(by_key) == len(needed_keys):
+                break
     scores = np.empty(len(rows), dtype=np.float32)
     sha_checked = 0
     for index, row in enumerate(rows):
@@ -221,7 +245,9 @@ def align_external_scores(
         "probability_column": probability_column,
         "key_column": key_column,
         "rows": len(rows),
-        "external_rows": len(external_rows),
+        "external_rows": scanned_rows,
+        "external_rows_scanned": scanned_rows,
+        "matched_external_rows": len(by_key),
         "sha_checked": sha_checked,
     }
 
@@ -329,6 +355,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     args = parse_args(argv)
     checkpoint = load_safe_checkpoint(resolve_path(args.checkpoint), map_location="cpu")
     checkpoint_config = AxonExperimentConfig.from_dict(dict(checkpoint["config"]))
+    del checkpoint
+    gc.collect()
     output_dir = resolve_path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -353,6 +381,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     val_x, val_y, _val_base_exported, val_kept_rows, val_counts = build_matrix(
         val_rows, checkpoint_config, feature_config
     )
+    del train_rows
+    del val_rows
+    gc.collect()
     dropped_feature_count = 0
     if args.drop_base_prob_features:
         dropped_feature_count = 6
@@ -362,8 +393,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     overlay_config = OverlayBoundaryConfig(cache_dir=str(resolve_path(args.overlay_boundary_cache_dir)))
     train_overlay = build_overlay_boundary_matrix(train_kept_rows, overlay_config)
     val_overlay = build_overlay_boundary_matrix(val_kept_rows, overlay_config)
-    candidate_train_x = np.hstack([train_x, train_overlay]).astype(np.float32, copy=False)
-    candidate_val_x = np.hstack([val_x, val_overlay]).astype(np.float32, copy=False)
+    del train_kept_rows
+    candidate_train_x = append_feature_columns(train_x, train_overlay)
+    candidate_val_x = append_feature_columns(val_x, val_overlay)
     print(
         f"[matrix] base_train={train_x.shape} candidate_train={candidate_train_x.shape} val={val_x.shape}",
         flush=True,
@@ -388,6 +420,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         folds=folds,
         seed=int(args.seed),
     )
+    del fitted_base_models
+    gc.collect()
     candidate_oof, candidate_val, fitted_candidate_models, candidate_reports_raw = oof_stage2_scores(
         train_x=candidate_train_x,
         train_y=train_y,
@@ -420,7 +454,13 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     if not selected_gate_candidates:
         raise ValueError("No gate model candidates selected")
 
-    fitted_results = []
+    best_key = None
+    selected = None
+    selected_gate_model = None
+    selected_gate_val_scores = None
+    selected_candidate_index = None
+    selected_candidate_val_scores = None
+    selected_gate_feature_names = None
     candidate_reports = []
     include_overlay_for_gate = not bool(args.no_gate_overlay_features)
     include_content_for_gate = bool(args.gate_content_features)
@@ -502,18 +542,26 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 "delta_val_f1_vs_loop28_locked": float(val_gate_best["f1"]) - float(args.baseline_val_f1),
             }
             gate_model_reports.append(report_row)
-            fitted_results.append(
-                (
-                    float(val_gate_best["f1"]),
-                    -int(val_gate_best["errors"]),
-                    report_row,
-                    gate_model,
-                    gate_val_scores,
-                    candidate_index,
-                    candidate_val_scores,
-                    gate_feature_names,
-                )
-            )
+            candidate_key = (float(val_gate_best["f1"]), -int(val_gate_best["errors"]))
+            if best_key is None or candidate_key > best_key:
+                if selected_gate_model is not None:
+                    del selected_gate_model
+                if selected_gate_val_scores is not None:
+                    del selected_gate_val_scores
+                if selected_candidate_val_scores is not None:
+                    del selected_candidate_val_scores
+                best_key = candidate_key
+                selected = report_row
+                selected_gate_model = gate_model
+                selected_gate_val_scores = gate_val_scores.astype(np.float32, copy=True)
+                selected_candidate_index = candidate_index
+                selected_candidate_val_scores = candidate_val_scores.astype(np.float32, copy=True)
+                selected_gate_feature_names = list(gate_feature_names)
+            else:
+                del gate_model
+                del gate_val_scores
+            del gate_train_scores
+            gc.collect()
             print(
                 f"[fn-gate-val] candidate={candidate_name} gate={gate_name} "
                 f"f1={val_gate_best['f1']:.6f} errors={val_gate_best['errors']} "
@@ -529,11 +577,17 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 "gate_models": gate_model_reports,
             }
         )
+        del train_gate_x
+        del val_gate_x
+        gc.collect()
 
-    if not fitted_results:
+    if selected is None or selected_gate_model is None or selected_gate_val_scores is None:
         raise ValueError("No fitted gate results were produced")
-    fitted_results.sort(key=lambda item: (item[0], item[1]), reverse=True)
-    _best_f1, _neg_errors, selected, selected_gate_model, selected_gate_val_scores, selected_candidate_index, selected_candidate_val_scores, gate_feature_names = fitted_results[0]
+    if selected_candidate_index is None or selected_candidate_val_scores is None or selected_gate_feature_names is None:
+        raise ValueError("Selected gate candidate is incomplete")
+    selected_candidate_model = fitted_candidate_models[int(selected_candidate_index)]
+    fitted_candidate_models = [selected_candidate_model]
+    gate_feature_names = selected_gate_feature_names
     selected_candidate_name = selected["candidate"]
     selected_candidate_threshold = float(selected["candidate_train_threshold"])
     selected_gate_threshold = float(selected["val_gate_best"]["gate_threshold"])
@@ -565,7 +619,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             {
                 "schema": "axon_loop57_fn_overlay_gate_payload_v1",
                 "gate_model": selected_gate_model,
-                "candidate_model": fitted_candidate_models[selected_candidate_index],
+                "candidate_model": selected_candidate_model,
                 "selected": selected,
                 "base_threshold": base_threshold,
                 "candidate_threshold": selected_candidate_threshold,

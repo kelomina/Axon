@@ -1,4 +1,5 @@
 import csv
+import inspect
 import sys
 import uuid
 from contextlib import contextmanager
@@ -9,6 +10,8 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 
+import evaluate_probability_calibrator as eval_calibrator  # noqa: E402
+import train_probability_calibrator as train_calibrator  # noqa: E402
 from evaluate_probability_calibrator import (  # noqa: E402
     _load_prediction_features,
     _metrics,
@@ -53,6 +56,14 @@ def _write_predictions(path: Path, rows: list[dict]) -> None:
         writer.writerows(rows)
 
 
+def _read_csv_rows(path: Path) -> list[dict]:
+    rows = []
+    with path.open("r", encoding="utf-8-sig", newline="") as handle:
+        for row in csv.DictReader(handle):
+            rows.append(row)
+    return rows
+
+
 def test_calibrator_feature_loader_fails_when_cache_is_missing_by_default():
     with _case_dir("calibrator_missing_cache") as tmp_path:
         existing_cache = tmp_path / "existing.npz"
@@ -90,11 +101,11 @@ def test_calibrator_feature_loader_can_allow_diagnostic_subset_runs():
             allow_missing_cache=True,
             missing_cache_output=tmp_path / "missing_cache.csv",
         )
-        missing_rows = list(csv.DictReader((tmp_path / "missing_cache.csv").open("r", encoding="utf-8-sig")))
+        missing_rows = _read_csv_rows(tmp_path / "missing_cache.csv")
 
     assert features.shape == (1, 10)
     assert labels.tolist() == [1]
-    assert probabilities.tolist() == [0.8]
+    assert np.allclose(probabilities, [0.8])
     assert kept_rows[0]["label"] == "1"
     assert counts["total"] == 2
     assert counts["kept"] == 1
@@ -133,7 +144,7 @@ def test_calibrator_missing_cache_output_preserves_bom_source_path_header():
                 allow_missing_cache=True,
                 missing_cache_output=tmp_path / "missing_cache.csv",
             )
-        missing_rows = list(csv.DictReader((tmp_path / "missing_cache.csv").open("r", encoding="utf-8-sig")))
+        missing_rows = _read_csv_rows(tmp_path / "missing_cache.csv")
 
     assert missing_rows[0]["source_path"] == "data/raw.exe"
     assert missing_rows[0]["source_sha256"] == SHA_A
@@ -204,8 +215,71 @@ def test_train_calibrator_feature_loader_uses_same_hash_label_guards():
 
     assert features.shape == (1, 10)
     assert labels.tolist() == [1]
-    assert probabilities.tolist() == [0.8]
+    assert np.allclose(probabilities, [0.8])
     assert counts["kept"] == 1
+
+
+def test_train_calibrator_feature_loader_rejects_wrong_split():
+    with _case_dir("train_calibrator_wrong_split") as tmp_path:
+        existing_cache = tmp_path / "existing.npz"
+        predictions = tmp_path / "predictions.csv"
+        _write_cache_npz(existing_cache, label=1, source_sha256=SHA_A)
+        _write_predictions(
+            predictions,
+            [
+                {
+                    "cache_path": str(existing_cache),
+                    "label": "1",
+                    "prob_malicious": "0.8",
+                    "source_sha256": SHA_A,
+                    "split": "val",
+                },
+            ],
+        )
+
+        with pytest.raises(ValueError, match="split mismatch"):
+            _load_train_prediction_features(predictions, expected_split="train")
+
+
+def test_eval_calibrator_feature_loader_can_skip_kept_rows():
+    with _case_dir("eval_calibrator_skip_kept_rows") as tmp_path:
+        existing_cache = tmp_path / "existing.npz"
+        predictions = tmp_path / "predictions.csv"
+        _write_cache_npz(existing_cache, label=1, source_sha256=SHA_A)
+        _write_predictions(
+            predictions,
+            [
+                {"cache_path": str(existing_cache), "label": "1", "prob_malicious": "0.8", "source_sha256": SHA_A},
+            ],
+        )
+
+        features, labels, probabilities, kept_rows, counts = _load_prediction_features(
+            predictions,
+            include_kept_rows=False,
+        )
+
+    assert features.shape == (1, 10)
+    assert labels.tolist() == [1]
+    assert np.allclose(probabilities, [0.8])
+    assert kept_rows == []
+    assert counts["kept"] == 1
+
+
+def test_probability_calibrator_loaders_avoid_full_csv_rows_and_vstack():
+    train_loader_source = inspect.getsource(train_calibrator._load_prediction_features)
+    eval_loader_source = inspect.getsource(eval_calibrator._load_prediction_features)
+    train_main_source = inspect.getsource(train_calibrator.main)
+
+    assert "list(csv.DictReader" not in train_loader_source
+    assert "list(csv.DictReader" not in eval_loader_source
+    assert "np.vstack" not in train_loader_source
+    assert "np.vstack" not in eval_loader_source
+    assert "np.empty" in train_loader_source
+    assert "np.empty" in eval_loader_source
+    assert "missing_cache_rows = []" not in eval_loader_source
+    assert "missing_writer.writerow" in eval_loader_source
+    assert "fitted_candidates" not in train_main_source
+    assert "best_model" in train_main_source
 
 
 def test_calibrator_metrics_allow_single_class_hard_holdouts():
@@ -266,7 +340,7 @@ def test_write_calibrated_prediction_rows_records_transitions_without_path_decis
             calibrator_threshold=0.5,
             blend_model_weight=1.0,
         )
-        written = list(csv.DictReader(output.open("r", encoding="utf-8-sig", newline="")))
+        written = _read_csv_rows(output)
 
     assert [row["error_transition"] for row in written] == ["fixed_by_calibrator", "fixed_by_calibrator"]
     assert "filename" not in written[0]

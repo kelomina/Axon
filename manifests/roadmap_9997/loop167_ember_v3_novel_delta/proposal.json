@@ -1,0 +1,292 @@
+{
+  "schema": "axon_loop167_ember_v3_novel_delta_proposal_v1",
+  "loop_id": "loop167_ember_v3_novel_delta",
+  "parent_decision": {
+    "path": "manifests/roadmap_9997/loop166_code_section_foundation/phase_b1_nonfinite_decision.json",
+    "sha256": "c0ab5264bbff8a553b2b08421a8c4e16575d50948eb9e07e7cb8e4c4643158b2",
+    "decision": "close_loop166_bpe1024_mlm_recipe_and_preregister_loop167_ember_v3_novel_delta_control"
+  },
+  "status": "preregistered_static_semantic_delta_only_phase_b_execution_blocked_source_closure",
+  "claim_scope": "local_train_only_structural_delta_diagnostic_not_model_quality_or_promotion",
+  "hypothesis": "The genuinely novel subset of EMBER2024 v3 structural semantics adds stable error-correcting evidence beyond Axon's productized structural features; exact and partial overlaps alone must not be credited as novel evidence.",
+  "route_selection": {
+    "selected": "ember_v3_novel_delta_structural_control",
+    "why_now": "This is the fallback preregistered by Loop166 when the frozen code-section BPE/MLM resource recipe hits a nonfinite kill condition.",
+    "rejected_same_lineage_action": "Do not repair Loop166 with FP32, a lower scaler, a different optimizer, a new learning rate, threshold selection, or heldout inspection.",
+    "deferred_high_orthogonality_route": "Run an independent CFG coverage gate only if Loop167 closes negative.",
+    "deferred_behavior_route": "Nebula or Speakeasy-style behavior remains blocked until trace coverage, timeout, missingness, domain, and cost contracts exist."
+  },
+  "external_source_closure": {
+    "repository": "https://github.com/FutureComputing4AI/EMBER2024",
+    "commit": "0ef753e81d98bf209f71b03cd331dfc190b5b54d",
+    "commit_observed_at_utc": "2025-08-22T20:16:41Z",
+    "features_source": {
+      "path": "src/thrember/features.py",
+      "raw_url": "https://raw.githubusercontent.com/FutureComputing4AI/EMBER2024/0ef753e81d98bf209f71b03cd331dfc190b5b54d/src/thrember/features.py",
+      "sha256": "58a085e9ad307aa2c52e165985ff80db8fd5b763891c0cba2d1758a4825f7273"
+    },
+    "pefile_warnings": {
+      "path": "src/thrember/pefile_warnings.txt",
+      "raw_url": "https://raw.githubusercontent.com/FutureComputing4AI/EMBER2024/0ef753e81d98bf209f71b03cd331dfc190b5b54d/src/thrember/pefile_warnings.txt",
+      "sha256": "a23a9d0a7a938b19390a75fe0eb024dbc9bad7a134bb1511a2913f365a52e5fb"
+    },
+    "paper": {
+      "title": "EMBER2024 -- A Benchmark Dataset for Holistic Evaluation of Malware Classifiers",
+      "arxiv": "2506.05074",
+      "venue": "KDD 2025"
+    },
+    "reference_code_execution_allowed": false,
+    "network_fetch_during_experiment_allowed": false,
+    "project_native_implementation_required": true
+  },
+  "official_v3_dimension_proof": {
+    "general": 7,
+    "histogram": 256,
+    "byte_entropy": 256,
+    "strings": 177,
+    "sections": 224,
+    "imports": 1282,
+    "exports": 129,
+    "header": 74,
+    "data_directories": 34,
+    "rich_header": 33,
+    "authenticode": 8,
+    "pefile_warnings": 88,
+    "total": 2568
+  },
+  "phase_a_semantic_delta_freeze": {
+    "operation": "static_source_and_semantic_mapping_only",
+    "raw_opens_allowed": 0,
+    "training_allowed": false,
+    "dependency_install_allowed": false,
+    "network_code_execution_allowed": false,
+    "mapping_categories": [
+      "exact_overlap",
+      "partial_overlap",
+      "genuinely_novel",
+      "forbidden_or_unstable"
+    ],
+    "mapping_output": "manifests/roadmap_9997/loop167_ember_v3_novel_delta/semantic_delta_mapping.json",
+    "mapping_requirements": {
+      "official_columns_classified_exactly_once": 2568,
+      "dimension_conservation_required": true,
+      "minimum_genuinely_novel_semantic_groups": 3,
+      "novel_set_may_be_all_hashed_columns": false,
+      "reference_vector_tests_required": true,
+      "finite_output_tests_required": true,
+      "missing_semantics_tests_required": true,
+      "feature_order_commitment_required": true
+    },
+    "forced_overlap_controls": [
+      "authenticode",
+      "data_directories"
+    ],
+    "expected_novel_candidates_not_prejudged_as_final": [
+      "rich_header",
+      "pefile_warnings",
+      "uncovered_dos_or_header_fields"
+    ],
+    "identity_or_label_derived_columns_forbidden": true,
+    "failure_decision": "close_loop167_before_raw_access_semantic_delta_not_defensible"
+  },
+  "axon_structural_inventory": {
+    "fixed_v2_pe": {
+      "dimension": 143,
+      "source": "src/kvd_features/extractor.py",
+      "sha256": "1d456a0f0773e7ddec7540962feca4cb2862b806661bbfe82b45d693cadf312b"
+    },
+    "stat": {
+      "dimension": 49,
+      "source": "src/kvd_features/extractor.py",
+      "sha256": "1d456a0f0773e7ddec7540962feca4cb2862b806661bbfe82b45d693cadf312b"
+    },
+    "content_pe_v1": {
+      "dimension": 100,
+      "source": "src/kvd_features/content_pe_v1.py",
+      "sha256": "c8ae31d895ea746e154b88e5a2c1e47753f9cf5b322909222cf69f94e60b0a24"
+    },
+    "content_pe_v2": {
+      "dimension": 182,
+      "source": "scripts/train_stage2_cache_matrix.py",
+      "sha256": "88c7f89987d0991e4df891668f24633c448fcb597aea0f69f04b17e199ea2f1f"
+    },
+    "content_string": {
+      "dimension": 43,
+      "source": "scripts/train_stage2_cache_matrix.py",
+      "sha256": "88c7f89987d0991e4df891668f24633c448fcb597aea0f69f04b17e199ea2f1f"
+    },
+    "content_certificate": {
+      "dimension": 55,
+      "source": "scripts/train_stage2_cache_matrix.py",
+      "sha256": "88c7f89987d0991e4df891668f24633c448fcb597aea0f69f04b17e199ea2f1f"
+    },
+    "baseline_total_dimension_before_deduplicated_allowlist_freeze": 572,
+    "deduplicated_allowlist_must_be_frozen_in_phase_a": true
+  },
+  "phase_b_train_only_oof": {
+    "execution_ready": false,
+    "blocked_until": [
+      "phase_a_semantic_delta_mapping_pass",
+      "project_native_extractor_source_closure",
+      "controller_and_tests_source_closure",
+      "frozen_deduplicated_baseline_allowlist",
+      "one_shot_execution_authorization_and_lease"
+    ],
+    "input_folds": {
+      "path": "reports/roadmap_9997/loop164/local_train_diagnostic_folds.jsonl",
+      "sha256": "00a31a1bd86d7b887447f3e86e5e753ebcaaee45be74311199332e073a3880a5",
+      "summary_path": "reports/roadmap_9997/loop164/local_train_diagnostic_folds_summary.json",
+      "summary_sha256": "2b2a39a60ddf6b2713e03fef00f2c374db4f028f1b1fd3d16071d55cf6cfaddd",
+      "rows": 20000,
+      "folds": 5,
+      "rows_per_fold": 4000,
+      "split_role": "train",
+      "isolation_scope": "local_content_component_only_not_time_family_or_source_causal"
+    },
+    "seeds": [41, 42, 43],
+    "hard_threshold": 0.5,
+    "threshold_tie_decision": 0,
+    "threshold_sweep_allowed": false,
+    "estimator": {
+      "type": "sklearn.ensemble.HistGradientBoostingClassifier",
+      "loss": "log_loss",
+      "learning_rate": 0.06,
+      "max_iter": 260,
+      "max_leaf_nodes": 31,
+      "min_samples_leaf": 20,
+      "l2_regularization": 0.0,
+      "max_bins": 255,
+      "early_stopping": false,
+      "random_state": "current_preregistered_seed",
+      "hyperparameter_search_allowed": false
+    },
+    "arms": {
+      "B0": "Axon deduplicated productized content-only structural allowlist frozen by Phase A",
+      "B1": "EMBER2024 exact_overlap plus partial_overlap columns only",
+      "M": "B0 plus genuinely_novel EMBER2024 delta columns",
+      "A": "genuinely_novel EMBER2024 delta columns only",
+      "CF": "B0 plus independently row-block-permuted genuinely_novel delta columns"
+    },
+    "counterfactual_permutation": {
+      "label_access_allowed": false,
+      "identity_access_allowed": false,
+      "fit_and_holdout_blocks_permuted_separately": true,
+      "permutation_seed": "first_64_bits_sha256_of_loop167_seed_outer_fold_role",
+      "same_marginal_feature_rows_preserved": true
+    },
+    "fit_count": {
+      "arms": 5,
+      "folds": 5,
+      "seeds": 3,
+      "maximum_total_fits": 75
+    },
+    "denominator_policy": {
+      "required_rows_per_arm_seed": 20000,
+      "silent_drop_allowed": false,
+      "missing_rows_remain_in_denominator": true,
+      "B0_missing": "zero_fill_plus_frozen_missing_indicators",
+      "B1_or_A_missing": "zero_fill_plus_frozen_missing_indicators",
+      "M_or_CF_novel_missing": "exact_B0_score_and_hard_decision_fallback"
+    },
+    "raw_access": {
+      "exact_train_raw_passes": 1,
+      "maximum_raw_open_attempts": 20000,
+      "maximum_raw_bytes": 26843545600,
+      "sha256_verified_in_same_stream": true,
+      "labels_available_to_extractor": false,
+      "persist_raw_bytes": false,
+      "persist_strings_import_tokens_or_disassembly": false,
+      "persist_float_features_missing_reason_and_audit_sha_only": true
+    }
+  },
+  "quality_gate": {
+    "primary_comparator": "lower_error_control_of_B0_and_B1_with_B0_winning_ties",
+    "primary_metric": "paired_repairs_minus_breaks_for_M_vs_primary_comparator",
+    "definitions": {
+      "repairs": "primary_comparator_wrong_and_M_correct",
+      "breaks": "primary_comparator_correct_and_M_wrong",
+      "override_precision": "repairs_divided_by_repairs_plus_breaks",
+      "delta_error_overlap": "A_error_intersection_B0_error_divided_by_B0_error_count"
+    },
+    "per_seed_all_required": {
+      "minimum_net_error_reduction": "max(30, ceil(0.10 * primary_comparator_errors))",
+      "minimum_repairs": 50,
+      "minimum_override_precision": 0.8,
+      "minimum_net_positive_folds": 4,
+      "component_cluster_one_sided_95_lcb_net_error_reduction": ">0",
+      "maximum_relative_fp_regression": 0.05,
+      "maximum_relative_fn_regression": 0.05,
+      "maximum_delta_error_overlap_with_B0": 0.8,
+      "minimum_M_net_reduction_advantage_over_CF": 30,
+      "CF_component_cluster_one_sided_95_lcb_must_pass": false
+    },
+    "component_bootstrap": {
+      "replicates": 200000,
+      "confidence": 0.95,
+      "one_sided": true,
+      "resample_unit": "content_component_within_outer_fold",
+      "seed": "sha256_bound_to_predictions_mapping_and_protocol"
+    },
+    "three_seed_rule": "Every per-seed gate must pass for all three seeds.",
+    "pass_decision": "local_train_novel_delta_signal_observed_not_promotion",
+    "failure_decision": "close_ember_v3_novel_delta_control",
+    "posthoc_threshold_feature_model_or_seed_rescue_allowed": false
+  },
+  "resource_gates": {
+    "phase_a_raw_opens": 0,
+    "phase_a_training": false,
+    "phase_a_dependency_install": false,
+    "phase_b_exact_train_raw_passes": 1,
+    "maximum_feature_extraction_wall_seconds": 7200,
+    "maximum_feature_cache_bytes": 1073741824,
+    "maximum_extraction_peak_rss_bytes": 4294967296,
+    "maximum_training_wall_seconds": 21600,
+    "maximum_training_peak_rss_bytes": 8589934592,
+    "maximum_total_wall_seconds": 28800,
+    "maximum_gpu_allocated_bytes": 0,
+    "same_lease_retry_allowed": false,
+    "kill_conditions": [
+      "oom",
+      "nonfinite",
+      "timeout",
+      "unrecoverable_feature_cache",
+      "second_raw_pass_requested",
+      "source_or_scope_drift"
+    ]
+  },
+  "forbidden_inputs_and_actions": [
+    "filename_path_extension_or_directory_feature",
+    "source_sha256_sample_index_fold_or_row_order_feature",
+    "label_derived_extractor_feature",
+    "family_source_time_or_reviewer_verdict_feature",
+    "loop151_loop69_loop164_prediction_or_score_input",
+    "loop166_tokenizer_checkpoint_code_token_cache_or_partial_checkpoint_input",
+    "val_test10k_legacy_full_sentinel_or_sealed_window_access",
+    "threshold_search",
+    "hyperparameter_search",
+    "same_lease_retry"
+  ],
+  "authority_boundary": {
+    "user_directed_local_custody": true,
+    "public_key_required": false,
+    "external_signer_required": false,
+    "a2_or_a3_authority": false,
+    "val_test_or_full_authority": false,
+    "promotion_authority": false
+  },
+  "ready_for": {
+    "phase_a_static_mapping": true,
+    "phase_b_raw_extraction": false,
+    "phase_b_train_oof": false,
+    "val": false,
+    "test10k": false,
+    "legacy_full_test": false,
+    "promotion": false,
+    "certification": false
+  },
+  "research_champion": "Loop151",
+  "target_f1": 0.9997,
+  "target_achieved": false,
+  "promotion_evidence": false,
+  "decision": "authorize_phase_a_static_semantic_delta_freeze_only"
+}

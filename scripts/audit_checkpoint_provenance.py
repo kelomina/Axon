@@ -41,7 +41,9 @@ def resolve_path(path: Path) -> Path:
 
 def _safe_load_checkpoint(path: Path) -> Optional[dict]:
     try:
-        payload = torch.load(path, map_location="cpu", weights_only=False)
+        payload = torch.load(path, map_location="cpu", weights_only=True)
+    except TypeError:
+        return None
     except Exception:
         return None
     return payload if isinstance(payload, dict) else None
@@ -97,7 +99,7 @@ def _status_for_checkpoint(path: Path, payload: Optional[dict], current_signatur
     lower_path = str(path).replace("/", "\\").casefold()
     if reasons and any("!= expected" in reason for reason in reasons):
         return "incompatible", reasons
-    if "\\random_20w_8192\\" in lower_path:
+    if "\\random_20w_8192" in lower_path:
         return ("compatible_current_random20w", reasons) if not reasons else ("incompatible", reasons)
     if "\\random_20w_baseline_seed42_e10\\" in lower_path:
         reasons.append("older_random20w_baseline_not_current_loop27_corrected_split")
@@ -117,6 +119,15 @@ def _status_for_checkpoint(path: Path, payload: Optional[dict], current_signatur
     return "unknown", reasons or ["path_does_not_identify_current_training_split"]
 
 
+def _iter_checkpoint_paths(models_dir: Path, max_rows: Optional[int]):
+    emitted = 0
+    for checkpoint_path in models_dir.rglob("*.pt"):
+        yield checkpoint_path
+        emitted += 1
+        if max_rows is not None and emitted >= max_rows:
+            break
+
+
 def audit_checkpoints(
     *,
     models_dir: Path,
@@ -125,13 +136,10 @@ def audit_checkpoints(
     max_rows: Optional[int],
 ) -> dict:
     split_summary = _read_split_summary(split_csv)
-    checkpoints = sorted(models_dir.rglob("*.pt"), key=lambda path: str(path).casefold())
-    if max_rows is not None:
-        checkpoints = checkpoints[:max_rows]
 
     rows = []
     status_counts: dict[str, int] = {}
-    for checkpoint_path in checkpoints:
+    for checkpoint_path in _iter_checkpoint_paths(models_dir, max_rows):
         payload = _safe_load_checkpoint(checkpoint_path)
         status, reasons = _status_for_checkpoint(checkpoint_path, payload, CURRENT_MODEL_SIGNATURE)
         status_counts[status] = status_counts.get(status, 0) + 1

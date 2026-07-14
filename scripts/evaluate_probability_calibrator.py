@@ -42,15 +42,62 @@ def _load_cache_features(cache_path: Path, *, expected_label: int, expected_sour
     return pe_features, stat_features
 
 
-def _write_missing_cache_rows(path: Path, rows: list[dict]) -> None:
-    fieldnames = [
+def _probability_features(prob: float) -> np.ndarray:
+    return np.array(
+        [
+            prob,
+            prob * prob,
+            np.log(max(prob, 1e-6)),
+            np.log(max(1.0 - prob, 1e-6)),
+        ],
+        dtype=np.float32,
+    )
+
+
+def _feature_names_hash(*, stat_dim: int, pe_dim: int) -> str:
+    import hashlib
+
+    feature_names = (
+        ["prob_malicious", "prob_malicious_squared", "log_prob_malicious", "log_prob_benign"]
+        + [f"stat_{idx}" for idx in range(stat_dim)]
+        + [f"pe_{idx}" for idx in range(pe_dim)]
+    )
+    payload = json.dumps(feature_names, separators=(",", ":"), ensure_ascii=True)
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def _validate_prediction_row(row: dict, predictions_path: Path) -> tuple[str, int, Path, float]:
+    source_sha = str(row.get("source_sha256") or "").strip().casefold()
+    if not _is_valid_source_sha256(source_sha):
+        raise ValueError(f"Prediction row has invalid source_sha256 in {predictions_path}: {source_sha!r}")
+    label = int(row["label"])
+    if label not in {0, 1}:
+        raise ValueError(f"Prediction row has invalid label in {predictions_path}: {row.get('label')!r}")
+    return source_sha, label, Path(row["cache_path"]), float(row["prob_malicious"])
+
+
+def _minimal_prediction_row(row: dict, source_sha: str, cache_path: Path) -> dict:
+    return {
+        "source_path": row.get("source_path", ""),
+        "source_sha256": source_sha,
+        "cache_path": str(cache_path),
+        "split": row.get("split", ""),
+        "sample_index": row.get("sample_index", ""),
+    }
+
+
+MISSING_CACHE_FIELDNAMES = [
         "source_path",
         "source_sha256",
         "cache_path",
         "label",
         "split",
         "sample_index",
-    ]
+]
+
+
+def _write_missing_cache_rows(path: Path, rows: list[dict]) -> None:
+    fieldnames = MISSING_CACHE_FIELDNAMES
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8-sig", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames, extrasaction="ignore")
@@ -143,86 +190,117 @@ def _load_prediction_features(
     *,
     allow_missing_cache: bool = False,
     missing_cache_output: Path | None = None,
+    include_kept_rows: bool = True,
 ):
-    with predictions_path.open("r", encoding="utf-8-sig", newline="") as f:
-        rows = list(csv.DictReader(f))
-    features = []
-    labels = []
-    probabilities = []
-    kept_rows = []
+    total = 0
+    kept = 0
     skipped_missing_cache = 0
     missing_cache_examples = []
-    missing_cache_rows = []
+    feature_dim = None
+    stat_dim = None
+    pe_dim = None
 
-    for row in rows:
-        source_sha = str(row.get("source_sha256") or "").strip().casefold()
-        if not _is_valid_source_sha256(source_sha):
-            raise ValueError(f"Prediction row has invalid source_sha256 in {predictions_path}: {source_sha!r}")
-        label = int(row["label"])
-        if label not in {0, 1}:
-            raise ValueError(f"Prediction row has invalid label in {predictions_path}: {row.get('label')!r}")
-        cache_path = Path(row["cache_path"])
-        if not cache_path.exists():
-            skipped_missing_cache += 1
-            if len(missing_cache_examples) < 10:
-                missing_cache_examples.append(str(cache_path))
-            missing_cache_rows.append(
-                {
-                    "source_path": row.get("source_path", ""),
-                    "source_sha256": source_sha,
-                    "cache_path": str(cache_path),
-                    "label": row.get("label", ""),
-                    "split": row.get("split", ""),
-                    "sample_index": row.get("sample_index", ""),
-                }
+    missing_handle = None
+    missing_writer = None
+    try:
+        if missing_cache_output is not None:
+            missing_cache_output.parent.mkdir(parents=True, exist_ok=True)
+            missing_handle = missing_cache_output.open("w", encoding="utf-8-sig", newline="")
+            missing_writer = csv.DictWriter(
+                missing_handle,
+                fieldnames=MISSING_CACHE_FIELDNAMES,
+                extrasaction="ignore",
+                lineterminator="\n",
             )
-            continue
+            missing_writer.writeheader()
 
-        pe_features, stat_features = _load_cache_features(
-            cache_path,
-            expected_label=label,
-            expected_source_sha256=source_sha,
-        )
-
-        prob = float(row["prob_malicious"])
-        probability_features = np.array(
-            [
-                prob,
-                prob * prob,
-                np.log(max(prob, 1e-6)),
-                np.log(max(1.0 - prob, 1e-6)),
-            ],
-            dtype=np.float32,
-        )
-        features.append(np.concatenate([probability_features, stat_features, pe_features]))
-        labels.append(label)
-        probabilities.append(prob)
-        kept_rows.append(row)
-
-    if missing_cache_output is not None:
-        _write_missing_cache_rows(missing_cache_output, missing_cache_rows)
+        with predictions_path.open("r", encoding="utf-8-sig", newline="") as f:
+            for row in csv.DictReader(f):
+                total += 1
+                source_sha, label, cache_path, prob = _validate_prediction_row(row, predictions_path)
+                if not cache_path.exists():
+                    skipped_missing_cache += 1
+                    if len(missing_cache_examples) < 10:
+                        missing_cache_examples.append(str(cache_path))
+                    if missing_writer is not None:
+                        missing_writer.writerow(
+                            {
+                                "source_path": row.get("source_path", ""),
+                                "source_sha256": source_sha,
+                                "cache_path": str(cache_path),
+                                "label": row.get("label", ""),
+                                "split": row.get("split", ""),
+                                "sample_index": row.get("sample_index", ""),
+                            }
+                        )
+                    continue
+                kept += 1
+                if feature_dim is None:
+                    pe_features, stat_features = _load_cache_features(
+                        cache_path,
+                        expected_label=label,
+                        expected_source_sha256=source_sha,
+                    )
+                    stat_dim = int(stat_features.shape[0])
+                    pe_dim = int(pe_features.shape[0])
+                    feature_dim = int(_probability_features(prob).shape[0] + stat_dim + pe_dim)
+    finally:
+        if missing_handle is not None:
+            missing_handle.close()
     if skipped_missing_cache and not allow_missing_cache:
         raise FileNotFoundError(
             "Prediction CSV references missing cache files: "
-            f"{skipped_missing_cache}/{len(rows)} missing. "
+            f"{skipped_missing_cache}/{total} missing. "
             "Regenerate predictions/cache before using this as a complete confirmation, "
             "or pass --allow-missing-cache only for diagnostic subset runs. "
             f"Examples: {missing_cache_examples}"
         )
-    if not features:
+    if kept <= 0 or feature_dim is None or stat_dim is None or pe_dim is None:
         raise ValueError(f"No usable prediction rows with cache features were loaded from {predictions_path}")
 
+    features = np.empty((kept, feature_dim), dtype=np.float32)
+    labels = np.empty(kept, dtype=np.int64)
+    probabilities = np.empty(kept, dtype=np.float32)
+    kept_rows = []
+    fill_idx = 0
+    with predictions_path.open("r", encoding="utf-8-sig", newline="") as f:
+        for row in csv.DictReader(f):
+            source_sha, label, cache_path, prob = _validate_prediction_row(row, predictions_path)
+            if not cache_path.exists():
+                continue
+            pe_features, stat_features = _load_cache_features(
+                cache_path,
+                expected_label=label,
+                expected_source_sha256=source_sha,
+            )
+            vector = np.concatenate([_probability_features(prob), stat_features, pe_features])
+            if vector.shape[0] != feature_dim:
+                raise ValueError(
+                    f"Feature dimension changed while reading {predictions_path}: "
+                    f"expected {feature_dim}, got {vector.shape[0]}"
+                )
+            features[fill_idx] = vector
+            labels[fill_idx] = label
+            probabilities[fill_idx] = prob
+            if include_kept_rows:
+                kept_row = _minimal_prediction_row(row, source_sha, cache_path)
+                kept_row["label"] = str(label)
+                kept_rows.append(kept_row)
+            fill_idx += 1
+
     return (
-        np.vstack(features),
-        np.asarray(labels),
-        np.asarray(probabilities),
+        features[:fill_idx],
+        labels[:fill_idx],
+        probabilities[:fill_idx],
         kept_rows,
         {
-            "total": len(rows),
-            "kept": len(labels),
+            "total": total,
+            "kept": int(fill_idx),
             "skipped_missing_cache": skipped_missing_cache,
             "missing_cache_examples": missing_cache_examples,
             "missing_cache_output": str(missing_cache_output) if missing_cache_output is not None else None,
+            "stat_feature_dim": int(stat_dim),
+            "pe_feature_dim": int(pe_dim),
         },
     )
 
@@ -316,7 +394,17 @@ def main() -> None:
         args.predictions,
         allow_missing_cache=args.allow_missing_cache,
         missing_cache_output=args.missing_cache_output,
+        include_kept_rows=args.output_predictions_csv is not None,
     )
+    if "feature_count" in payload and int(payload["feature_count"]) != int(features.shape[1]):
+        raise ValueError(f"Calibrator feature_count mismatch: expected {payload['feature_count']}, got {features.shape[1]}")
+    if "feature_names_hash" in payload:
+        expected_hash = _feature_names_hash(
+            stat_dim=int(counts["stat_feature_dim"]),
+            pe_dim=int(counts["pe_feature_dim"]),
+        )
+        if str(payload["feature_names_hash"]) != expected_hash:
+            raise ValueError("Calibrator feature_names_hash mismatch")
     calibrator_probs = model.predict_proba(features)[:, 1]
     blended_probs = blend_weight * calibrator_probs + (1.0 - blend_weight) * baseline_probs
 
@@ -365,7 +453,9 @@ def main() -> None:
         "delta_errors_vs_baseline": calibrator_metrics["errors"] - baseline_metrics["errors"],
     }
     args.output_json.parent.mkdir(parents=True, exist_ok=True)
-    args.output_json.write_text(json.dumps(report, indent=2), encoding="utf-8")
+    with args.output_json.open("w", encoding="utf-8") as handle:
+        json.dump(report, handle, indent=2)
+        handle.write("\n")
     print(json.dumps(report, indent=2))
     print(f"Report saved to: {args.output_json}")
 

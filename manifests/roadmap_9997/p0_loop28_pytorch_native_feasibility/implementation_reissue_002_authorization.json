@@ -1,0 +1,53 @@
+{
+  "schema": "axon_loop28_pytorch_native_implementation_reissue_authorization_v1",
+  "loop_id": "p0_loop28_pytorch_native_feasibility_001",
+  "created_at_utc": "2026-07-11T23:26:31Z",
+  "failed_attempt": {
+    "implementation_manifest": {
+      "path": "manifests/roadmap_9997/p0_loop28_pytorch_native_feasibility/implementation_manifest.failed_002.final.json",
+      "sha256": "c82dafb609df2dc418e53af3ac19d0d499108b6e8c8eca4ad898da20b1f70231"
+    },
+    "build_authorization": {
+      "path": "manifests/roadmap_9997/p0_loop28_pytorch_native_feasibility/build_authorization.failed_002.final.json",
+      "sha256": "b58c5c31858d45bfe8a44c31d4358c633d3a33346c9159236639cfa0bf8baf2c"
+    },
+    "consumed_lease": {
+      "path": "manifests/roadmap_9997/p0_loop28_pytorch_native_feasibility/build_lease.failed_002.final.json",
+      "sha256": "330ef029cb8abcc6c76464e147f3b2aa3b24f877109b9e1a6049d40667ca4d4c"
+    },
+    "runner_failure": {
+      "path": "reports/roadmap_9997/p0_loop28_pytorch_native_feasibility/cpp_build_failure.failed_002.final.json",
+      "sha256": "dad966d725615febb0dfd023469ca860a36da65e26ed5e3b2b8c735932fade2e"
+    },
+    "compiler_diagnostic": "reports/roadmap_9997/p0_loop28_pytorch_native_feasibility/cpp_build_diagnostic_002.final.json",
+    "compiler_invocations": 2,
+    "linker_invocations": 0,
+    "model_or_package_execution_count": 0
+  },
+  "authorized_changes": [
+    {
+      "path": "tools/axon_tiny_pytorch_native/src/probe_common.h",
+      "before_sha256": "607bf25e667334aeb777d149f0a244995eb9a8cd1f95ddef106309287ab2852e",
+      "scope": "Add only the ATen/Parallel.h include required to declare at::set_num_threads and at::set_num_interop_threads."
+    },
+    {
+      "path": "scripts/run_loop28_pytorch_native_feasibility.py",
+      "before_sha256": "4ee05a6ec8d0da424f353fece23188b4838d1323310db6cfe3dc59889c2735fe",
+      "scope": "Capture CMake stdout/stderr as raw bytes, hash bytes directly, and decode only the bounded diagnostic tail with replacement. No command, target, budget, runtime, model, or acceptance change."
+    }
+  ],
+  "authorized_reissue": {
+    "implementation_manifest_count": 1,
+    "clean_build_count": 1,
+    "required_new_implementation_hash_binding": true,
+    "required_new_build_authorization_and_lease": true,
+    "reuse_failed_lease_forbidden": true
+  },
+  "claim_boundary": {
+    "administrative_compile_correction_only": true,
+    "model_or_package_execution_allowed": false,
+    "axon_artifact_access_allowed": false,
+    "quality_claim_allowed": false
+  },
+  "decision": "authorize_parallel_header_and_binary_subprocess_capture_corrections"
+}

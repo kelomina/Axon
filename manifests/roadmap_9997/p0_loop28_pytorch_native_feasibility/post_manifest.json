@@ -1,0 +1,63 @@
+{
+  "schema": "axon_loop28_pytorch_native_feasibility_negative_post_manifest_v1",
+  "loop_id": "p0_loop28_pytorch_native_feasibility_001",
+  "generated_at_utc": "2026-07-12T00:12:00Z",
+  "lineage": {
+    "parent_onnx_operator_closure_sha256": "4eae028bdffa0683b273bfadf4ac46df6cb7388c3742dd6222b28fafb9056e6e",
+    "implementation_manifest_sha256": "45d38299623ab32e701d6bf1408a509caa19513287c239b3866532cd405bd3f4",
+    "package_failure_manifest_sha256": "a445fa8956b444c500fe370cbf9493871a0efbc5c924c21a4d988acfb1db4792"
+  },
+  "outcome": {
+    "cpp_build_passed": true,
+    "package_generated": false,
+    "runtime_executed": false,
+    "failure_decision": "tiny_aoti_package_generation_closed_utf8_cp936_compiler_probe_failure_no_load",
+    "successor_loop_required": true,
+    "quality_metric_count": 0,
+    "legacy_full_test_f1_changed": false
+  },
+  "artifacts": [
+    {
+      "name": "package_failure_manifest",
+      "role": "negative_result",
+      "path": "manifests/roadmap_9997/p0_loop28_pytorch_native_feasibility/package_failure_manifest.json",
+      "size_bytes": 6754,
+      "sha256": "a445fa8956b444c500fe370cbf9493871a0efbc5c924c21a4d988acfb1db4792"
+    },
+    {
+      "name": "goal_delta",
+      "role": "immutable_goal_delta",
+      "path": "reports/roadmap_9997/p0_loop28_pytorch_native_feasibility/goal_delta.final.md",
+      "size_bytes": 5053,
+      "sha256": "efea111e20bba8bf8f6348207e4e3fd1af5d56796794dd005285e32cd49acf43"
+    },
+    {
+      "name": "journal_entry",
+      "role": "immutable_journal_entry",
+      "path": "reports/roadmap_9997/p0_loop28_pytorch_native_feasibility/journal_entry.final.md",
+      "size_bytes": 5554,
+      "sha256": "766b11852e2939315891d5b7b397879c3bbef64f875d249113f196d2ad2beaba"
+    },
+    {
+      "name": "status",
+      "role": "immutable_owner_status",
+      "path": "reports/roadmap_9997/p0_loop28_pytorch_native_feasibility/status.final.md",
+      "size_bytes": 1744,
+      "sha256": "7d42aa9fb82a6564b90dfc8ec1a9d8eacf97185adbe7155a9215d9237025d220"
+    }
+  ],
+  "integrity": {
+    "artifact_count": 4,
+    "all_required_present": true,
+    "closure_is_negative_not_incomplete": true
+  },
+  "claim_boundary": {
+    "negative_toolchain_integration_claim_allowed": true,
+    "tiny_package_generation_claim_allowed": false,
+    "tiny_runtime_feasibility_claim_allowed": false,
+    "axon_runtime_parity_claim_allowed": false,
+    "quality_claim_allowed": false,
+    "certification_claim_allowed": false
+  },
+  "decision": "post_tiny_aoti_package_closed_utf8_cp936_compiler_probe_failure_no_load"
+}

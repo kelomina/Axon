@@ -10,8 +10,22 @@ import importlib.util
 import ast
 from pathlib import Path
 
+try:
+    sys.stdout.reconfigure(encoding="utf-8")
+except Exception:
+    pass
+
 # 添加 src 目录到路径
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+
+
+def iter_project_python_files(project_root: Path):
+    """只扫描项目代码目录，避免递归进入 vnev、缓存和数据目录。"""
+    for dir_name in ["src", "scripts", "tests"]:
+        root = project_root / dir_name
+        if root.exists():
+            yield from root.rglob("*.py")
+    yield from project_root.glob("*.py")
 
 def test_project_structure():
     """测试项目结构"""
@@ -80,7 +94,7 @@ def test_syntax():
     print("=" * 60)
     
     project_root = Path(__file__).parent.parent
-    py_files = list(project_root.rglob("*.py"))
+    py_files = list(iter_project_python_files(project_root))
     
     success = 0
     failed = []
@@ -234,14 +248,22 @@ def test_feature_extractor():
         assert len(byte_seq) == 4096, f"长度不对: {len(byte_seq)}"
         print("  ✓ 字节序列提取成功")
         
+        # 这个测试文件只是最小 MZ 合成样本，不是真实 PE；
+        # 这里显式开启 fallback，只验证特征管线能处理合成样本。
+        extraction_config = ExtractionConfig(allow_pe_fallback=True)
+
         # 测试 PE 特征提取
-        pe_features = extract_pe_features(str(test_file))
+        pe_features = extract_pe_features(
+            str(test_file),
+            config=extraction_config,
+            allow_fallback=True,
+        )
         assert pe_features is not None, "PE特征提取失败"
         assert len(pe_features) == 1500, f"维度不对: {len(pe_features)}"
         print("  ✓ PE特征提取成功")
         
-        # 测试统计特征提取
-        stat_features = extract_statistical_features(byte_seq, pe_features, orig_len)
+        # 测试统计特征提取。统计特征只需要字节序列和原始长度。
+        stat_features = extract_statistical_features(byte_seq, orig_len, config=extraction_config)
         assert stat_features is not None, "统计特征提取失败"
         print("  ✓ 统计特征提取成功")
         

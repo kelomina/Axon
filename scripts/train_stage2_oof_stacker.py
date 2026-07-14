@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import gc
 import json
 import pickle
 import sys
@@ -16,7 +17,7 @@ from sklearn.base import clone
 from sklearn.ensemble import HistGradientBoostingClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import StratifiedKFold
-from sklearn.pipeline import make_pipeline
+from sklearn.pipeline import Pipeline, make_pipeline
 from sklearn.preprocessing import StandardScaler
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -56,9 +57,17 @@ STAGE2_PROB_FEATURE_COUNT = 6
 
 
 def fit_model(model, matrix: np.ndarray, labels: np.ndarray, weights: np.ndarray):
+    if isinstance(model, Pipeline) and model.steps:
+        final_step_name = model.steps[-1][0]
+        try:
+            model.fit(matrix, labels, **{f"{final_step_name}__sample_weight": weights})
+        except (TypeError, ValueError):
+            model.fit(matrix, labels)
+        return model
+
     try:
         model.fit(matrix, labels, sample_weight=weights)
-    except TypeError:
+    except (TypeError, ValueError):
         model.fit(matrix, labels)
     return model
 
@@ -67,7 +76,6 @@ def build_stack_features(base_scores: np.ndarray) -> tuple[np.ndarray, list[str]
     if base_scores.ndim != 2:
         raise ValueError(f"base_scores must be 2-D, got shape={base_scores.shape}")
     clipped = np.clip(base_scores.astype(np.float32, copy=False), 1.0e-6, 1.0 - 1.0e-6)
-    columns = [clipped]
     names = [f"base_model_{index}_score" for index in range(clipped.shape[1])]
 
     mean = clipped.mean(axis=1, keepdims=True)
@@ -77,7 +85,6 @@ def build_stack_features(base_scores: np.ndarray) -> tuple[np.ndarray, list[str]
     spread = maximum - minimum
     median = np.median(clipped, axis=1, keepdims=True)
     logit_mean = np.log(clipped / (1.0 - clipped)).mean(axis=1, keepdims=True)
-    columns.extend([mean, std, minimum, maximum, spread, median, logit_mean])
     names.extend(
         [
             "base_score_mean",
@@ -89,7 +96,21 @@ def build_stack_features(base_scores: np.ndarray) -> tuple[np.ndarray, list[str]
             "base_score_logit_mean",
         ]
     )
-    return np.hstack(columns).astype(np.float32, copy=False), names
+    matrix = np.empty((clipped.shape[0], clipped.shape[1] + 7), dtype=np.float32)
+    matrix[:, : clipped.shape[1]] = clipped
+    matrix[:, clipped.shape[1] : clipped.shape[1] + 1] = mean
+    matrix[:, clipped.shape[1] + 1 : clipped.shape[1] + 2] = std
+    matrix[:, clipped.shape[1] + 2 : clipped.shape[1] + 3] = minimum
+    matrix[:, clipped.shape[1] + 3 : clipped.shape[1] + 4] = maximum
+    matrix[:, clipped.shape[1] + 4 : clipped.shape[1] + 5] = spread
+    matrix[:, clipped.shape[1] + 5 : clipped.shape[1] + 6] = median
+    matrix[:, clipped.shape[1] + 6 : clipped.shape[1] + 7] = logit_mean
+    return matrix, names
+
+
+def drop_stage2_probability_features(matrix: np.ndarray) -> np.ndarray:
+    """Drop exported base-probability columns with an explicit copy to free the source buffer."""
+    return matrix[:, STAGE2_PROB_FEATURE_COUNT:].astype(np.float32, copy=True)
 
 
 def meta_model_candidates(seed: int) -> list[tuple[str, object]]:
@@ -138,6 +159,8 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     parser.add_argument("--train-predictions", type=Path, required=True)
     parser.add_argument("--val-predictions", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
+    parser.add_argument("--max-train-rows", type=int, default=None)
+    parser.add_argument("--max-val-rows", type=int, default=None)
     parser.add_argument("--thresholds", default="0.05:0.95:0.005")
     parser.add_argument("--prefix-len", type=int, default=256)
     parser.add_argument("--chunk-count", type=int, default=16)
@@ -167,6 +190,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     args = parse_args(argv)
     checkpoint = load_safe_checkpoint(resolve_path(args.checkpoint), map_location="cpu")
     checkpoint_config = AxonExperimentConfig.from_dict(dict(checkpoint["config"]))
+    del checkpoint
     output_dir = resolve_path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -202,16 +226,19 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         content_cert_cache_dir=str(content_cert_cache_dir) if content_cert_cache_dir is not None else None,
     )
 
-    train_rows = read_prediction_rows(args.train_predictions)
-    val_rows = read_prediction_rows(args.val_predictions)
+    train_rows = read_prediction_rows(args.train_predictions, args.max_train_rows)
+    val_rows = read_prediction_rows(args.val_predictions, args.max_val_rows)
     print(f"[load] train rows={len(train_rows)} val rows={len(val_rows)}", flush=True)
     train_x, train_y, train_base, train_kept_rows, train_counts = build_matrix(train_rows, checkpoint_config, feature_config)
     val_x, val_y, val_base, val_kept_rows, val_counts = build_matrix(val_rows, checkpoint_config, feature_config)
+    del train_rows
+    del val_rows
+    gc.collect()
     dropped_feature_count = 0
     if args.drop_base_prob_features:
         dropped_feature_count = STAGE2_PROB_FEATURE_COUNT
-        train_x = train_x[:, STAGE2_PROB_FEATURE_COUNT:].astype(np.float32, copy=False)
-        val_x = val_x[:, STAGE2_PROB_FEATURE_COUNT:].astype(np.float32, copy=False)
+        train_x = drop_stage2_probability_features(train_x)
+        val_x = drop_stage2_probability_features(val_x)
     print(f"[matrix] train={train_x.shape} val={val_x.shape}", flush=True)
 
     thresholds = parse_thresholds(args.thresholds)
@@ -241,6 +268,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             oof_scores[holdout_idx, base_index] = fold_scores
             fold_metrics = select_best_threshold(fold_scores, train_y[holdout_idx], thresholds)
             fold_reports.append({"fold": fold_index, "rows": int(holdout_idx.shape[0]), "best": fold_metrics})
+            del fold_model
+            del fold_scores
             print(
                 f"[oof] {model_name} noise={noise_mode} fold={fold_index}/{folds} "
                 f"errors={fold_metrics['errors']} f1={fold_metrics['f1']:.6f}",
@@ -270,6 +299,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             f"errors={val_best['errors']} threshold={val_best['threshold']:.4f}",
             flush=True,
         )
+        del val_scores
+        gc.collect()
 
     stack_train, stack_feature_names = build_stack_features(oof_scores)
     stack_val, _ = build_stack_features(val_base_scores)
@@ -286,8 +317,13 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         checkpoint_config,
     )
     meta_results = []
-    fitted_meta = []
-    for meta_name, meta_model in meta_model_candidates(int(args.seed)):
+    best_key = None
+    selected = None
+    selected_meta_model = None
+    selected_train_scores = None
+    selected_val_scores = None
+    for meta_name, meta_template in meta_model_candidates(int(args.seed)):
+        meta_model = clone(meta_template)
         start = time.perf_counter()
         meta_model.fit(stack_train, train_y)
         fit_sec = time.perf_counter() - start
@@ -306,16 +342,40 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             "delta_val_errors_vs_loop28": val_best["errors"] - 162,
         }
         meta_results.append(result)
-        fitted_meta.append((val_best["f1"], -val_best["errors"], result, meta_model, val_scores))
+        candidate_key = (float(val_best["f1"]), -int(val_best["errors"]))
+        if best_key is None or candidate_key > best_key:
+            if selected_meta_model is not None:
+                del selected_meta_model
+            if selected_train_scores is not None:
+                del selected_train_scores
+            if selected_val_scores is not None:
+                del selected_val_scores
+            best_key = candidate_key
+            selected = result
+            selected_meta_model = meta_model
+            selected_train_scores = train_scores.astype(np.float32, copy=True)
+            selected_val_scores = val_scores.astype(np.float32, copy=True)
+        else:
+            del meta_model
+        del train_scores
+        del val_scores
+        gc.collect()
         print(
             f"[meta-val] {meta_name} f1={val_best['f1']:.6f} errors={val_best['errors']} "
             f"threshold={val_best['threshold']:.4f}",
             flush=True,
         )
 
-    fitted_meta.sort(key=lambda item: (item[0], item[1]), reverse=True)
-    _selected_f1, _neg_errors, selected, selected_meta_model, selected_val_scores = fitted_meta[0]
+    if selected is None or selected_meta_model is None or selected_train_scores is None or selected_val_scores is None:
+        raise ValueError("No fitted meta model was available for selection")
     selected_threshold = float(selected["val_best"]["threshold"])
+    write_predictions(
+        output_dir / "stage2_oof_stacker_train_oof_predictions.csv",
+        train_kept_rows,
+        train_y,
+        selected_train_scores,
+        selected_threshold,
+    )
     write_predictions(output_dir / "stage2_oof_stacker_val_predictions.csv", val_kept_rows, val_y, selected_val_scores, selected_threshold)
 
     payload = {

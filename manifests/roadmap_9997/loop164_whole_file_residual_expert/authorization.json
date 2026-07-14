@@ -1,0 +1,97 @@
+{
+  "schema": "axon_loop164_static_preflight_authorization_v1",
+  "loop_id": "loop164_whole_file_residual_expert",
+  "issued_at_utc": "2026-07-12T10:20:00Z",
+  "authorization_level": "A1_scoped_design_and_static_preflight_only",
+  "authority_scope": {
+    "tier": "A1",
+    "protected_input_access": false,
+    "model_or_data_execution": false,
+    "creates_runtime_artifact": false,
+    "heldout_evaluation": false
+  },
+  "basis": "The user directed continuation of the long-term 99.97 program, required task-level progress reports, and approved continued A1 governance work after the Loop28 detour was corrected. This authorization only makes the next Loop151-derived candidate proposal and its future authority/OOF receipt contracts machine-auditable; it does not authorize model or data execution.",
+  "proposal": {
+    "path": "manifests/roadmap_9997/loop164_whole_file_residual_expert/proposal.json",
+    "sha256": "3c9f9a6a13426b59b400522c21074906f5696c8e276d0ca31e98809bfc44796e"
+  },
+  "frontier_sources": {
+    "path": "manifests/roadmap_9997/loop164_whole_file_residual_expert/frontier_sources.json",
+    "sha256": "12904aee15f178c8e3aa11fc3180c41236609520f135cb13cabc79eb7da1bd0f"
+  },
+  "allowed_aggregate_inputs": [
+    "reports/phase3_loop151/loop151_trusted_signer_guard_val_eval.json",
+    "reports/phase3_loop151/loop151_trusted_signer_guard_test10k_eval.json",
+    "reports/phase3_loop151/loop151_trusted_signer_guard_full_eval.json",
+    "reports/phase3_loop161/loop161_test10k_promotion_margin_guard.json",
+    "reports/phase3_loop163/loop163_r11_rescue_support_audit.json",
+    "reports/phase3_loop158/loop158_loop157_external_annotation_import_summary.json",
+    "reports/raw_group_diagnostics/group_distribution_summary.json",
+    "reports/random_20w_split/stage2_loop32_content_pe_v2_cache_train_val/content_pe_v2_cache_report.json",
+    "reports/random_20w_split/stage2_loop30_content_string_cache_train_val/content_string_cache_report.json",
+    "reports/random_20w_split/stage2_loop31_content_cert_cache_train_val/content_cert_cache_report.json"
+  ],
+  "authorized_edit_paths": [
+    "goal.md",
+    "docs/ml_improvement_recommendations.md",
+    "scripts/build_ml_recommendation_status.py",
+    "tests/test_build_ml_recommendation_status.py",
+    "docs/phase3_loop164_whole_file_residual_expert_proposal.md",
+    "reports/hard_family_finetune/experiment_journal.md",
+    "scripts/build_loop164_mainline_preflight.py",
+    "tests/test_build_loop164_mainline_preflight.py",
+    "scripts/validate_loop164_isolation_contract.py",
+    "tests/test_validate_loop164_isolation_contract.py",
+    "scripts/validate_loop164_nested_oof_execution_receipt.py",
+    "tests/test_validate_loop164_nested_oof_execution_receipt.py",
+    "scripts/validate_loop164_fold_scope_plan.py",
+    "tests/test_validate_loop164_fold_scope_plan.py",
+    "scripts/validate_loop164_training_authority.py",
+    "tests/test_validate_loop164_training_authority.py",
+    "scripts/validate_loop164_a2_request.py",
+    "tests/test_validate_loop164_a2_request.py",
+    "scripts/validate_loop164_certification_evidence.py",
+    "tests/test_validate_loop164_certification_evidence.py",
+    "manifests/roadmap_9997/loop164_whole_file_residual_expert/templates/a2_metadata_request.template.json",
+    "manifests/roadmap_9997/loop164_whole_file_residual_expert/templates/a2_training_request.template.json",
+    "manifests/roadmap_9997/loop164_whole_file_residual_expert/frontier_sources.json",
+    "manifests/roadmap_9997/loop164_whole_file_residual_expert/proposal.json",
+    "manifests/roadmap_9997/loop164_whole_file_residual_expert/authorization.json"
+  ],
+  "authorized_generated_paths": [
+    "manifests/roadmap_9997/loop164_whole_file_residual_expert/preflight.json",
+    "reports/roadmap_9997/loop164/preflight.json"
+  ],
+  "allowed": [
+    "Read the enumerated aggregate JSON reports and local source code.",
+    "Verify proposal, source, and authorization hashes.",
+    "Build a fail-closed static readiness report without opening model, raw, cache-row, split-row, or prediction-row payloads.",
+    "Run the focused synthetic unit test, Python compile, formatter check, and diff check for the new preflight builder.",
+    "Write and test a metadata-only full-pool isolation contract validator without running it on project inventory rows.",
+    "Harden and test the future A2 metadata authorization verifier and one-shot lease consumer against synthetic temporary artifacts only.",
+    "Write and test an aggregate-only fold-scope-plan verifier against synthetic temporary artifacts only; do not generate a real scope-plan validation receipt.",
+    "Write and test a future A2 training-authority verifier, immutable content-addressed final-lease consumer, and aggregate-only nested OOF execution-receipt verifier against synthetic temporary artifacts only; do not create a real authorization, trust anchor, input bundle, lease, implementation manifest, or execution receipt.",
+    "Write and test non-authorizing A2 metadata and training request templates that cannot carry an allow decision, lease, validity window, protected-input grant, or runtime binding.",
+    "Write and test an aggregate-only dual-window certification evidence verifier against synthetic JSON only; do not create A3 authorization, sealed evidence, or certification result.",
+    "Update the long-term contract, recommendations, proposal report, and experiment journal with the no-execution decision."
+  ],
+  "not_authorized": [
+    "Opening raw files, checkpoints, model payloads, split CSVs, prediction CSVs, cache rows, private maps, or reviewer context rows.",
+    "Dependency installation, cache build, feature extraction, training, fitting, fine-tuning, calibration, threshold search, feature selection, or model selection.",
+    "Val prediction, Test-10k access, legacy full-test access, sentinel, confirmation, or certification evaluation.",
+    "Relabeling, redraw, split mutation, cache mutation, model mutation, deployment, commit, or push.",
+    "Creating an A2 run authorization, execution lease, implementation manifest, checkpoint, or metrics artifact.",
+    "Claiming Loop164 improves F1, is executable, is a champion, or is production-ready."
+  ],
+  "execution_budget": {
+    "raw_files": 0,
+    "checkpoint_loads": 0,
+    "prediction_rows": 0,
+    "cache_rows": 0,
+    "training_runs": 0,
+    "model_evaluations": 0,
+    "gpu_runs": 0,
+    "dependency_installs": 0
+  },
+  "decision": "allow_static_preflight_only_block_all_model_and_data_execution"
+}

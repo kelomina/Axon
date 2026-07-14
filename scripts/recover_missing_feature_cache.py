@@ -11,9 +11,9 @@ import json
 import sys
 import tomllib
 from collections import Counter
-from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
+from concurrent.futures import FIRST_COMPLETED, ProcessPoolExecutor, ThreadPoolExecutor, wait
 from pathlib import Path
-from typing import Optional, Sequence
+from typing import Iterable, Optional, Sequence
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 SRC_DIR = PROJECT_ROOT / "src"
@@ -22,6 +22,12 @@ if str(SRC_DIR) not in sys.path:
 
 from config import AxonExperimentConfig  # noqa: E402
 from kvd_features.extractor import ExtractionConfig, extract_all_features  # noqa: E402
+
+MAX_WORKERS = 8
+DEFAULT_PENDING_MULTIPLIER = 4
+MAX_PENDING_TASKS = 64
+MAX_FAILURE_EXAMPLES = 20
+MAX_ERROR_TEXT = 500
 
 
 def resolve_path(path: Path) -> Path:
@@ -274,28 +280,48 @@ def cache_config_hash(config: AxonExperimentConfig) -> str:
     )
 
 
-def read_missing_rows(paths: Sequence[Path]) -> list[dict]:
-    rows_by_key: dict[tuple[str, int], dict] = {}
+def _normalize_missing_row(row: dict) -> tuple[tuple[str, int], dict] | None:
+    raw_source_path = row.get("source_path", "").strip()
+    source_path = (row.get("original_source_path") or raw_source_path).strip()
+    if not source_path:
+        return None
+    label = int(row["label"])
+    source_sha256 = str(row.get("source_sha256") or "").strip().casefold()
+    key = (str(absolute_without_resolving_links(Path(source_path))), label)
+    merged = dict(row)
+    merged["source_path"] = key[0]
+    if raw_source_path and raw_source_path != source_path:
+        merged["materialized_source_path"] = str(
+            absolute_without_resolving_links(Path(raw_source_path))
+        )
+    merged["label"] = label
+    merged["source_sha256"] = source_sha256
+    return key, merged
+
+
+def iter_missing_rows(paths: Sequence[Path], *, limit: Optional[int] = None) -> Iterable[dict]:
+    if limit is not None and limit < 0:
+        raise ValueError("--limit must be non-negative")
+    seen_keys: set[tuple[str, int]] = set()
+    emitted = 0
     for csv_path in paths:
         with resolve_path(csv_path).open("r", encoding="utf-8-sig", newline="") as f:
             for row in csv.DictReader(f):
-                raw_source_path = row.get("source_path", "").strip()
-                source_path = (row.get("original_source_path") or raw_source_path).strip()
-                if not source_path:
+                normalized = _normalize_missing_row(row)
+                if normalized is None:
                     continue
-                label = int(row["label"])
-                source_sha256 = str(row.get("source_sha256") or "").strip().casefold()
-                key = (str(absolute_without_resolving_links(Path(source_path))), label)
-                merged = dict(row)
-                merged["source_path"] = key[0]
-                if raw_source_path and raw_source_path != source_path:
-                    merged["materialized_source_path"] = str(
-                        absolute_without_resolving_links(Path(raw_source_path))
-                    )
-                merged["label"] = label
-                merged["source_sha256"] = source_sha256
-                rows_by_key.setdefault(key, merged)
-    return list(rows_by_key.values())
+                key, merged = normalized
+                if key in seen_keys:
+                    continue
+                seen_keys.add(key)
+                yield merged
+                emitted += 1
+                if limit is not None and emitted >= limit:
+                    return
+
+
+def read_missing_rows(paths: Sequence[Path]) -> list[dict]:
+    return list(iter_missing_rows(paths))
 
 
 def build_payload(
@@ -441,37 +467,38 @@ def load_manifest(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def update_manifest(
-    manifest_path: Path,
-    config: AxonExperimentConfig,
-    config_hash: str,
-    recovered: Sequence[dict],
-    *,
-    dry_run: bool,
-    storage_format: str = "compressed",
-) -> int:
+def _load_manifest_state(manifest_path: Path) -> tuple[dict, list[dict], dict[str, dict]]:
     manifest = load_manifest(manifest_path)
     samples = list(manifest.get("samples", []))
     by_cache = {str(Path(sample.get("cache_path", "")).resolve(strict=False)): sample for sample in samples}
-    added = 0
-    for item in recovered:
-        if item.get("status") not in {"extracted", "cache_hit"}:
-            continue
-        cache_path = str(Path(item["cache_path"]).resolve(strict=False))
-        if cache_path in by_cache:
-            continue
-        sample = {
-            "source_path": item["source_path"],
-            "cache_path": item["cache_path"],
-            "label": int(item["label"]),
-            "source_sha256": item["source_sha256"],
-        }
-        samples.append(sample)
-        by_cache[cache_path] = sample
-        added += 1
-    if dry_run:
-        return added
+    return manifest, samples, by_cache
 
+
+def _add_manifest_item(samples: list[dict], by_cache: dict[str, dict], item: dict) -> bool:
+    if item.get("status") not in {"extracted", "cache_hit"}:
+        return False
+    cache_path = str(Path(item["cache_path"]).resolve(strict=False))
+    if cache_path in by_cache:
+        return False
+    sample = {
+        "source_path": item["source_path"],
+        "cache_path": item["cache_path"],
+        "label": int(item["label"]),
+        "source_sha256": item["source_sha256"],
+    }
+    samples.append(sample)
+    by_cache[cache_path] = sample
+    return True
+
+
+def _write_manifest(
+    manifest_path: Path,
+    manifest: dict,
+    samples: list[dict],
+    config: AxonExperimentConfig,
+    config_hash: str,
+    storage_format: str,
+) -> None:
     manifest.update(
         {
             "version": manifest.get("version", 1),
@@ -490,9 +517,133 @@ def update_manifest(
         }
     )
     tmp_path = manifest_path.with_name(manifest_path.name + ".tmp")
+    tmp_path.parent.mkdir(parents=True, exist_ok=True)
     tmp_path.write_text(json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8")
     tmp_path.replace(manifest_path)
+
+
+def update_manifest(
+    manifest_path: Path,
+    config: AxonExperimentConfig,
+    config_hash: str,
+    recovered: Sequence[dict],
+    *,
+    dry_run: bool,
+    storage_format: str = "compressed",
+) -> int:
+    manifest, samples, by_cache = _load_manifest_state(manifest_path)
+    added = 0
+    for item in recovered:
+        added += int(_add_manifest_item(samples, by_cache, item))
+    if dry_run:
+        return added
+
+    _write_manifest(manifest_path, manifest, samples, config, config_hash, storage_format)
     return added
+
+
+def _is_recovery_success(result: dict) -> bool:
+    return result.get("status") in {"extracted", "cache_hit"}
+
+
+def _append_failed_example(failed_examples: list[dict], result: dict) -> None:
+    if _is_recovery_success(result) or len(failed_examples) >= MAX_FAILURE_EXAMPLES:
+        return
+    failed_examples.append(
+        {
+            "status": str(result.get("status") or ""),
+            "source_path": str(result.get("source_path") or ""),
+            "cache_path": str(result.get("cache_path") or ""),
+            "label": result.get("label"),
+            "source_sha256": str(result.get("source_sha256") or ""),
+            "expected_source_sha256": str(result.get("expected_source_sha256") or ""),
+            "error": str(result.get("error") or result.get("failure_reason") or "")[:MAX_ERROR_TEXT],
+        }
+    )
+
+
+def _worker_exception_result(payload: dict, exc: BaseException) -> dict:
+    source_path = Path(payload["source_path"])
+    cache_path = _feature_cache_path_for_file(
+        source_path,
+        Path(payload["cache_dir"]),
+        str(payload["config_hash"]),
+    )
+    return {
+        "status": "worker_exception",
+        "source_path": str(source_path),
+        "cache_path": str(cache_path),
+        "label": int(payload["label"]),
+        "expected_source_sha256": str(payload.get("expected_source_sha256") or ""),
+        "error": f"{type(exc).__name__}: {str(exc)[:MAX_ERROR_TEXT]}",
+    }
+
+
+def _record_recovery_result(
+    result: dict,
+    status_counts: Counter,
+    failed_examples: list[dict],
+    manifest_state: Optional[tuple[dict, list[dict], dict[str, dict]]] = None,
+) -> int:
+    status_counts[str(result.get("status") or "unknown")] += 1
+    _append_failed_example(failed_examples, result)
+    if manifest_state is None:
+        return 0
+    _manifest, samples, by_cache = manifest_state
+    return int(_add_manifest_item(samples, by_cache, result))
+
+
+def _validate_worker_window(workers: int, max_pending: Optional[int]) -> tuple[int, int]:
+    if workers < 1:
+        raise ValueError("--workers must be at least 1")
+    if workers > MAX_WORKERS:
+        raise ValueError(f"--workers must be <= {MAX_WORKERS} on this 8GB workflow")
+    if max_pending is not None and max_pending < 1:
+        raise ValueError("--max-pending must be at least 1")
+    worker_count = int(workers)
+    default_max_pending = min(MAX_PENDING_TASKS, max(1, worker_count * DEFAULT_PENDING_MULTIPLIER))
+    bounded_max_pending = default_max_pending if max_pending is None else min(int(max_pending), MAX_PENDING_TASKS)
+    return worker_count, bounded_max_pending
+
+
+def _drain_recovery_completed(
+    pending: dict,
+    status_counts: Counter,
+    failed_examples: list[dict],
+    manifest_state: tuple[dict, list[dict], dict[str, dict]],
+) -> tuple[dict, int, int]:
+    done, _remaining = wait(set(pending), return_when=FIRST_COMPLETED)
+    processed = 0
+    manifest_added = 0
+    for future in done:
+        payload = pending.pop(future)
+        try:
+            result = future.result()
+        except Exception as exc:
+            result = _worker_exception_result(payload, exc)
+        manifest_added += _record_recovery_result(result, status_counts, failed_examples, manifest_state)
+        processed += 1
+    return pending, processed, manifest_added
+
+
+def _drain_recovery_all(
+    pending: dict,
+    status_counts: Counter,
+    failed_examples: list[dict],
+    manifest_state: tuple[dict, list[dict], dict[str, dict]],
+) -> tuple[int, int]:
+    processed = 0
+    manifest_added = 0
+    while pending:
+        pending, batch_processed, batch_added = _drain_recovery_completed(
+            pending,
+            status_counts,
+            failed_examples,
+            manifest_state,
+        )
+        processed += batch_processed
+        manifest_added += batch_added
+    return processed, manifest_added
 
 
 def recover_rows(
@@ -507,19 +658,24 @@ def recover_rows(
     dry_run: bool = False,
     storage_format: str = "compressed",
     progress_interval: int = 1000,
+    max_pending: Optional[int] = None,
 ) -> dict:
     config = load_recovery_config(checkpoint=checkpoint, config_path=config_path)
     config_hash = cache_config_hash(config)
     cache_dir = resolve_path(cache_dir)
+    cache_dir.mkdir(parents=True, exist_ok=True)
     manifest_path = cache_dir / f"manifest_{config_hash}.json"
-    rows = read_missing_rows(missing_csvs)
-    if limit is not None:
-        rows = rows[:limit]
 
-    planned = []
+    if limit is not None and limit < 0:
+        raise ValueError("--limit must be non-negative")
+    worker_count, pending_limit = _validate_worker_window(int(workers), max_pending)
+
     missing_expected_sha = 0
     invalid_expected_sha = 0
-    for row in rows:
+    planned_rows = 0
+    dry_run_counts: Counter = Counter()
+    for row in iter_missing_rows(missing_csvs, limit=limit):
+        planned_rows += 1
         source_path = Path(row["source_path"])
         cache_path = _feature_cache_path_for_file(source_path, cache_dir, config_hash)
         expected_sha = str(row.get("source_sha256") or "").strip().casefold()
@@ -527,9 +683,9 @@ def recover_rows(
             missing_expected_sha += 1
         elif len(expected_sha) != 64 or any(char not in "0123456789abcdef" for char in expected_sha):
             invalid_expected_sha += 1
-        planned.append({**row, "cache_path": str(cache_path), "cache_exists": cache_path.exists()})
+        if dry_run:
+            dry_run_counts["cache_exists" if cache_path.exists() else "would_extract"] += 1
     if dry_run:
-        counts = Counter("cache_exists" if row["cache_exists"] else "would_extract" for row in planned)
         return {
             "schema": "axon_missing_feature_cache_recovery_v1",
             "dry_run": True,
@@ -538,50 +694,64 @@ def recover_rows(
             "cache_config_hash": config_hash,
             "manifest_path": str(manifest_path),
             "storage_format": storage_format,
-            "planned_rows": len(planned),
+            "workers": worker_count,
+            "max_pending_tasks": 0,
+            "planned_rows": planned_rows,
             "missing_expected_source_sha256_rows": missing_expected_sha,
             "invalid_expected_source_sha256_rows": invalid_expected_sha,
             "input_ready": missing_expected_sha == 0 and invalid_expected_sha == 0,
-            "status_counts": dict(counts),
+            "status_counts": dict(dry_run_counts),
         }
 
-    results = []
     executor_cls = ThreadPoolExecutor if backend == "thread" else ProcessPoolExecutor
     processed = 0
+    input_rows = 0
+    status_counts: Counter = Counter()
+    failed_examples: list[dict] = []
+    manifest_state = _load_manifest_state(manifest_path)
+    manifest_added = 0
     config_dict = config.to_dict()
-    if workers <= 1:
-        for row in rows:
+    if worker_count <= 1:
+        for row in iter_missing_rows(missing_csvs, limit=limit):
+            input_rows += 1
             payload = build_payload(row, config_dict, cache_dir, config_hash, storage_format)
-            results.append(recover_one(payload))
+            try:
+                result = recover_one(payload)
+            except Exception as exc:
+                result = _worker_exception_result(payload, exc)
+            manifest_added += _record_recovery_result(result, status_counts, failed_examples, manifest_state)
             processed += 1
             if progress_interval > 0 and processed % progress_interval == 0:
-                print(f"[recover] processed {processed}/{len(rows)}", flush=True)
+                print(f"[recover] processed {processed}", flush=True)
     else:
-        chunk_size = max(workers * 8, 64)
-        with executor_cls(max_workers=workers) as executor:
-            for start in range(0, len(rows), chunk_size):
-                chunk = rows[start:start + chunk_size]
-                futures = [
-                    executor.submit(
-                        recover_one,
-                        build_payload(row, config_dict, cache_dir, config_hash, storage_format),
+        pending = {}
+        with executor_cls(max_workers=worker_count) as executor:
+            for row in iter_missing_rows(missing_csvs, limit=limit):
+                input_rows += 1
+                payload = build_payload(row, config_dict, cache_dir, config_hash, storage_format)
+                future = executor.submit(recover_one, payload)
+                pending[future] = payload
+                if len(pending) >= pending_limit:
+                    pending, batch_processed, batch_added = _drain_recovery_completed(
+                        pending,
+                        status_counts,
+                        failed_examples,
+                        manifest_state,
                     )
-                    for row in chunk
-                ]
-                for future in as_completed(futures):
-                    results.append(future.result())
-                    processed += 1
+                    processed += batch_processed
+                    manifest_added += batch_added
                     if progress_interval > 0 and processed % progress_interval == 0:
-                        print(f"[recover] processed {processed}/{len(rows)}", flush=True)
-    status_counts = Counter(result["status"] for result in results)
-    manifest_added = update_manifest(
-        manifest_path,
-        config,
-        config_hash,
-        results,
-        dry_run=False,
-        storage_format=storage_format,
-    )
+                        print(f"[recover] processed {processed}", flush=True)
+            batch_processed, batch_added = _drain_recovery_all(
+                pending,
+                status_counts,
+                failed_examples,
+                manifest_state,
+            )
+            processed += batch_processed
+            manifest_added += batch_added
+    manifest, samples, _by_cache = manifest_state
+    _write_manifest(manifest_path, manifest, samples, config, config_hash, storage_format)
     return {
         "schema": "axon_missing_feature_cache_recovery_v1",
         "dry_run": False,
@@ -590,10 +760,12 @@ def recover_rows(
         "cache_config_hash": config_hash,
         "manifest_path": str(manifest_path),
         "storage_format": storage_format,
-        "input_rows": len(rows),
+        "workers": worker_count,
+        "max_pending_tasks": pending_limit if worker_count > 1 else 0,
+        "input_rows": input_rows,
         "status_counts": dict(status_counts),
         "manifest_added": manifest_added,
-        "failed_examples": [r for r in results if r["status"] not in {"extracted", "cache_hit"}][:20],
+        "failed_examples": failed_examples,
     }
 
 
@@ -607,6 +779,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--workers", type=int, default=1)
     parser.add_argument("--backend", choices=["thread", "process"], default="process")
     parser.add_argument("--limit", type=int, default=None)
+    parser.add_argument("--max-pending", type=int, default=None)
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--storage-format", choices=["compressed", "uncompressed"], default="compressed")
     parser.add_argument("--progress-interval", type=int, default=1000)
@@ -627,6 +800,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         dry_run=args.dry_run,
         storage_format=args.storage_format,
         progress_interval=max(0, int(args.progress_interval)),
+        max_pending=args.max_pending,
     )
     output_path = resolve_path(args.output_json)
     output_path.parent.mkdir(parents=True, exist_ok=True)

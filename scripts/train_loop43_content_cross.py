@@ -19,6 +19,8 @@ from pathlib import Path
 from typing import Optional, Sequence
 
 import numpy as np
+from sklearn.base import clone
+from sklearn.ensemble import HistGradientBoostingClassifier
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS_DIR = PROJECT_ROOT / "scripts"
@@ -38,6 +40,7 @@ from train_stage2_cache_matrix import (  # noqa: E402
     assert_stage2_feature_names_safe,
     build_matrix,
     clean_slice_metrics,
+    append_feature_columns,
     content_pe_features_for_row,
     content_pe_v2_features_for_row,
     filter_model_candidates,
@@ -58,6 +61,38 @@ from train_stage2_cache_matrix import (  # noqa: E402
 LOOP28_VAL_F1 = 0.9919048570857486
 LOOP28_VAL_ERRORS = 162
 LOOP43_TEST10K_ERROR_GATE = 152
+
+
+def loop43_local_hgb_candidates(seed: int) -> list[tuple[str, object]]:
+    """Local HGB refinements for the content-cross candidate.
+
+    These names are intentionally kept out of the shared Stage-2 candidate pool
+    so other experiments do not become slower by default.
+    """
+
+    specs = [
+        ("hgb_l43_lr0.05_leaf31_iter320_l2_0", 0.05, 31, 320, 0.0),
+        ("hgb_l43_lr0.06_leaf23_iter320_l2_0", 0.06, 23, 320, 0.0),
+        ("hgb_l43_lr0.06_leaf31_iter340_l2_0", 0.06, 31, 340, 0.0),
+        ("hgb_l43_lr0.06_leaf47_iter260_l2_0", 0.06, 47, 260, 0.0),
+        ("hgb_l43_lr0.07_leaf31_iter280_l2_1e-4", 0.07, 31, 280, 1.0e-4),
+        ("hgb_l43_lr0.07_leaf47_iter260_l2_1e-4", 0.07, 47, 260, 1.0e-4),
+        ("hgb_l43_lr0.08_leaf23_iter280_l2_1e-3", 0.08, 23, 280, 1.0e-3),
+        ("hgb_l43_lr0.08_leaf47_iter240_l2_1e-3", 0.08, 47, 240, 1.0e-3),
+    ]
+    return [
+        (
+            name,
+            HistGradientBoostingClassifier(
+                learning_rate=learning_rate,
+                max_leaf_nodes=max_leaf_nodes,
+                max_iter=max_iter,
+                l2_regularization=l2_regularization,
+                random_state=seed,
+            ),
+        )
+        for name, learning_rate, max_leaf_nodes, max_iter, l2_regularization in specs
+    ]
 
 
 CONTENT_CROSS_FEATURE_NAMES = [
@@ -314,14 +349,14 @@ def content_cross_features_from_arrays(pe1: np.ndarray, pe2: np.ndarray) -> np.n
 
 
 def build_content_cross_matrix(rows: Sequence[dict], config: CrossConfig) -> np.ndarray:
-    features = []
-    for row in rows:
+    if not rows:
+        raise ValueError("No content cross rows were loaded")
+    matrix = np.empty((len(rows), len(CONTENT_CROSS_FEATURE_NAMES)), dtype=np.float32)
+    for index, row in enumerate(rows):
         pe1 = content_pe_features_for_row(row, config.content_pe_cache_dir)
         pe2 = content_pe_v2_features_for_row(row, config.content_pe_v2_cache_dir)
-        features.append(content_cross_features_from_arrays(pe1, pe2))
-    if not features:
-        raise ValueError("No content cross rows were loaded")
-    return np.vstack(features).astype(np.float32, copy=False)
+        matrix[index] = content_cross_features_from_arrays(pe1, pe2)
+    return matrix
 
 
 def run_strict_readiness_preflight(args: argparse.Namespace, output_dir: Path) -> dict:
@@ -352,6 +387,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--train-predictions", type=Path, required=True)
     parser.add_argument("--val-predictions", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
+    parser.add_argument("--max-train-rows", type=int, default=None)
+    parser.add_argument("--max-val-rows", type=int, default=None)
     parser.add_argument("--thresholds", default="0.35:0.65:0.005")
     parser.add_argument("--prefix-len", type=int, default=256)
     parser.add_argument("--chunk-count", type=int, default=16)
@@ -378,7 +415,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     checkpoint = load_safe_checkpoint(resolve_path(args.checkpoint), map_location="cpu")
     checkpoint_config = AxonExperimentConfig.from_dict(dict(checkpoint["config"]))
-    checkpoint = None
+    del checkpoint
     gc.collect()
 
     feature_config = FeatureConfig(
@@ -394,12 +431,14 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     safe_feature_name_groups = assert_stage2_feature_names_safe(feature_config, checkpoint_config=checkpoint_config)
     assert_no_identity_feature_names(CONTENT_CROSS_FEATURE_NAMES, context="Loop43 content-cross features")
 
-    train_rows = read_prediction_rows(args.train_predictions)
-    val_rows = read_prediction_rows(args.val_predictions)
+    train_rows = read_prediction_rows(args.train_predictions, args.max_train_rows)
+    val_rows = read_prediction_rows(args.val_predictions, args.max_val_rows)
     train_x, train_y, train_base, train_kept_rows, train_counts = build_matrix(
         train_rows, checkpoint_config, feature_config
     )
     val_x, val_y, val_base, val_kept_rows, val_counts = build_matrix(val_rows, checkpoint_config, feature_config)
+    del train_rows
+    del val_rows
 
     cross_config = CrossConfig(
         content_pe_cache_dir=str(resolve_path(args.content_pe_cache_dir)),
@@ -407,20 +446,32 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     )
     train_cross = build_content_cross_matrix(train_kept_rows, cross_config)
     val_cross = build_content_cross_matrix(val_kept_rows, cross_config)
-    train_x = np.hstack([train_x, train_cross]).astype(np.float32, copy=False)
-    val_x = np.hstack([val_x, val_cross]).astype(np.float32, copy=False)
+    base_feature_dim = int(train_x.shape[1])
+    content_cross_feature_dim = int(train_cross.shape[1])
+    train_x = append_feature_columns(train_x, train_cross)
+    val_x = append_feature_columns(val_x, val_cross)
+    del train_cross
+    del val_cross
+    gc.collect()
     print(f"[matrix] train={train_x.shape} val={val_x.shape}", flush=True)
 
     thresholds = parse_thresholds(args.thresholds)
     baseline_val_best = select_best_threshold(val_base, val_y, thresholds)
-    candidates = filter_model_candidates(model_candidates(int(args.seed)), args.model_candidates)
+    candidates = filter_model_candidates(
+        model_candidates(int(args.seed)) + loop43_local_hgb_candidates(int(args.seed)),
+        args.model_candidates,
+    )
     noise_modes = [item.strip() for item in args.noise_modes.split(",") if item.strip()]
     results = []
-    fitted = []
+    best_key = None
+    selected = None
+    selected_model = None
+    selected_val_scores = None
     for noise_mode in noise_modes:
         weights = sample_weights(train_y, train_base, noise_mode)
         weight_summary = summarize_weights(train_y, weights)
-        for model_name, model in candidates:
+        for model_name, model_template in candidates:
+            model = clone(model_template)
             start = time.perf_counter()
             fit_kwargs = {}
             if model_name != "logreg_l2_c1":
@@ -446,15 +497,28 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 "delta_val_f1_vs_loop28": float(val_best["f1"]) - float(args.baseline_val_f1),
             }
             results.append(result)
-            fitted.append((float(val_best["f1"]), -int(val_best["errors"]), result, model, val_scores))
+            candidate_key = (float(val_best["f1"]), -int(val_best["errors"]))
+            if best_key is None or candidate_key > best_key:
+                if selected_model is not None:
+                    del selected_model
+                if selected_val_scores is not None:
+                    del selected_val_scores
+                best_key = candidate_key
+                selected = result
+                selected_model = model
+                selected_val_scores = val_scores.astype(np.float32, copy=True)
+            else:
+                del model
+            del val_scores
+            gc.collect()
             print(
                 f"[val] {result['name']} f1={val_best['f1']:.6f} "
                 f"errors={val_best['errors']} threshold={val_best['threshold']:.4f}",
                 flush=True,
             )
 
-    fitted.sort(key=lambda item: (item[0], item[1]), reverse=True)
-    _selected_f1, _neg_errors, selected, selected_model, selected_val_scores = fitted[0]
+    if selected is None or selected_model is None or selected_val_scores is None:
+        raise ValueError("No fitted Loop43 candidate was available for selection")
     selected_threshold = float(selected["val_best"]["threshold"])
     val_predictions_path = output_dir / "loop43_content_cross_val_predictions.csv"
     write_predictions(val_predictions_path, val_kept_rows, val_y, selected_val_scores, selected_threshold)
@@ -498,8 +562,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             **safe_feature_name_groups,
             "content_cross_feature_names": CONTENT_CROSS_FEATURE_NAMES,
         },
-        "base_feature_dim": int(train_x.shape[1] - train_cross.shape[1]),
-        "content_cross_feature_dim": int(train_cross.shape[1]),
+        "base_feature_dim": base_feature_dim,
+        "content_cross_feature_dim": content_cross_feature_dim,
         "feature_dim": int(train_x.shape[1]),
         "baseline_val_best": baseline_val_best,
         "loop28_reference": {

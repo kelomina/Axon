@@ -6,9 +6,12 @@ import uuid
 from contextlib import contextmanager
 from pathlib import Path
 
+import pytest
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 
 from evaluate_strict_split_from_cache import (  # noqa: E402
+    cache_eval_num_workers,
     collect_strict_records,
     compute_metrics,
     select_manifest_sample,
@@ -39,6 +42,11 @@ def _write_split(path: Path, rows: list[dict]) -> None:
 
 def _write_manifest(path: Path, samples: list[dict]) -> None:
     path.write_text(json.dumps({"samples": samples}), encoding="utf-8")
+
+
+def test_cache_eval_num_workers_rejects_windows_worker_copies():
+    with pytest.raises(ValueError, match="num_workers > 0"):
+        cache_eval_num_workers(1)
 
 
 def test_collect_strict_records_matches_by_source_sha256_only():
@@ -197,6 +205,52 @@ def test_collect_strict_records_accepts_locked_test10k_split():
     assert len(records) == 1
     assert records[0]["split"] == "test10k"
     assert summary["manifest_match_counts"] == {"source_sha256": 1}
+
+
+def test_collect_strict_records_falls_back_to_locked_test_prefix_for_test10k():
+    with _case_dir("strict_eval_test10k_fallback") as tmp_path:
+        cache_dir = tmp_path / ".cache"
+        cache_dir.mkdir()
+        samples = []
+        split_rows = []
+        for index, suffix in enumerate(["a", "b", "c"], start=1):
+            cache_path = cache_dir / f"sample_{suffix}.npz"
+            cache_path.write_bytes(b"placeholder")
+            sha = suffix * 64
+            split_rows.append(
+                {
+                    "source_path": f"sample_{suffix}.exe",
+                    "source_sha256": sha,
+                    "label": str(index % 2),
+                    "sample_index": str(index),
+                    "split": "test",
+                }
+            )
+            samples.append(
+                {
+                    "source_path": f"sample_{suffix}.exe",
+                    "cache_path": str(cache_path),
+                    "label": index % 2,
+                    "source_sha256": sha,
+                }
+            )
+
+        split_csv = tmp_path / "split.csv"
+        manifest_json = cache_dir / "manifest.json"
+        _write_split(split_csv, split_rows)
+        _write_manifest(manifest_json, samples)
+
+        records, summary = collect_strict_records(
+            split_csv=split_csv,
+            manifest_json=manifest_json,
+            split="test10k",
+            max_rows=2,
+        )
+
+    assert [record["source_sha256"] for record in records] == ["a" * 64, "b" * 64]
+    assert [record["split"] for record in records] == ["test", "test"]
+    assert summary["raw_rows"] == 2
+    assert summary["records"] == 2
 
 
 def test_evaluate_strict_split_records_feature_mask_metadata(monkeypatch):
