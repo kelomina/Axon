@@ -1,0 +1,119 @@
+{
+  "schema": "axon_loop28_parity_post_diagnostic_manifest_v1",
+  "loop_id": "p0_loop28_parity_diagnostic_001",
+  "generated_at_utc": "2026-07-11T19:52:10Z",
+  "contract": {
+    "operation": "opaque_file_stat_and_streaming_sha256_only",
+    "bound_artifact_payloads_parsed": false,
+    "manifest_self_hashed": false,
+    "output_replace_allowed": false,
+    "supplemental_artifacts_allowed": false
+  },
+  "claim_scope": {
+    "diagnostic_closure_only": true,
+    "first_divergence_stage": "feature_extraction",
+    "quality_claim_allowed": false,
+    "parity_claim_allowed": false,
+    "certification_claim_allowed": false,
+    "remediation_execution_authorized": false
+  },
+  "artifacts": [
+    {
+      "name": "historical_truth",
+      "role": "historical_parent_evidence",
+      "path": "manifests/roadmap_9997/p0_truth_freeze/loop151_truth_manifest.json",
+      "required": true,
+      "expected_sha256": "174861be850a681025a7040798c59b7157cc67ab5503437088359692dad5659d",
+      "exists": true,
+      "size_bytes": 67612,
+      "sha256": "174861be850a681025a7040798c59b7157cc67ab5503437088359692dad5659d",
+      "expected_sha256_match": true
+    },
+    {
+      "name": "prereg_authorization",
+      "role": "diagnostic_preregistration",
+      "path": "manifests/roadmap_9997/p0_loop28_parity_diagnostic/authorization.json",
+      "required": true,
+      "expected_sha256": "3de5c204c37e300c552eba16fd2b633fda5b8bcc68cbdb2b58a7d00b24cb201f",
+      "exists": true,
+      "size_bytes": 5088,
+      "sha256": "3de5c204c37e300c552eba16fd2b633fda5b8bcc68cbdb2b58a7d00b24cb201f",
+      "expected_sha256_match": true
+    },
+    {
+      "name": "implementation_manifest",
+      "role": "hash_only_implementation_closure",
+      "path": "manifests/roadmap_9997/p0_loop28_parity_diagnostic/implementation_manifest.json",
+      "required": true,
+      "expected_sha256": "a581f00503d62117576e0f2721de72da049ea8fe7786788db63a653ace207a49",
+      "exists": true,
+      "size_bytes": 17219,
+      "sha256": "a581f00503d62117576e0f2721de72da049ea8fe7786788db63a653ace207a49",
+      "expected_sha256_match": true
+    },
+    {
+      "name": "run_authorization",
+      "role": "bounded_run_authorization",
+      "path": "manifests/roadmap_9997/p0_loop28_parity_diagnostic/run_authorization.json",
+      "required": true,
+      "expected_sha256": "aa07e16765e23b6b0e2e07dad5ffa06ed2036d064d25940b4c0f36f6f4eda359",
+      "exists": true,
+      "size_bytes": 5026,
+      "sha256": "aa07e16765e23b6b0e2e07dad5ffa06ed2036d064d25940b4c0f36f6f4eda359",
+      "expected_sha256_match": true
+    },
+    {
+      "name": "consumed_lease",
+      "role": "one_shot_attempt_lease",
+      "path": "manifests/roadmap_9997/p0_loop28_parity_diagnostic/run_attempt.final.json",
+      "required": true,
+      "expected_sha256": "69d2fbbf1a9e31e542dd61541befc0b11c973c9023e187f8b0e87a9825f91b19",
+      "exists": true,
+      "size_bytes": 517,
+      "sha256": "69d2fbbf1a9e31e542dd61541befc0b11c973c9023e187f8b0e87a9825f91b19",
+      "expected_sha256_match": true
+    },
+    {
+      "name": "final_receipt",
+      "role": "diagnostic_result",
+      "path": "reports/roadmap_9997/p0_loop28_parity_diagnostic/diagnostic_receipt.final.json",
+      "required": true,
+      "expected_sha256": "de8f0c5885df08646298f67f59b5427696252f7cb921d84eeb6527bef6878bc7",
+      "exists": true,
+      "size_bytes": 18405,
+      "sha256": "de8f0c5885df08646298f67f59b5427696252f7cb921d84eeb6527bef6878bc7",
+      "expected_sha256_match": true
+    },
+    {
+      "name": "experiment_journal",
+      "role": "durable_experiment_record",
+      "path": "reports/hard_family_finetune/experiment_journal.md",
+      "required": true,
+      "expected_sha256": null,
+      "exists": true,
+      "size_bytes": 241396,
+      "sha256": "b4db6232f230761fc177a05ff34582401a60ec2edd181a1eb9ef3f70a10a6370",
+      "expected_sha256_match": null
+    },
+    {
+      "name": "recommendations",
+      "role": "owner_facing_research_status",
+      "path": "docs/ml_improvement_recommendations.md",
+      "required": true,
+      "expected_sha256": null,
+      "exists": true,
+      "size_bytes": 170098,
+      "sha256": "67a76d927e2a96ff847b0e64d238731aa36d4ed92b4dad0a47e17278c0e9e93c",
+      "expected_sha256_match": null
+    }
+  ],
+  "integrity": {
+    "artifact_count": 8,
+    "required_artifact_count": 8,
+    "present_required_artifact_count": 8,
+    "predeclared_sha256_count": 6,
+    "verified_predeclared_sha256_count": 6,
+    "blockers": []
+  },
+  "decision": "diagnostic_closure_frozen_remediation_requires_new_authorization"
+}

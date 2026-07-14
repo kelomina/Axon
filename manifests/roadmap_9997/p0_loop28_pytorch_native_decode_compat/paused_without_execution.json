@@ -1,0 +1,43 @@
+{
+  "schema": "axon_loop28_pytorch_native_decode_compat_pause_v1",
+  "loop_id": "p0_loop28_pytorch_native_decode_compat_001",
+  "paused_at_utc": "2026-07-12T02:46:20Z",
+  "reason": "The branch addresses native packaging and deployment fidelity but does not directly reduce Loop151 classification errors. The F1 program therefore returns to the research champion before spending a protected runtime lease.",
+  "execution_state": {
+    "preflight_authorization_created": false,
+    "preflight_ready_lease_created": false,
+    "preflight_final_lease_created": false,
+    "torch_worker_processes": 0,
+    "model_constructions": 0,
+    "torch_export_calls": 0,
+    "aoti_compile_and_package_calls": 0,
+    "package_load_calls": 0,
+    "native_probe_execution_count": 0,
+    "quality_metric_count": 0
+  },
+  "static_state": {
+    "runner_sha256": "18b60f97abb86f38fda68c1fe77c99142ac8ba54e36438df009a718bfa607d35",
+    "runner_test_sha256": "2c1b54f80c29c96f562176eed66ad8bf10e46e7f9d3f482488c05fde81ac8420",
+    "manifest_builder_sha256": "1f05e7b3729db3914edf8c96f8fe58ee06dee874455216c186421a1707c9044e",
+    "manifest_builder_test_sha256": "0150b9d0cc6cf37239eb45afbaeeac92fc5f740c62ec458cac556c3c7f6d9952",
+    "proposal_sha256": "7b38bcdbdcc6e7f2c9076b39a1104a3c69b716a988b1e9a0b888b47575c5e3dd",
+    "authorization_sha256": "c0dac6b3d94d50d94f4ea5793c7dbf52ae331799a092731255889291dea0a520",
+    "official_source_manifest_sha256": "f0c47dc865e111b2358a3afdaefd580ee2594e7b533d534fef2d5bac13da4748",
+    "reused_binaries_manifest_sha256": "c2470799d27f9fd5cd656ad6430198d37887120dd4273efba051ae98603edafc",
+    "authority_chain_current": false,
+    "authority_chain_note": "The final static edits were intentionally not rebound after the priority pivot. This branch is not executable until a future proposal reauthorizes and rebuilds the full chain."
+  },
+  "resumption_requirements": [
+    "Create a new proposal justified by a deployment or runtime milestone.",
+    "Rebind successor authorization to the final proposal bytes.",
+    "Rebuild and verify both static lineage manifests.",
+    "Repeat focused review before creating any preflight authorization or lease."
+  ],
+  "mainline": {
+    "research_champion": "Loop151",
+    "legacy_full_test_f1": 0.9908541911,
+    "legacy_full_test_errors": 1466,
+    "next_priority": "generalizable Loop151 error reduction under the Val to Test-10k promotion funnel"
+  },
+  "decision": "pause_native_decode_compat_without_execution_resume_loop151_f1_mainline"
+}

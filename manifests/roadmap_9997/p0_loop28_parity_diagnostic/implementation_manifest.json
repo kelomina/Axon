@@ -1,0 +1,490 @@
+{
+  "schema": "axon_loop28_parity_diagnostic_implementation_manifest_v1",
+  "loop_id": "p0_loop28_parity_diagnostic_001",
+  "generated_at_utc": "2026-07-11T19:34:46.211696+00:00",
+  "contract": {
+    "operation": "opaque_file_stat_and_streaming_sha256_only",
+    "artifact_payloads_parsed": false,
+    "split_rows_read": false,
+    "prediction_or_metric_payloads_read": false,
+    "model_or_pickle_payloads_loaded": false,
+    "manifest_self_hashed": false,
+    "supplemental_artifacts_allowed": false
+  },
+  "parent_evidence": {
+    "truth_manifest": {
+      "path": "manifests/roadmap_9997/p0_truth_freeze/loop151_truth_manifest.json",
+      "sha256": "174861be850a681025a7040798c59b7157cc67ab5503437088359692dad5659d",
+      "verified": true
+    },
+    "train_smoke_receipt": {
+      "path": "manifests/roadmap_9997/p0_raw_replay/train_smoke_receipt.json",
+      "sha256": "3fbbd597dc14cf67a082203e680e83c1f521972e1bf1f36282ef847d9d4d2309",
+      "verified": true
+    },
+    "native_parity_receipt": {
+      "path": "manifests/roadmap_9997/p0_raw_replay/native_parity_receipt.json",
+      "sha256": "abeaeb0dd28060a09b7b23fbf0300b2ba6616ef040c4c4958f870aa5d13436b8",
+      "verified": true
+    },
+    "complete_replay_verify_receipt": {
+      "path": "manifests/roadmap_9997/p0_raw_replay/verify_receipt.json",
+      "sha256": "fc39b4a0289d4fc21955030157a8fb4beb437eba78d28dec6f5a665bcf0a5c94",
+      "verified": true
+    }
+  },
+  "artifacts": [
+    {
+      "name": "truth_manifest",
+      "role": "immutable_parent_evidence",
+      "path": "manifests/roadmap_9997/p0_truth_freeze/loop151_truth_manifest.json",
+      "required": true,
+      "exists": true,
+      "size_bytes": 67612,
+      "sha256": "174861be850a681025a7040798c59b7157cc67ab5503437088359692dad5659d"
+    },
+    {
+      "name": "train_smoke_receipt",
+      "role": "immutable_parent_evidence",
+      "path": "manifests/roadmap_9997/p0_raw_replay/train_smoke_receipt.json",
+      "required": true,
+      "exists": true,
+      "size_bytes": 20373,
+      "sha256": "3fbbd597dc14cf67a082203e680e83c1f521972e1bf1f36282ef847d9d4d2309"
+    },
+    {
+      "name": "native_parity_receipt",
+      "role": "immutable_parent_evidence",
+      "path": "manifests/roadmap_9997/p0_raw_replay/native_parity_receipt.json",
+      "required": true,
+      "exists": true,
+      "size_bytes": 24959,
+      "sha256": "abeaeb0dd28060a09b7b23fbf0300b2ba6616ef040c4c4958f870aa5d13436b8"
+    },
+    {
+      "name": "complete_replay_verify_receipt",
+      "role": "immutable_parent_evidence",
+      "path": "manifests/roadmap_9997/p0_raw_replay/verify_receipt.json",
+      "required": true,
+      "exists": true,
+      "size_bytes": 8504,
+      "sha256": "fc39b4a0289d4fc21955030157a8fb4beb437eba78d28dec6f5a665bcf0a5c94"
+    },
+    {
+      "name": "diagnostic_proposal",
+      "role": "preregistration",
+      "path": "manifests/roadmap_9997/p0_loop28_parity_diagnostic/proposal.json",
+      "required": true,
+      "exists": true,
+      "size_bytes": 5588,
+      "sha256": "ec357dec40c78ee8757e1e7414eecdf7874f9227ca6b892cf6eb86214e2f548e"
+    },
+    {
+      "name": "diagnostic_authorization",
+      "role": "preregistration",
+      "path": "manifests/roadmap_9997/p0_loop28_parity_diagnostic/authorization.json",
+      "required": true,
+      "exists": true,
+      "size_bytes": 5088,
+      "sha256": "3de5c204c37e300c552eba16fd2b633fda5b8bcc68cbdb2b58a7d00b24cb201f"
+    },
+    {
+      "name": "diagnostic_preflight",
+      "role": "preregistration",
+      "path": "manifests/roadmap_9997/p0_loop28_parity_diagnostic/preflight.json",
+      "required": true,
+      "exists": true,
+      "size_bytes": 4463,
+      "sha256": "2eeb07f8161cfbab9301a7c2dab7e9e1f24ec1ccac99af8beb38d2bd929c9ff8"
+    },
+    {
+      "name": "implementation_manifest_builder",
+      "role": "diagnostic_manifest_source",
+      "path": "scripts/build_loop28_parity_diagnostic_manifest.py",
+      "required": true,
+      "exists": true,
+      "size_bytes": 24459,
+      "sha256": "f39a01c9cf0a14adc4189a4ee2d3e92b61093e6ae6d310d1f5fb97452bd038ba"
+    },
+    {
+      "name": "implementation_manifest_builder_test",
+      "role": "diagnostic_manifest_test",
+      "path": "tests/test_build_loop28_parity_diagnostic_manifest.py",
+      "required": true,
+      "exists": true,
+      "size_bytes": 8635,
+      "sha256": "2fa0f7fae991cf33395809dd617777f23b52213a90b00138435c80e1006e3b3c"
+    },
+    {
+      "name": "python_diagnostic",
+      "role": "diagnostic_source",
+      "path": "scripts/diagnose_loop28_parity.py",
+      "required": true,
+      "exists": true,
+      "size_bytes": 67894,
+      "sha256": "a0877e5bee3304bf9a1e33b06666fd66508b769782162a76698c2dadc9ff05a0"
+    },
+    {
+      "name": "python_diagnostic_test",
+      "role": "diagnostic_test",
+      "path": "tests/test_diagnose_loop28_parity.py",
+      "required": true,
+      "exists": true,
+      "size_bytes": 19999,
+      "sha256": "3e93d6050638007db8232303546b70abf689f5d60002b65116bbae1b432b4912"
+    },
+    {
+      "name": "raw_replay_guard",
+      "role": "diagnostic_python_dependency",
+      "path": "scripts/replay_loop151_raw.py",
+      "required": true,
+      "exists": true,
+      "size_bytes": 62927,
+      "sha256": "aef2b90faee0450e5afa88510ba7e3874217d21d5350456579eaa595a4a1d47b"
+    },
+    {
+      "name": "raw_replay_guard_test",
+      "role": "diagnostic_python_dependency_test",
+      "path": "tests/test_replay_loop151_raw.py",
+      "required": true,
+      "exists": true,
+      "size_bytes": 21185,
+      "sha256": "59537237ac6e6f16f7ed1c7c560d2a10c011c09a923e150605fe4b4b7a186f8b"
+    },
+    {
+      "name": "predict_api",
+      "role": "python_runtime_source",
+      "path": "src/predict_api.py",
+      "required": true,
+      "exists": true,
+      "size_bytes": 36819,
+      "sha256": "a9207224a777bb7abb38d75524f386f9fa818533e205e6594ab97de6f158daa2"
+    },
+    {
+      "name": "runtime_archive_scanner",
+      "role": "python_runtime_source",
+      "path": "src/archive_scanner.py",
+      "required": true,
+      "exists": true,
+      "size_bytes": 16371,
+      "sha256": "eb74a38ce519b97dc9c9f0e39f8b2b92bc3d2956567aafb086d449f036c6dca2"
+    },
+    {
+      "name": "runtime_config",
+      "role": "python_runtime_source",
+      "path": "src/config.py",
+      "required": true,
+      "exists": true,
+      "size_bytes": 20751,
+      "sha256": "b4d592a2b453d86d7b865a1f3b610be46faf3d26f6f4c2aa5ed45d32c24fb85f"
+    },
+    {
+      "name": "runtime_model",
+      "role": "python_runtime_source",
+      "path": "src/model.py",
+      "required": true,
+      "exists": true,
+      "size_bytes": 30634,
+      "sha256": "bebaa61a0a9797631f8d8e1cc7f7c5142b3d37ba7b4cbcc2a48b2b481d612f8a"
+    },
+    {
+      "name": "runtime_security",
+      "role": "python_runtime_source",
+      "path": "src/security.py",
+      "required": true,
+      "exists": true,
+      "size_bytes": 2124,
+      "sha256": "7f17e01912e00099794cf427dc7c8fc410088ad683ed3f1f0a7a1cf7f913dea2"
+    },
+    {
+      "name": "runtime_feature_exports",
+      "role": "python_runtime_source",
+      "path": "src/kvd_features/__init__.py",
+      "required": true,
+      "exists": true,
+      "size_bytes": 842,
+      "sha256": "5cbbab3b526784391037f2c92c698e28700d7b2dbdd9b226011a9b1547011065"
+    },
+    {
+      "name": "runtime_feature_extractor",
+      "role": "python_runtime_source",
+      "path": "src/kvd_features/extractor.py",
+      "required": true,
+      "exists": true,
+      "size_bytes": 45819,
+      "sha256": "1d456a0f0773e7ddec7540962feca4cb2862b806661bbfe82b45d693cadf312b"
+    },
+    {
+      "name": "runtime_content_pe_v1",
+      "role": "python_runtime_source",
+      "path": "src/kvd_features/content_pe_v1.py",
+      "required": true,
+      "exists": true,
+      "size_bytes": 19071,
+      "sha256": "c8ae31d895ea746e154b88e5a2c1e47753f9cf5b322909222cf69f94e60b0a24"
+    },
+    {
+      "name": "runtime_dsra_exports",
+      "role": "python_runtime_source",
+      "path": "src/dsra/__init__.py",
+      "required": true,
+      "exists": true,
+      "size_bytes": 584,
+      "sha256": "ffdc327e4aef2457023f0f5d597c12b8fe77e76a1140de6e7de4409c5f802435"
+    },
+    {
+      "name": "runtime_dsra_domain_exports",
+      "role": "python_runtime_source",
+      "path": "src/dsra/domain/__init__.py",
+      "required": true,
+      "exists": true,
+      "size_bytes": 595,
+      "sha256": "9425d92e7a73985fe0d5325e931ac1e2724b21e20989902ac9e9ced709545763"
+    },
+    {
+      "name": "runtime_dsra_attention_spec",
+      "role": "python_runtime_source",
+      "path": "src/dsra/domain/attention_spec.py",
+      "required": true,
+      "exists": true,
+      "size_bytes": 2600,
+      "sha256": "02b848501367ccc2d8cd14c1db34e2d7d7a0a782765b80ee98c6b20c6c06b639"
+    },
+    {
+      "name": "runtime_dsra_arithmetic_domain",
+      "role": "python_runtime_source",
+      "path": "src/dsra/domain/arithmetic_emergence.py",
+      "required": true,
+      "exists": true,
+      "size_bytes": 9591,
+      "sha256": "e6cd453c50284f373e4f94b1349ccca9032eee79706a173a4699cb325e9b9700"
+    },
+    {
+      "name": "runtime_dsra_model_spec",
+      "role": "python_runtime_source",
+      "path": "src/dsra/domain/model_spec.py",
+      "required": true,
+      "exists": true,
+      "size_bytes": 4575,
+      "sha256": "8af9f8cc172b992194e2a80ba3492372fb9795d43fea85e3fa38d204a40d437f"
+    },
+    {
+      "name": "runtime_mhdsra2_exports",
+      "role": "python_runtime_source",
+      "path": "src/dsra/mhdsra2/__init__.py",
+      "required": true,
+      "exists": true,
+      "size_bytes": 292,
+      "sha256": "7e11514cf6f2fddd457a9c3f02748a1b2c8b0ab5c282d7effd39029db84d9696"
+    },
+    {
+      "name": "runtime_mhdsra2",
+      "role": "python_runtime_source",
+      "path": "src/dsra/mhdsra2/improved_dsra_mha.py",
+      "required": true,
+      "exists": true,
+      "size_bytes": 42795,
+      "sha256": "bd88cb9c8fbe8bea6e97b10adeed046591b8f60075c3a44332d33138e0733b1d"
+    },
+    {
+      "name": "runtime_paged_memory",
+      "role": "python_runtime_source",
+      "path": "src/dsra/mhdsra2/paged_exact_memory.py",
+      "required": true,
+      "exists": true,
+      "size_bytes": 9484,
+      "sha256": "25a4c93466381e335f0e7ac71d955bb6ccfcb8b500b568eeb6be30577f744b4e"
+    },
+    {
+      "name": "predict_api_test",
+      "role": "python_runtime_test",
+      "path": "tests/test_predict_api_loop28.py",
+      "required": true,
+      "exists": true,
+      "size_bytes": 16188,
+      "sha256": "c527712b5650cc220d29831c569c4883ee04cd523c8cd680e76fe567b2637911"
+    },
+    {
+      "name": "python_project_metadata",
+      "role": "python_dependency_contract",
+      "path": "pyproject.toml",
+      "required": true,
+      "exists": true,
+      "size_bytes": 1666,
+      "sha256": "4b007829a26693a754b2ec5394f9608900dda55c800d388c7134323dbd862d83"
+    },
+    {
+      "name": "python_requirements",
+      "role": "python_dependency_contract",
+      "path": "requirements.txt",
+      "required": true,
+      "exists": true,
+      "size_bytes": 291,
+      "sha256": "d0269e1a86a1cc488b7520642c23ce8d05db1a97741138ff960d0b93b5de7578"
+    },
+    {
+      "name": "frozen_split",
+      "role": "train_identity_source_hash_only",
+      "path": "reports/random_20w_split/loop127_full_duplicate_corrected_split.csv",
+      "required": true,
+      "exists": true,
+      "size_bytes": 41215424,
+      "sha256": "dce89fd048395ef582530109e4dfe6b5ba6c94c5dd603afe024f879a3ef119a7"
+    },
+    {
+      "name": "raw_replay_a1_authorization",
+      "role": "parent_a1_authorization",
+      "path": "manifests/roadmap_9997/p0_raw_replay/authorization.json",
+      "required": true,
+      "exists": true,
+      "size_bytes": 1837,
+      "sha256": "82e276b3ac5ea38dc96c9d07379849376ce2ab51e57f5b110b0bd463afd54444"
+    },
+    {
+      "name": "pickle_allowlist",
+      "role": "deserialization_policy",
+      "path": "manifests/roadmap_9997/p0_raw_replay/pickle_sha256_allowlist.json",
+      "required": true,
+      "exists": true,
+      "size_bytes": 4421,
+      "sha256": "744ec3792d88721e861a412acaaaa768d9d0ae99f05c41b2c3b49d78dd3ad8ee"
+    },
+    {
+      "name": "python_stage2_metadata",
+      "role": "runtime_metadata",
+      "path": "manifests/roadmap_9997/p0_raw_replay/loop28_stage2.metadata.json",
+      "required": true,
+      "exists": true,
+      "size_bytes": 1581,
+      "sha256": "0a24dcf1ec5bab43d6afd004df006e4c8008bace854265cdd5f8cc4c79ba80f4"
+    },
+    {
+      "name": "python_checkpoint",
+      "role": "python_runtime_model",
+      "path": "models/random_20w_8192/best_model.pt",
+      "required": true,
+      "exists": true,
+      "size_bytes": 10359449,
+      "sha256": "96a1b1ece41dd7dd9142a0f7f4330da3a7938a26cca8b01e0e7c7a1074e5e3a4"
+    },
+    {
+      "name": "python_stage2",
+      "role": "python_runtime_model",
+      "path": "reports/random_20w_split/stage2_loop28_content_pe_valonly/stage2_selected_model.pkl",
+      "required": true,
+      "exists": true,
+      "size_bytes": 2147077,
+      "sha256": "34d76eaf015e6750ca080f80a8ae528e8e10f2261ff9f1c001dc2f243672a5c2"
+    },
+    {
+      "name": "native_onnx",
+      "role": "native_runtime_model",
+      "path": "models/random_20w_8192/axon_loop28_base.onnx",
+      "required": true,
+      "exists": true,
+      "size_bytes": 12231310,
+      "sha256": "3199b158fc8f7e3a53a516b2681aef8b5d5aa4a210baf66152fded72a3ff07f4"
+    },
+    {
+      "name": "native_onnx_data",
+      "role": "native_runtime_model",
+      "path": "models/random_20w_8192/axon_loop28_base.onnx.data",
+      "required": true,
+      "exists": true,
+      "size_bytes": 29556736,
+      "sha256": "4865d52d861d780627ca9aea4b16f83d8c2df62dd5b2136217d1e42547b8c7fa"
+    },
+    {
+      "name": "native_stage2",
+      "role": "native_runtime_model",
+      "path": "models/random_20w_8192/loop28_stage2_hgb.json",
+      "required": true,
+      "exists": true,
+      "size_bytes": 2062474,
+      "sha256": "c2c0cb0f39d12892891f9949e6f765e03fb1188f8fa3f3e574c0c4f73c63c648"
+    },
+    {
+      "name": "native_runtime_source",
+      "role": "native_diagnostic_source",
+      "path": "tools/axon_onnx_dll/src/axon_onnx_predict.cpp",
+      "required": true,
+      "exists": true,
+      "size_bytes": 121218,
+      "sha256": "b712d4993f6d27a62bf638d4f66ed8892bd76f5d658cb3637ae13566b3fdd79b"
+    },
+    {
+      "name": "native_public_header",
+      "role": "native_diagnostic_source",
+      "path": "tools/axon_onnx_dll/include/axon_onnx_predict.h",
+      "required": true,
+      "exists": true,
+      "size_bytes": 5226,
+      "sha256": "95a488020ce62fa71c5ff33de4431b79c7d36e204608aa5a70888475a92aa278"
+    },
+    {
+      "name": "native_selftest_source",
+      "role": "native_diagnostic_test_source",
+      "path": "tools/axon_onnx_dll/examples/axon_onnx_selftest.cpp",
+      "required": true,
+      "exists": true,
+      "size_bytes": 12149,
+      "sha256": "04ce9f75ea17930dd064a7a254594cd355ebbc01b1a897ddcd253eb79982815e"
+    },
+    {
+      "name": "native_cmake",
+      "role": "native_build_definition",
+      "path": "tools/axon_onnx_dll/CMakeLists.txt",
+      "required": true,
+      "exists": true,
+      "size_bytes": 2006,
+      "sha256": "b0423e02f0cd3329a7988cb2cc493d1bb515f10b91d01846d7014e02a40532e6"
+    },
+    {
+      "name": "native_dll",
+      "role": "native_build_output",
+      "path": "tools/axon_onnx_dll/build/bin/Release/axon_onnx_predict.dll",
+      "required": true,
+      "exists": true,
+      "size_bytes": 264192,
+      "sha256": "870fbf3b36734478d73edbee6871532410b9f2b8fd613c0690df5f77f932bc5d"
+    },
+    {
+      "name": "native_selftest",
+      "role": "native_build_output",
+      "path": "tools/axon_onnx_dll/build/bin/Release/axon_onnx_selftest.exe",
+      "required": true,
+      "exists": true,
+      "size_bytes": 45056,
+      "sha256": "394aa394934f092b0717151f5aec754bbc38196154802cbc2c030d0f61f29006"
+    },
+    {
+      "name": "native_onnxruntime",
+      "role": "native_runtime_dependency",
+      "path": "tools/axon_onnx_dll/build/bin/Release/onnxruntime.dll",
+      "required": true,
+      "exists": true,
+      "size_bytes": 14203464,
+      "sha256": "b95efb2113b603bbbf3f191061c5516a871ed546893c820e4f3b7b6c358dbf2a"
+    }
+  ],
+  "integrity": {
+    "artifact_count": 48,
+    "required_artifact_count": 48,
+    "present_required_artifact_count": 48,
+    "parent_evidence_count": 4,
+    "verified_parent_evidence_count": 4,
+    "blockers": []
+  },
+  "excluded_outputs": [
+    "manifests/roadmap_9997/p0_loop28_parity_diagnostic/implementation_manifest.json",
+    "manifests/roadmap_9997/p0_loop28_parity_diagnostic/post_diagnostic_manifest.json",
+    "manifests/roadmap_9997/p0_loop28_parity_diagnostic/post_manifest.json",
+    "manifests/roadmap_9997/p0_loop28_parity_diagnostic/run_attempt.final.json",
+    "manifests/roadmap_9997/p0_loop28_parity_diagnostic/run_authorization.json",
+    "reports/hard_family_finetune/experiment_journal.md",
+    "reports/roadmap_9997/p0_loop28_parity_diagnostic/diagnostic_receipt.final.json",
+    "reports/roadmap_9997/p0_loop28_parity_diagnostic/diagnostic_receipt.json",
+    "reports/roadmap_9997/p0_loop28_parity_diagnostic/diagnostic_receipt.provisional.json"
+  ],
+  "decision": "implementation_hash_freeze_complete_run_authorization_pending"
+}

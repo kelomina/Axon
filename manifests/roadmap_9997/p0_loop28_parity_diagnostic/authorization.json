@@ -1,0 +1,89 @@
+{
+  "schema": "axon_loop28_parity_diagnostic_authorization_v1",
+  "loop_id": "p0_loop28_parity_diagnostic_001",
+  "authorization_level": "A1_scoped_diagnostic",
+  "basis": "The active long-term goal requires closing the Loop28 Python/native parity blocker before building later Loop127 through Loop151 per-file adapters.",
+  "parent_evidence": {
+    "truth_manifest": {
+      "path": "manifests/roadmap_9997/p0_truth_freeze/loop151_truth_manifest.json",
+      "sha256": "174861be850a681025a7040798c59b7157cc67ab5503437088359692dad5659d"
+    },
+    "train_smoke_receipt": {
+      "path": "manifests/roadmap_9997/p0_raw_replay/train_smoke_receipt.json",
+      "sha256": "3fbbd597dc14cf67a082203e680e83c1f521972e1bf1f36282ef847d9d4d2309"
+    },
+    "native_parity_receipt": {
+      "path": "manifests/roadmap_9997/p0_raw_replay/native_parity_receipt.json",
+      "sha256": "abeaeb0dd28060a09b7b23fbf0300b2ba6616ef040c4c4958f870aa5d13436b8"
+    },
+    "complete_replay_verify_receipt": {
+      "path": "manifests/roadmap_9997/p0_raw_replay/verify_receipt.json",
+      "sha256": "fc39b4a0289d4fc21955030157a8fb4beb437eba78d28dec6f5a665bcf0a5c94"
+    }
+  },
+  "frozen_sample": {
+    "split": "train",
+    "sample_index": 0,
+    "source_sha256": "09b6b8c80bc31846312bd6958e1d4bf1bcd72d25450d7f7dec2bce6ba81798cc",
+    "size_bytes": 4218880
+  },
+  "allowed_splits": [
+    "train"
+  ],
+  "allowed_logical_raw_root": "data",
+  "allowed_resolved_raw_roots": [
+    "E:\\Project\\python\\KoloVirusDetector_ML_V2-main\\benign_samples\\待加入白名单",
+    "E:\\Project\\python\\KoloVirusDetector_ML_V2-main\\malicious_samples\\待拉黑"
+  ],
+  "frozen_tolerance": 0.000001,
+  "allowed": [
+    "implement the bounded Python diagnostic orchestrator and synthetic tests",
+    "add native read-only keyed trace entry points plus their selftest wiring",
+    "build and verify a fixed hash-only implementation manifest without parsing split, prediction, metric, pickle, checkpoint, or model payloads",
+    "hash and validate the four parent evidence artifacts before any raw or model access",
+    "scan the complete split manifest metadata solely for identity integrity while selecting only the frozen train row",
+    "read only the single frozen train sample after exact index, SHA-256, size, split, and root checks",
+    "create exactly one private SHA-verified snapshot of that same sample",
+    "compare stage-level tensors, logits, probabilities, and Stage-2 feature vectors",
+    "run bounded keyed HMAC whole-component and block comparisons solely to localize the first divergence",
+    "atomically consume the single final run authorization with an immutable one-shot lease before any raw sample access",
+    "write a bounded diagnostic receipt only after a separate run authorization binds the final hash-only implementation manifest, implementation hashes, runtime hashes, generation, and output path"
+  ],
+  "not_authorized": [
+    "training, fitting, fine-tuning, calibration, threshold search, or model selection",
+    "cache creation, cache rebuild, feature-cache mutation, or cache replacement",
+    "split, label, raw sample, model, checkpoint, pickle, JSON model, or ONNX mutation",
+    "opening Val, Test-10k, legacy full-test, or any other heldout raw file, prediction, metric report, feature cache, or model-selection payload",
+    "reading a second raw identity or expanding the sample allowlist",
+    "changing the frozen 1e-6 parity tolerance",
+    "GPU execution, network access, dependency installation, deployment, commit, or push",
+    "F1 estimation, candidate promotion, product-readiness claims, or complete Loop151 replay claims"
+  ],
+  "accepted_residual_risks": [
+    "Implementation and runtime artifacts are path-hash verified before execution and reverified before receipt write, but this diagnostic does not yet execute every artifact from a retained same-handle snapshot.",
+    "Concurrent adversarial A-to-B-to-A path replacement is outside this train-only localization claim and remains a certification blocker."
+  ],
+  "budget": {
+    "max_diagnostic_generations": 1,
+    "max_verified_raw_snapshots": 1,
+    "max_python_executions": 6,
+    "max_native_executions": 6,
+    "max_crossfeed_executions": 4,
+    "per_execution_timeout_seconds": 120,
+    "total_wall_clock_seconds": 1200,
+    "cpu_only": true,
+    "gpu_executions": 0,
+    "network_requests": 0,
+    "max_output_bytes": 67108864
+  },
+  "timeout_enforcement": {
+    "native_subprocess": "hard_timeout",
+    "verified_snapshot": "post_return_elapsed_rejection",
+    "python_inference": "post_return_elapsed_rejection",
+    "total_flow": "checkpointed_elapsed_rejection_outer_watchdog_required"
+  },
+  "execution_requires_separate_run_authorization": true,
+  "success_gate": "first_divergence_localized",
+  "success_definition": "The receipt identifies the earliest divergent stage and proves all preceding stage inputs match; parity success, parity failure, or decision agreement alone is insufficient.",
+  "decision": "allow_implementation_and_bounded_train_only_diagnostic_after_run_authorization"
+}

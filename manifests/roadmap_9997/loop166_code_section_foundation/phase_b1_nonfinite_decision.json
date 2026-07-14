@@ -1,0 +1,74 @@
+{
+  "schema": "axon_loop166_phase_b1_nonfinite_decision_v1",
+  "loop_id": "loop166_code_section_foundation",
+  "recorded_at": "2026-07-13T20:58:10+08:00",
+  "claim_scope": "program_decision_after_local_train_only_failure_not_model_quality",
+  "status": "closed_current_bpe1024_mlm_recipe_nonfinite",
+  "failure_incident": {
+    "path": "manifests/roadmap_9997/loop166_code_section_foundation/phase_b1_step4096_recovery_v2_nonfinite_failure.json",
+    "sha256": "f2a63477db57a89aa860342028dec41922a1a35ed16e63ef8a61d9bd6018ec7f"
+  },
+  "observed_evidence": {
+    "phase_a_extractor_gate": "passed_engineering_only",
+    "phase_b1_authorized_raw_scan": "complete",
+    "phase_b1_durable_checkpoint": "partial_step8192_of_28768",
+    "phase_b1_terminal_condition": "nonfinite_gradient_norm",
+    "phase_b1_success_report": "absent_must_not_be_backfilled",
+    "phase_b1_final_verify_receipt": "absent_must_not_be_backfilled",
+    "quality_metric_computed": false,
+    "heldout_access_performed": false
+  },
+  "recipe_disposition": {
+    "recipe": "code_section_bpe1024_mlm_6x384_seq512_amp",
+    "retired": true,
+    "same_lineage_retry_resume_or_recovery_allowed": false,
+    "posthoc_fp32_or_grad_scaler_change_allowed": false,
+    "posthoc_optimizer_learning_rate_or_schedule_change_allowed": false,
+    "posthoc_threshold_or_heldout_rescue_allowed": false,
+    "phase_c_five_fold_allowed": false,
+    "reason": "The preregistered nonfinite kill condition fired under the frozen recipe after the complete authorized Train scan. Changing the numerical recipe now would create a new experiment, not repair this one."
+  },
+  "preserved_evidence": {
+    "raw_progress_ledger_complete": true,
+    "partial_checkpoint_forensic_only": true,
+    "supervisor_source_closure_unchanged": true,
+    "raw_pass_physical_minimum": 2,
+    "raw_pass_physical_maximum": 3,
+    "raw_pass_physical_exact": false,
+    "raw_pass_charged_equivalents": 3
+  },
+  "successor_program": {
+    "candidate_id": "Loop167",
+    "route": "ember_v3_novel_delta_structural_control",
+    "selection_basis": "pre_registered_loop166_nonfinite_fallback",
+    "must_use_new_contract_authorization_lease_and_artifact_paths": true,
+    "must_preregister_baselines_metrics_counterfactual_and_failure_thresholds": true,
+    "execution_authorized_by_this_decision": false,
+    "five_fold_or_heldout_execution_authorized_by_this_decision": false,
+    "fallback_after_loop167_failure": "independent_cfg_coverage_gate_then_behavior_trace_contract"
+  },
+  "ready_for": {
+    "loop166_phase_b1_complete": false,
+    "loop166_phase_c": false,
+    "loop166_five_fold": false,
+    "loop167_preregistration": true,
+    "loop167_execution": false,
+    "val": false,
+    "test10k": false,
+    "legacy_full_test": false,
+    "promotion": false,
+    "certification": false
+  },
+  "authority": {
+    "local_train_only_public_key_required": false,
+    "a2_or_a3_authority": false,
+    "val_test_or_full_authority": false,
+    "promotion_authority": false
+  },
+  "research_champion": "Loop151",
+  "research_champion_legacy_full_test_f1": 0.9908541911012403,
+  "target_f1": 0.9997,
+  "target_achieved": false,
+  "promotion_evidence": false,
+  "decision": "close_loop166_bpe1024_mlm_recipe_and_preregister_loop167_ember_v3_novel_delta_control"
+}

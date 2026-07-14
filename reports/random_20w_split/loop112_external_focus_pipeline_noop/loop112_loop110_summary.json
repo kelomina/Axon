@@ -1,0 +1,75 @@
+{
+  "schema": "axon_loop110_focus_verdict_pipeline_v1",
+  "protocol": "read-only Loop110 focus verdict pipeline; runs preflight -> merge -> unblind -> Loop87 import; no training, no threshold tuning, no automatic relabeling, no replacement sampling, no split/cache mutation",
+  "inputs": {
+    "full_blinded_csv": "reports\\random_20w_split\\loop96_full_queue_blinded_review.csv",
+    "focus_annotations_csv": "reports\\random_20w_split\\loop112_external_focus_pipeline_noop\\loop112_imported_focus.csv",
+    "private_map_csv": "reports\\random_20w_split\\loop96_full_queue_private_map.csv",
+    "expected_full_rows": 1868,
+    "expected_focus_rows": 240
+  },
+  "output_dir": "reports\\random_20w_split\\loop112_external_focus_pipeline_noop\\loop112_loop110_focus_pipeline",
+  "decision": "ready_noop_no_actionable_verdicts",
+  "blockers": [],
+  "stages": {
+    "focus_annotation_preflight": {
+      "ran": true,
+      "passed": true,
+      "blockers": [],
+      "decision": "ready_noop_no_focus_annotations"
+    },
+    "focus_merge": {
+      "ran": true,
+      "passed": true,
+      "blockers": [],
+      "decision": null
+    },
+    "loop96_unblind": {
+      "ran": true,
+      "passed": true,
+      "blockers": [],
+      "decision": null
+    },
+    "loop87_import": {
+      "ran": true,
+      "passed": true,
+      "blockers": [],
+      "decision": "ready_noop_no_actionable_verdicts"
+    }
+  },
+  "counts": {
+    "preflight_rows": 240,
+    "preflight_annotated_rows": 0,
+    "preflight_actionable_rows": 0,
+    "merged_annotated_rows": 0,
+    "loop87_rows": 1868,
+    "loop87_actionable_rows": 0,
+    "loop87_replacement_required_rows": 0,
+    "loop87_training_policy_rows": 0
+  },
+  "decisions": {
+    "ready_for_redraw_preflight": false,
+    "automatic_relabel_allowed": false,
+    "automatic_replacement_allowed": false,
+    "training_allowed": false,
+    "test10k_allowed": false,
+    "full_test_allowed": false,
+    "next_allowed_step": "fill focus manual fields with independent content/external verdicts"
+  },
+  "outputs": {
+    "preflight_csv": "reports\\random_20w_split\\loop112_external_focus_pipeline_noop\\loop112_loop110_focus_pipeline\\loop110_focus_preflight_validated.csv",
+    "preflight_json": "reports\\random_20w_split\\loop112_external_focus_pipeline_noop\\loop112_loop110_focus_pipeline\\loop110_focus_preflight.json",
+    "merged_blinded_csv": "reports\\random_20w_split\\loop112_external_focus_pipeline_noop\\loop112_loop110_focus_pipeline\\loop110_merged_full_blinded.csv",
+    "merge_json": "reports\\random_20w_split\\loop112_external_focus_pipeline_noop\\loop112_loop110_focus_pipeline\\loop110_focus_merge.json",
+    "unblinded_loop87_csv": "reports\\random_20w_split\\loop112_external_focus_pipeline_noop\\loop112_loop110_focus_pipeline\\loop110_unblinded_loop87_input.csv",
+    "unblind_json": "reports\\random_20w_split\\loop112_external_focus_pipeline_noop\\loop112_loop110_focus_pipeline\\loop110_unblind.json",
+    "loop87_validated_csv": "reports\\random_20w_split\\loop112_external_focus_pipeline_noop\\loop112_loop110_focus_pipeline\\loop110_loop87_validated.csv",
+    "loop87_json": "reports\\random_20w_split\\loop112_external_focus_pipeline_noop\\loop112_loop110_focus_pipeline\\loop110_loop87_import.json"
+  },
+  "summary_json": "reports\\random_20w_split\\loop112_external_focus_pipeline_noop\\loop112_loop110_summary.json",
+  "notes": [
+    "The pipeline preserves the blinded review boundary until the preflight and merge gates pass.",
+    "Loop87 remains the strict unblinded verdict quality gate.",
+    "This pipeline never trains, tunes thresholds, mutates split/cache, or samples replacements."
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "schema": "axon_loop96_unblinded_verdicts_v1",
+  "protocol": "read-only blinded review package builder; no model fitting, no threshold selection, no automatic relabeling, no replacement sampling, no split/cache mutation",
+  "identity_policy": "The blinded reviewer CSV omits filenames, paths, extensions, directories, source hashes, cache paths, sample indices, split, row order, wave/rank fields, and model scores. These remain private alignment fields only.",
+  "mode": "unblind",
+  "annotated_blinded_csv": "reports\\random_20w_split\\loop110_focus_verdict_pipeline_noop\\loop110_merged_full_blinded.csv",
+  "private_map_csv": "reports\\random_20w_split\\loop96_full_queue_private_map.csv",
+  "rows": 1868,
+  "expected_rows": 1868,
+  "blockers": [],
+  "verdict_counts": {
+    "blank": 1868
+  },
+  "action_counts": {
+    "blank": 1868
+  },
+  "decisions": {
+    "automatic_relabel_allowed": false,
+    "automatic_replacement_allowed": false,
+    "training_allowed": false,
+    "test10k_allowed": false,
+    "ready_for_loop87_import": true
+  },
+  "outputs": {
+    "loop87_ready_csv": "reports\\random_20w_split\\loop110_focus_verdict_pipeline_noop\\loop110_unblinded_loop87_input.csv",
+    "summary_json": "reports\\random_20w_split\\loop110_focus_verdict_pipeline_noop\\loop110_unblind.json"
+  },
+  "notes": [
+    "Unblinding only restores alignment fields and manual verdicts. Loop87 remains the strict verdict quality gate.",
+    "Identity fields restored here are for pipeline alignment only, not verdict evidence."
+  ]
+}

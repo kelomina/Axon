@@ -1,0 +1,194 @@
+{
+  "schema": "axon_loop28_parity_post_remediation_manifest_v1",
+  "loop_id": "p0_loop28_parity_remediation_001",
+  "generated_at_utc": "2026-07-11T21:19:51Z",
+  "contract": {
+    "closure_mode": "synthetic_pre_run_blocked",
+    "structured_evidence_validation": true,
+    "duplicate_json_keys_rejected": true,
+    "blocked_artifact_hashes_reverified": true,
+    "run_chain_absence_verified": true,
+    "raw_split_heldout_payloads_opened": false,
+    "model_payloads_parsed": false,
+    "manifest_self_hashed": false,
+    "output_replace_allowed": false
+  },
+  "claim_scope": {
+    "remediation_gate_passed": false,
+    "train_raw_execution_performed": false,
+    "implementation_manifest_absent_by_contract": true,
+    "run_authorization_absent_by_contract": true,
+    "attempt_lease_absent_by_contract": true,
+    "remediation_receipt_absent_by_contract": true,
+    "quality_claim_allowed": false,
+    "population_parity_claim_allowed": false,
+    "native_loop28_ready": false,
+    "native_loop151_ready": false,
+    "certification_claim_allowed": false
+  },
+  "lineage": {
+    "proposal_sha256": "d6c1451e73b5de5bf6aa737cf188d71cda338945a9434d64d74b265cd6ecfeeb",
+    "authorization_sha256": "8304abe401bb5714a2b0edba40ea1866659f7cce05c9182ba5f359857fbe54c5",
+    "preflight_sha256": "e6ed40e2aa3af35cb86acfb432b7aa46213a6249e35f4ae80bc7d1c3b21cd087",
+    "synthetic_discovery_sha256": "36925500a2a3c866effea40474083d3c0b813c72cba1227f11836ebc685a5c56",
+    "synthetic_pre_run_blocked_sha256": "72f7c00a107e9eebcffbc14269815bdaacf3843d2dee70dfd70443c080adef7e"
+  },
+  "synthetic_gate": {
+    "fixture_count": 4,
+    "passed_fixture_count": 1,
+    "failed_fixture_count": 3,
+    "pe32_passed_fixture_count": 0,
+    "pe32_failed_fixture_count": 3,
+    "pe32_plus_passed_fixture_count": 1,
+    "base_probability_max_absolute_delta": 0.0074248304705810675,
+    "stage2_probability_max_absolute_delta": 0.041100940333939406,
+    "input_dependent_runtime_drift_observed": true,
+    "feature_remediation_passed": true,
+    "cross_runtime_base_model_parity_passed": false,
+    "one_train_sample_rerun_allowed": false
+  },
+  "artifacts": [
+    {
+      "name": "proposal",
+      "role": "final_blocked_proposal",
+      "path": "manifests/roadmap_9997/p0_loop28_parity_remediation/proposal.json",
+      "size_bytes": 8999,
+      "sha256": "d6c1451e73b5de5bf6aa737cf188d71cda338945a9434d64d74b265cd6ecfeeb"
+    },
+    {
+      "name": "authorization",
+      "role": "final_blocked_authorization",
+      "path": "manifests/roadmap_9997/p0_loop28_parity_remediation/authorization.json",
+      "size_bytes": 8063,
+      "sha256": "8304abe401bb5714a2b0edba40ea1866659f7cce05c9182ba5f359857fbe54c5"
+    },
+    {
+      "name": "preflight",
+      "role": "final_blocked_preflight",
+      "path": "manifests/roadmap_9997/p0_loop28_parity_remediation/preflight.json",
+      "size_bytes": 5515,
+      "sha256": "e6ed40e2aa3af35cb86acfb432b7aa46213a6249e35f4ae80bc7d1c3b21cd087"
+    },
+    {
+      "name": "synthetic_discovery",
+      "role": "superseded_historical_synthetic_observation",
+      "path": "manifests/roadmap_9997/p0_loop28_parity_remediation/synthetic_discovery.json",
+      "size_bytes": 3559,
+      "sha256": "36925500a2a3c866effea40474083d3c0b813c72cba1227f11836ebc685a5c56"
+    },
+    {
+      "name": "synthetic_pre_run_blocked",
+      "role": "expanded_synthetic_fail_closed_evidence",
+      "path": "manifests/roadmap_9997/p0_loop28_parity_remediation/synthetic_pre_run_blocked.json",
+      "size_bytes": 9079,
+      "sha256": "72f7c00a107e9eebcffbc14269815bdaacf3843d2dee70dfd70443c080adef7e"
+    },
+    {
+      "name": "implementation_builder",
+      "role": "blocked_implementation_manifest_builder",
+      "path": "scripts/build_loop28_parity_remediation_manifest.py",
+      "size_bytes": 16629,
+      "sha256": "db9b5e25934d75f44d8ab9f8a0cb45b8f0a15c5054b47790602ccae544e13518"
+    },
+    {
+      "name": "implementation_builder_tests",
+      "role": "blocked_implementation_builder_tests",
+      "path": "tests/test_build_loop28_parity_remediation_manifest.py",
+      "size_bytes": 6274,
+      "sha256": "c9cbff23919cadc51f624f51fabe64b59a219fc35be965e3fde6a2b64011b5b6"
+    },
+    {
+      "name": "post_remediation_builder",
+      "role": "blocked_closure_builder",
+      "path": "scripts/build_loop28_parity_post_remediation_manifest.py",
+      "size_bytes": 59962,
+      "sha256": "500091e200685551b38cf11bcb6f99a9b076da4350948bf6238cb8921f00066b"
+    },
+    {
+      "name": "post_remediation_builder_tests",
+      "role": "blocked_closure_builder_tests",
+      "path": "tests/test_build_loop28_parity_post_remediation_manifest.py",
+      "size_bytes": 36579,
+      "sha256": "18ba55a5f4f71c8e808e7a1e82fe70b84d1a833da5d747e795cdf5744f37d12d"
+    },
+    {
+      "name": "native_source",
+      "role": "remediated_native_implementation",
+      "path": "tools/axon_onnx_dll/src/axon_onnx_predict.cpp",
+      "size_bytes": 138484,
+      "sha256": "ba79f1cb07e29495b66aff3cd59082e8812c1209de146912f3db8cf1cad204ed"
+    },
+    {
+      "name": "native_test_source",
+      "role": "expanded_synthetic_test_source",
+      "path": "tests/test_native_loop28_parity_source.py",
+      "size_bytes": 27685,
+      "sha256": "e9360ac16ef5c5ea384788ce9f58d99e967d34c6ee8c53f79e96c9c240661d0c"
+    },
+    {
+      "name": "native_dll",
+      "role": "verified_release_binary",
+      "path": "tools/axon_onnx_dll/build/bin/Release/axon_onnx_predict.dll",
+      "size_bytes": 279040,
+      "sha256": "8bba944d7cc52fa0598dba57c2c21ee90a9157ecfaa26250e20c4c4dc7a4a2bc"
+    },
+    {
+      "name": "native_selftest",
+      "role": "verified_release_selftest",
+      "path": "tools/axon_onnx_dll/build/bin/Release/axon_onnx_selftest.exe",
+      "size_bytes": 45056,
+      "sha256": "4171b4880cc59fa770f45d6d7983f766c85eb55eaafc1006123010c897505bef"
+    },
+    {
+      "name": "onnxruntime",
+      "role": "frozen_native_runtime",
+      "path": "tools/axon_onnx_dll/build/bin/Release/onnxruntime.dll",
+      "size_bytes": 14203464,
+      "sha256": "b95efb2113b603bbbf3f191061c5516a871ed546893c820e4f3b7b6c358dbf2a"
+    },
+    {
+      "name": "native_onnx",
+      "role": "frozen_native_base_model",
+      "path": "models/random_20w_8192/axon_loop28_base.onnx",
+      "size_bytes": 12231310,
+      "sha256": "3199b158fc8f7e3a53a516b2681aef8b5d5aa4a210baf66152fded72a3ff07f4"
+    },
+    {
+      "name": "native_onnx_data",
+      "role": "frozen_native_base_weights",
+      "path": "models/random_20w_8192/axon_loop28_base.onnx.data",
+      "size_bytes": 29556736,
+      "sha256": "4865d52d861d780627ca9aea4b16f83d8c2df62dd5b2136217d1e42547b8c7fa"
+    },
+    {
+      "name": "recommendations",
+      "role": "owner_facing_final_blocked_status",
+      "path": "docs/ml_improvement_recommendations.md",
+      "size_bytes": 172269,
+      "sha256": "a78fba3e1704ed142218091863186d023206d9549a5866a739f8d44c21bb7690"
+    },
+    {
+      "name": "experiment_journal",
+      "role": "durable_blocked_experiment_record",
+      "path": "reports/hard_family_finetune/experiment_journal.md",
+      "size_bytes": 245517,
+      "sha256": "47524d04ab1679773b7b3a24946f4b68a83b5f378486caec5cead312c0c1e1aa"
+    },
+    {
+      "name": "goal",
+      "role": "current_synthetic_only_onnx_fidelity_plan",
+      "path": "goal.md",
+      "size_bytes": 19702,
+      "sha256": "04018c74953ca9792368a3c5a1037123978c126c08437c1425d2b591b07126c9"
+    }
+  ],
+  "integrity": {
+    "artifact_count": 19,
+    "required_artifact_count": 19,
+    "present_required_artifact_count": 19,
+    "structured_chain_links_verified": 12,
+    "run_chain_artifact_count": 0,
+    "blockers": []
+  },
+  "decision": "synthetic_pre_run_blocked_closure_frozen_no_raw_execution"
+}

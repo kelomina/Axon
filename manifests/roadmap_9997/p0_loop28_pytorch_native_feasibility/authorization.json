@@ -1,0 +1,64 @@
+{
+  "schema": "axon_loop28_pytorch_native_feasibility_authorization_v1",
+  "loop_id": "p0_loop28_pytorch_native_feasibility_001",
+  "created_at_utc": "2026-07-11T22:56:00Z",
+  "authorization_basis": {
+    "active_user_goal": "Execute the long-term Axon Frontier 99.97 task",
+    "goal_contract": {
+      "path": "goal.md",
+      "sha256": "04018c74953ca9792368a3c5a1037123978c126c08437c1425d2b591b07126c9",
+      "authorized_level": "A1_scoped_change",
+      "p0_only": true
+    },
+    "parent_runtime_decision": {
+      "path": "manifests/roadmap_9997/p0_loop28_onnx_operator_remediation/post_manifest.json",
+      "sha256": "4eae028bdffa0683b273bfadf4ac46df6cb7388c3742dd6222b28fafb9056e6e"
+    }
+  },
+  "proposal": {
+    "path": "manifests/roadmap_9997/p0_loop28_pytorch_native_feasibility/proposal.json",
+    "sha256": "6b7af1c9d9db275041a924e9f275705a20fdc708edc84130343434f7eac8a5e4",
+    "decision": "propose_tiny_pytorch_native_feasibility_only"
+  },
+  "authorized_scope": {
+    "level": "A1_scoped_change",
+    "implementation_generations": 1,
+    "tiny_model_specifications": 1,
+    "aoti_packages": 1,
+    "torchscript_controls": 1,
+    "clean_cpp_builds": 1,
+    "allowed_actions": [
+      "create the proposal-bound tiny-model runner, C++ dual-backend probe, manifest builder, and focused tests",
+      "inspect and hash the installed Python, PyTorch, MSVC, CMake, Windows SDK, and runtime dependency surfaces",
+      "build the C++ probe once after the implementation source has been frozen",
+      "after a separately bound package authorization and ready lease, execute one torch.export, one AOTInductor package build, and one TorchScript control export for the proposal's tiny model",
+      "after the package manifest and a separate execution authorization and ready lease, run the five fixed CPU lanes three times each",
+      "write only the proposal's manifests, tiny artifacts, evidence, and immutable loop documents"
+    ]
+  },
+  "execution_gates": {
+    "preflight_required": true,
+    "implementation_manifest_required_before_clean_build": true,
+    "package_authorization_required": true,
+    "package_lease_consumed_before_torch_export_or_model_construction": true,
+    "package_manifest_required_before_execution_authorization": true,
+    "execution_lease_consumed_before_any_artifact_load": true,
+    "ready_lease_reuse_forbidden": true,
+    "output_replacement_forbidden": true
+  },
+  "explicitly_not_authorized": [
+    "any project checkpoint, ONNX, external-data, Stage-2, model, DSRA, KVD, raw, split, cache, prediction, error, heldout, or quality artifact",
+    "training, fitting, calibration, thresholding, model selection, second package generation, F1 computation, or quality claims",
+    "GPU use, network use, dependency installation, download, deployment, data mutation, commit, or push"
+  ],
+  "claim_boundary": {
+    "tiny_runtime_feasibility_claim_allowed": true,
+    "axon_checkpoint_access_allowed": false,
+    "axon_runtime_parity_claim_allowed": false,
+    "population_parity_claim_allowed": false,
+    "quality_claim_allowed": false,
+    "raw_rerun_allowed": false,
+    "certification_claim_allowed": false
+  },
+  "decision": "authorize_tiny_pytorch_native_feasibility_implementation"
+}

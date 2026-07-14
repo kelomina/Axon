@@ -1,0 +1,26 @@
+{
+  "schema": "axon_strict_error_content_evidence_package_v2",
+  "identity_feature_policy": "source_sha256/cache_path/source_path/sample_index are retained only for alignment and human lookup; ranking uses prediction confidence plus content PE/stat evidence, not filename/path/directory/extension.",
+  "feature_schema_policy": "PE evidence values are resolved by schema names. fixed_v2 uses kvd_features.schema_names; legacy_dynamic uses kvd_features.extractor.FEATURE_NAMES. Unavailable schema fields are left blank.",
+  "predictions_csv": "E:\\Project\\python\\Axon_v2.6Exp\\reports\\random_20w_split\\loop126_seed43_probability_calibrator_val_predictions.csv",
+  "output_csv": "E:\\Project\\python\\Axon_v2.6Exp\\reports\\random_20w_split\\loop126_val_calibrated_error_content_evidence.csv",
+  "score_prefix": "calibrated",
+  "threshold_fallback": null,
+  "requested_pe_schema_version": "fixed_v2",
+  "pe_fixed_section_slots": 32,
+  "input_rows": 20000,
+  "evidence_rows": 603,
+  "error_counts": {
+    "FN": 218,
+    "FP": 385
+  },
+  "transition_counts": {
+    "broken_by_calibrator": 138,
+    "persistent_error": 465
+  },
+  "pe_schema_counts": {
+    "fixed_v2": 603
+  },
+  "issue_counts": {},
+  "max_rows": null
+}

@@ -1,0 +1,91 @@
+{
+  "schema": "axon_loop28_pytorch_native_reused_cpp_binaries_manifest_v1",
+  "loop_id": "p0_loop28_pytorch_native_decode_compat_001",
+  "generated_at_utc": "2026-07-12T02:18:30Z",
+  "lineage": {
+    "parent_post_sha256": "71110ee310a340fb231051df3c4fe3be865e4fa28a0281d96cdf3ddf2ef115cc",
+    "parent_failure_sha256": "a445fa8956b444c500fe370cbf9493871a0efbc5c924c21a4d988acfb1db4792",
+    "parent_build_receipt_sha256": "2ef9fc018cf72c0552902d4e9cca2190b4c5e983bdd15d4917dd5d926043dc77",
+    "proposal_sha256": "abc5f7e03f5c1051a6ba64dc641e2ff6a2e6e514bff5e542c703796b076ba1c1",
+    "authorization_sha256": "a7971b575335c6e31b3c2cf8a037f7e738c72d0552bc886fe018fa0462e519dc"
+  },
+  "binaries": [
+    {
+      "name": "direct_aten_host",
+      "path": "tools/axon_tiny_pytorch_native/build/bin/Release/axon_tiny_aten_probe.exe",
+      "sha256": "595705bdc0716b7323a0da71b424470c0d474a6556ac7fa3c6507e5d4edfd524",
+      "size_bytes": 159232,
+      "dependencies": [
+        "api-ms-win-crt-filesystem-l1-1-0.dll",
+        "api-ms-win-crt-heap-l1-1-0.dll",
+        "api-ms-win-crt-locale-l1-1-0.dll",
+        "api-ms-win-crt-math-l1-1-0.dll",
+        "api-ms-win-crt-runtime-l1-1-0.dll",
+        "api-ms-win-crt-stdio-l1-1-0.dll",
+        "api-ms-win-crt-string-l1-1-0.dll",
+        "c10.dll",
+        "kernel32.dll",
+        "msvcp140.dll",
+        "torch_cpu.dll",
+        "vcruntime140.dll",
+        "vcruntime140_1.dll"
+      ]
+    },
+    {
+      "name": "aoti_host",
+      "path": "tools/axon_tiny_pytorch_native/build/bin/Release/axon_tiny_aoti_probe.exe",
+      "sha256": "097a41e61bfceeeea4592ff2f1dd079e3b447275b677980b7eceb3f02a5dcca0",
+      "size_bytes": 160768,
+      "dependencies": [
+        "api-ms-win-crt-filesystem-l1-1-0.dll",
+        "api-ms-win-crt-heap-l1-1-0.dll",
+        "api-ms-win-crt-locale-l1-1-0.dll",
+        "api-ms-win-crt-math-l1-1-0.dll",
+        "api-ms-win-crt-runtime-l1-1-0.dll",
+        "api-ms-win-crt-stdio-l1-1-0.dll",
+        "api-ms-win-crt-string-l1-1-0.dll",
+        "c10.dll",
+        "kernel32.dll",
+        "msvcp140.dll",
+        "torch_cpu.dll",
+        "vcruntime140.dll",
+        "vcruntime140_1.dll"
+      ]
+    }
+  ],
+  "authority_boundary": {
+    "artifact_hash_reuse_allowed": true,
+    "parent_authorization_reuse_allowed": false,
+    "parent_ready_or_consumed_lease_reuse_allowed": false,
+    "build_or_binary_execution_allowed": false,
+    "hash_and_dependency_audit_only": true
+  },
+  "artifacts": [
+    {
+      "name": "parent_build_receipt",
+      "role": "build_authority",
+      "path": "reports/roadmap_9997/p0_loop28_pytorch_native_feasibility/cpp_build_receipt.final.json",
+      "size_bytes": 6961,
+      "sha256": "2ef9fc018cf72c0552902d4e9cca2190b4c5e983bdd15d4917dd5d926043dc77"
+    },
+    {
+      "name": "direct_aten_host",
+      "role": "reused_frozen_binary",
+      "path": "tools/axon_tiny_pytorch_native/build/bin/Release/axon_tiny_aten_probe.exe",
+      "size_bytes": 159232,
+      "sha256": "595705bdc0716b7323a0da71b424470c0d474a6556ac7fa3c6507e5d4edfd524"
+    },
+    {
+      "name": "aoti_host",
+      "role": "reused_frozen_binary",
+      "path": "tools/axon_tiny_pytorch_native/build/bin/Release/axon_tiny_aoti_probe.exe",
+      "size_bytes": 160768,
+      "sha256": "097a41e61bfceeeea4592ff2f1dd079e3b447275b677980b7eceb3f02a5dcca0"
+    }
+  ],
+  "integrity": {
+    "artifact_count": 3,
+    "all_required_present": true
+  },
+  "decision": "frozen_cpp_binaries_verified_artifact_only_reuse"
+}

@@ -1,0 +1,62 @@
+{
+  "schema": "axon_loop164_static_implementation_contract_authorization_v1",
+  "loop_id": "loop164_whole_file_residual_expert",
+  "issued_at_utc": "2026-07-12T12:30:00Z",
+  "basis_authorization": {
+    "path": "manifests/roadmap_9997/loop164_whole_file_residual_expert/authorization.json",
+    "sha256": "9a4437f8ebdc0c231caa8a7f8edbd6bbed339cb2200ee43dcca0d4aa6ece4ce2"
+  },
+  "basis": "The user explicitly continued the long-term Loop151 F1 mainline and requested task-level reporting. This amendment authorizes only static source-contract validation and synthetic tests for the future whole-file expert.",
+  "authorization_level": "A1_scoped_static_contract_only",
+  "authority_scope": {
+    "tier": "A1",
+    "protected_input_access": false,
+    "model_or_data_execution": false,
+    "creates_runtime_artifact": false,
+    "heldout_evaluation": false
+  },
+  "authorized_edit_paths": [
+    "scripts/validate_loop164_whole_file_implementation.py",
+    "tests/loop164_whole_file_contract_fixture.py",
+    "tests/test_validate_loop164_whole_file_implementation.py",
+    "tests/test_loop164_whole_file_gcg.py",
+    "scripts/validate_loop164_training_authority.py",
+    "tests/test_validate_loop164_training_authority.py",
+    "scripts/validate_loop164_nested_oof_execution_receipt.py",
+    "tests/test_validate_loop164_nested_oof_execution_receipt.py",
+    "scripts/validate_loop164_isolation_contract.py",
+    "tests/test_validate_loop164_isolation_contract.py",
+    "scripts/validate_loop164_fold_scope_plan.py",
+    "tests/test_validate_loop164_fold_scope_plan.py",
+    "scripts/build_loop164_mainline_preflight.py",
+    "tests/test_build_loop164_mainline_preflight.py",
+    "docs/phase3_loop164_whole_file_residual_expert_proposal.md",
+    "docs/ml_improvement_recommendations.md",
+    "reports/hard_family_finetune/experiment_journal.md",
+    "goal.md",
+    "manifests/roadmap_9997/loop164_whole_file_residual_expert/proposal.json",
+    "manifests/roadmap_9997/loop164_whole_file_residual_expert/implementation_contract_authorization.json"
+  ],
+  "allowed": [
+    "Validate only synthetic temporary implementation manifests and source fixtures.",
+    "Run pure in-memory exactness-oracle tests with installed local tensor libraries; do not open a file handle or instantiate a production Loop164 model.",
+    "Bind future training authority, resource guard, and aggregate receipt checks to a v2 static implementation contract.",
+    "Update static preflight and governance records while retaining every execution blocker."
+  ],
+  "not_authorized": [
+    "Creating a production implementation manifest, controller, model, loader, configuration, runtime lock, resource guard, A2 authorization, lease, checkpoint, prediction, metrics, or execution receipt.",
+    "Opening raw files, checkpoints, model payloads, split rows, prediction rows, cache rows, private maps, or reviewer context rows.",
+    "Installing dependencies, training, fitting, calibration, threshold selection, Val/Test-10k/full-test evaluation, deployment, commit, or push."
+  ],
+  "execution_budget": {
+    "raw_files": 0,
+    "checkpoint_loads": 0,
+    "prediction_rows": 0,
+    "cache_rows": 0,
+    "training_runs": 0,
+    "model_evaluations": 0,
+    "gpu_runs": 0,
+    "dependency_installs": 0
+  },
+  "decision": "allow_synthetic_static_contract_validation_only"
+}

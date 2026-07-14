@@ -1,0 +1,51 @@
+{
+  "schema": "axon_loop28_onnx_operator_remediation_preflight_amendment_v1",
+  "loop_id": "p0_loop28_onnx_operator_remediation_001",
+  "created_at_utc": "2026-07-11T22:39:37Z",
+  "proposal": {
+    "path": "manifests/roadmap_9997/p0_loop28_onnx_operator_remediation/proposal.json",
+    "sha256": "21e0699a3c6ceb4667bdb1acd7152ebf0d3029fa9b9fb3908e532fbe93a70100"
+  },
+  "authorization": {
+    "path": "manifests/roadmap_9997/p0_loop28_onnx_operator_remediation/authorization.json",
+    "sha256": "ddfcf4a3cd3a2832bdc3cf8ed914ca5f319bd950ee8d1610f30729509cd0879c"
+  },
+  "new_preflight_fact": {
+    "source_path": "reports/roadmap_9997/p0_loop28_onnx_fidelity/localization_evidence.final.json",
+    "source_sha256": "a3caf51b5354fb6c3725c09cb25bc2360ce91322934708e586d1bb576e72ced0",
+    "fixture_count": 4,
+    "shared_tied_route_occurrence": 15,
+    "shared_tied_route_node_index": 1739,
+    "exact_support_tie_count_per_fixture_at_occurrence": 1,
+    "minimum_pytorch_support_margin": 0.0,
+    "frozen_guard": "pytorch_support_margin > 8 * measured_candidate_score_delta"
+  },
+  "formal_blocker": {
+    "candidate_score_delta_domain": "measured_candidate_score_delta >= 0",
+    "substitution": "0 > 8 * measured_candidate_score_delta",
+    "result": "false for every allowed measured_candidate_score_delta, including bit-exact delta 0",
+    "why_candidate_cannot_change_the_margin": "The proposal freezes the PyTorch eager model and allows only a deployment-graph GELU representation change; the guard's reference support margin is therefore immutable.",
+    "implication": "The proposal success gate candidate_margin_guard_violations=0 is unreachable without changing frozen model routing semantics or weakening the guard, both explicitly forbidden."
+  },
+  "scope_reduction": {
+    "candidate_generation_allowed": false,
+    "checkpoint_or_onnx_model_load_allowed": false,
+    "native_probe_execution_allowed": false,
+    "generation_or_verification_lease_allowed": false,
+    "allowed_remaining_actions": [
+      "implement and test a static fail-closed preflight auditor that reads only the proposal, authorization, amendment, parent closure, and frozen localization evidence",
+      "freeze a no-execution preflight report and post closure",
+      "open a separate PyTorch-compatible native-runtime proposal after the ONNX stop closure is frozen"
+    ]
+  },
+  "added_exit_decision": "operator_preflight_exact_tie_fallback_pytorch_native_no_execution",
+  "claim_boundary": {
+    "synthetic_static_preflight_claim_allowed": true,
+    "onnx_candidate_claim_allowed": false,
+    "population_parity_claim_allowed": false,
+    "quality_claim_allowed": false,
+    "raw_rerun_allowed": false,
+    "certification_claim_allowed": false
+  },
+  "decision": "authorize_fail_closed_exact_tie_preflight_and_forbid_candidate_execution"
+}

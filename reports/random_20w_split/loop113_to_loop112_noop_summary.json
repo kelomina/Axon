@@ -1,0 +1,64 @@
+{
+  "schema": "axon_loop112_external_focus_verdict_pipeline_v1",
+  "protocol": "Loop112 external focus verdict pipeline; runs Loop111 import -> Loop110 preflight/merge/unblind/Loop87; no training, no threshold tuning, no automatic relabeling, no replacement sampling, no split/cache mutation",
+  "inputs": {
+    "full_blinded_csv": "reports\\random_20w_split\\loop96_full_queue_blinded_review.csv",
+    "focus_csv": "reports\\random_20w_split\\loop106_content_review_focus_top240.csv",
+    "external_annotations": "reports\\random_20w_split\\loop113_external_annotation_template.csv",
+    "private_map_csv": "reports\\random_20w_split\\loop96_full_queue_private_map.csv",
+    "expected_full_rows": 1868,
+    "expected_focus_rows": 240,
+    "input_format": "auto",
+    "allow_overwrite": false
+  },
+  "output_dir": "reports\\random_20w_split\\loop113_to_loop112_noop",
+  "decision": "ready_noop_no_actionable_verdicts",
+  "blockers": [],
+  "stages": {
+    "loop111_import": {
+      "ran": true,
+      "passed": true,
+      "decision": "ready_noop_no_external_annotations",
+      "blockers": []
+    },
+    "loop110_focus_verdict_pipeline": {
+      "ran": true,
+      "passed": true,
+      "decision": "ready_noop_no_actionable_verdicts",
+      "blockers": []
+    }
+  },
+  "counts": {
+    "external_rows": 0,
+    "imported_rows": 0,
+    "post_import_actionable_rows": 0,
+    "loop87_rows": 1868,
+    "loop87_actionable_rows": 0,
+    "loop87_replacement_required_rows": 0,
+    "loop87_training_policy_rows": 0
+  },
+  "decisions": {
+    "ready_for_redraw_preflight": false,
+    "automatic_verdict_allowed": false,
+    "automatic_relabel_allowed": false,
+    "automatic_replacement_allowed": false,
+    "training_allowed": false,
+    "test10k_allowed": false,
+    "full_test_allowed": false,
+    "next_allowed_step": "collect independent content/external focus annotations"
+  },
+  "outputs": {
+    "imported_focus_csv": "reports\\random_20w_split\\loop113_to_loop112_noop\\loop112_imported_focus.csv",
+    "import_json": "reports\\random_20w_split\\loop113_to_loop112_noop\\loop112_import.json",
+    "import_preflight_csv": "reports\\random_20w_split\\loop113_to_loop112_noop\\loop112_import_preflight_validated.csv",
+    "import_preflight_json": "reports\\random_20w_split\\loop113_to_loop112_noop\\loop112_import_preflight.json",
+    "loop110_output_dir": "reports\\random_20w_split\\loop113_to_loop112_noop\\loop112_loop110_focus_pipeline",
+    "loop110_json": "reports\\random_20w_split\\loop113_to_loop112_noop\\loop112_loop110_summary.json"
+  },
+  "summary_json": "reports\\random_20w_split\\loop113_to_loop112_noop_summary.json",
+  "notes": [
+    "Loop111 is the only external ingress stage and only accepts blind_review_id plus the three manual fields.",
+    "Loop110 does not run when Loop111 import or post-import focus preflight blocks.",
+    "This command does not train, tune thresholds, mutate split/cache, or sample replacements."
+  ]
+}

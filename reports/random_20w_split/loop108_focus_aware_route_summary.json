@@ -1,0 +1,70 @@
+{
+  "schema": "axon_loop108_focus_aware_route_summary_v1",
+  "date": "2026-07-03",
+  "protocol": "read-only focus-aware route/preflight summary; no training, no threshold tuning, no checkpoint loading, no NPZ array loading, no split/cache mutation",
+  "evidence_semantics": "Fields named evidence in Loop108 route/preflight reports are authorization audit summaries only. They are not model features, verdict evidence, threshold signals, fusion inputs, relabel evidence, replacement-sampling evidence, or production inference evidence.",
+  "inputs": {
+    "route_audit": "reports/random_20w_split/loop108_focus_aware_route_audit_noop.json",
+    "ml_authorization_preflight": "reports/random_20w_split/loop108_focus_aware_ml_authorization_preflight_noop.json",
+    "focus_verdict_import": "reports/random_20w_split/loop107_focus_merged_verdict_import_noop.json",
+    "current_state_gate": "reports/random_20w_split/loop101_current_state_gate_metadata.json",
+    "cache_ready": "reports/random_20w_split/loop100_cache_ready_metadata.json"
+  },
+  "cache_and_split": {
+    "total_rows": 200000,
+    "covered_rows": 200000,
+    "missing_rows": 0,
+    "metadata_checked_rows": 200000,
+    "metadata_failure_rows": 0,
+    "split_counts": {
+      "train": 20000,
+      "val": 20000,
+      "test": 160000
+    },
+    "replacement_rows": 130,
+    "self_replacements": 0
+  },
+  "focus_verdict_state": {
+    "loop87_decision": "ready_noop_no_actionable_verdicts",
+    "rows": 1868,
+    "actionable_rows": 0,
+    "replacement_required_rows": 0,
+    "training_policy_rows": 0
+  },
+  "authorization": {
+    "ml_gate_passed": false,
+    "allowed_operations": [],
+    "blocking_reasons": [
+      "no_actionable_independent_verdicts",
+      "route_audit_awaits_independent_blinded_verdicts"
+    ],
+    "train_val_allowed": false,
+    "threshold_sweep_allowed": false,
+    "test10k_allowed": false,
+    "full_test_allowed": false,
+    "redraw_preflight_allowed": false
+  },
+  "identity_feature_policy": {
+    "forbidden_as_model_or_verdict_evidence": [
+      "filename",
+      "path",
+      "extension",
+      "directory",
+      "hash",
+      "source_sha256",
+      "sample_index",
+      "split",
+      "row_order",
+      "model_score"
+    ],
+    "allowed_uses": [
+      "loading",
+      "alignment",
+      "cache audit",
+      "duplicate detection",
+      "manual/external review indexing"
+    ],
+    "deployment_boundary": "Real deployment names do not match training-corpus names. Directory or filename inference can only bootstrap a human-curated label manifest; after the locked 20w split exists, names and paths are logistics metadata only."
+  },
+  "next_allowed_step": "Independent content/external verdicts must be added to the blinded review route before redraw preflight, Train/Val, Test-10k, or full-test can be allowed."
+}

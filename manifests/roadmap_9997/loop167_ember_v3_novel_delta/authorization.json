@@ -1,0 +1,111 @@
+{
+  "schema": "axon_loop167_ember_v3_novel_delta_authorization_v1",
+  "document_kind": "local_custody_preregistered_authorization",
+  "loop_id": "loop167_ember_v3_novel_delta",
+  "recorded_at": "2026-07-13T20:58:10+08:00",
+  "claim_scope": "phase_a_static_semantic_delta_authorization_phase_b_execution_withheld",
+  "status": "phase_a_static_granted_phase_b_blocked_missing_source_closure",
+  "authorization_granted": true,
+  "authority": {
+    "user_directed_local_custody": true,
+    "user_direction_received": true,
+    "cto_may_complete_source_closure_without_additional_user_prompt": true,
+    "public_key_required": false,
+    "external_signer_required": false,
+    "a2_or_a3_authority": false,
+    "val_test_or_full_authority": false,
+    "promotion_authority": false,
+    "certification_authority": false
+  },
+  "proposal_binding": {
+    "path": "manifests/roadmap_9997/loop167_ember_v3_novel_delta/proposal.json",
+    "sha256": "f2c3d61ca25b064eba9fc74df46caf2b57d5ee6997e9354c48b216a582e465fd",
+    "decision": "authorize_phase_a_static_semantic_delta_freeze_only"
+  },
+  "grants": [
+    "read_pinned_public_ember2024_source_text",
+    "read_current_axon_feature_schema_source",
+    "write_static_semantic_delta_mapping",
+    "write_project_native_extractor_controller_and_synthetic_tests",
+    "run_synthetic_tests_lint_and_static_preflight"
+  ],
+  "phase_a_limits": {
+    "raw_sample_opens_allowed": 0,
+    "checkpoint_opens_allowed": 0,
+    "prediction_row_opens_allowed": 0,
+    "training_allowed": false,
+    "fitting_allowed": false,
+    "quality_metrics_allowed": false,
+    "dependency_install_allowed": false,
+    "network_code_execution_allowed": false,
+    "external_source_may_be_used_as_reference_only": true
+  },
+  "phase_b_conditional_authority": {
+    "user_direction_received": true,
+    "execution_authorization_granted": false,
+    "execution_ready": false,
+    "additional_product_owner_prompt_required_after_source_closure": false,
+    "required_new_authorization_path": "manifests/roadmap_9997/loop167_ember_v3_novel_delta/phase_b_run_authorization.json",
+    "required_source_closure": [
+      "semantic_delta_mapping_path_and_sha256",
+      "project_native_extractor_path_and_sha256",
+      "phase_b_controller_path_and_sha256",
+      "synthetic_and_contract_tests_path_and_sha256",
+      "frozen_deduplicated_baseline_allowlist_path_and_sha256",
+      "runtime_and_dependency_versions",
+      "canonical_argv_and_output_paths",
+      "fresh_resource_guard_path_and_sha256"
+    ],
+    "required_one_shot_lease": {
+      "lease_id": "loop167-phase-b-train-oof-v1",
+      "marker_path": "reports/roadmap_9997/loop167/phase_b_execution_consumed.json",
+      "consume_with_atomic_O_EXCL_before_first_raw_open": true,
+      "failed_attempt_consumes_lease": true,
+      "same_lease_retry_resume_or_rescan_allowed": false,
+      "delete_overwrite_rename_or_reuse_allowed": false
+    },
+    "raw_access_ceiling_after_future_source_closed_authorization": {
+      "split_role": "train",
+      "exact_full_train_raw_passes": 1,
+      "maximum_raw_open_attempts": 20000,
+      "maximum_raw_bytes": 26843545600,
+      "val_test10k_full_sentinel_or_sealed_raw_opens": 0
+    }
+  },
+  "explicitly_withheld": [
+    "phase_b_raw_access_under_this_authorization",
+    "phase_b_model_fitting_under_this_authorization",
+    "loop166_v2_retry_resume_rescan_or_artifact_reuse",
+    "threshold_or_hyperparameter_search",
+    "val_access",
+    "test10k_access",
+    "legacy_full_test_access",
+    "sentinel_or_sealed_window_access",
+    "promotion",
+    "certification"
+  ],
+  "fail_closed_conditions": [
+    "proposal_binding_drift",
+    "external_source_binding_drift",
+    "semantic_dimension_or_mapping_failure",
+    "missing_source_closure",
+    "raw_access_before_new_phase_b_authorization_and_lease",
+    "unlisted_argument_or_output_path",
+    "identity_label_or_historical_score_model_input",
+    "second_raw_pass_request"
+  ],
+  "ready_for": {
+    "phase_a_static_mapping": true,
+    "phase_b_raw_access": false,
+    "phase_b_train_oof": false,
+    "val": false,
+    "test10k": false,
+    "legacy_full_test": false,
+    "promotion": false,
+    "certification": false
+  },
+  "research_champion": "Loop151",
+  "target_f1": 0.9997,
+  "target_achieved": false,
+  "decision": "grant_phase_a_static_only_and_withhold_phase_b_until_new_source_closed_authorization"
+}

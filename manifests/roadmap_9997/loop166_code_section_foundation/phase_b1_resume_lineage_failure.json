@@ -1,0 +1,105 @@
+{
+  "schema": "axon_loop166_phase_b1_resume_lineage_failure_v1",
+  "loop_id": "loop166_code_section_foundation",
+  "recorded_at": "2026-07-13T15:12:04+08:00",
+  "claim_scope": "local_train_only_fail_closed_resume_handoff_evidence_not_model_quality",
+  "status": "incomplete_fail_closed_at_resume_handoff",
+  "original_execution": {
+    "authorization_sha256": "ce271be62e335631db39079ade914f9a111dd58b4c220b319260a0c8bc2564f7",
+    "contract_sha256": "5e4355ef0d37aacd358e7b8323a35d6eb6bc9935620eb9cded6f460d3a61b609",
+    "controller_sha256": "12be192088b408a31682b1275d56b29a301841a3563f7518c6371afa49c931bb",
+    "tests_sha256": "0c45a5be3ff077d463c37634bd860bb7f0f59b8228f044a6b69ea0a52d4073ee",
+    "marker": {
+      "path": "reports/roadmap_9997/loop166/phase_b1_execution_consumed.json",
+      "sha256": "a4b0de3556f2f084736b78c1cdce647464300ac0c9f2c27271373320172cbd75",
+      "lease_id": "loop166-b1-outer0-resource-cell-v1",
+      "status": "consumed_before_raw_access",
+      "immutable": true
+    },
+    "tokenizer": {
+      "path": "reports/roadmap_9997/loop166/phase_b1_tokenizer.json",
+      "sha256": "73734f28f01b5045ff6f77beb9c07bd62e52102c5153bd94e21c28285659c7f6",
+      "immutable": true
+    },
+    "checkpoint": {
+      "path": "models/roadmap_9997/loop166/phase_b1_tiny_mlm.pt",
+      "sha256": "82177e6d69ef1a2e17a1ea09dcb3e870a32e3305f92ea15bcff124fdc86f14a6",
+      "weights_only_validation_passed": true,
+      "immutable": true
+    }
+  },
+  "checkpoint_state": {
+    "completed_optimizer_steps": 4096,
+    "completed_sequence_count": 16384,
+    "next_permutation_cursor": 16384,
+    "permutation_prefix_original_bytes": 8200700,
+    "prepared_sequence_count": 115072,
+    "total_optimizer_steps": 28768,
+    "resume_pid": 0,
+    "cumulative_wall_seconds": 2554.2020570000022,
+    "conservative_failed_handoff_debit_seconds": 300.0,
+    "recovery_budget_base_seconds": 2854.2020570000022,
+    "maximum_cumulative_wall_seconds": 28800
+  },
+  "commitments": {
+    "outer_fit_corpus_sha256": "880b9cb7a79f5253b4d7562280baeb9e8543ccae6f89791a8a97a3da91159ffc",
+    "compact_corpus_sha256": "325119a0a5f7bb548b23112d16ecce7c2d43b9e9986c18e3061eaaa2bd77f13c",
+    "shuffle_sha256": "aa79b33bdf73ca13006f5b9772f73dd4d4d35fe43c8cd2fe61b07b5b2a9569ad",
+    "old_handoff_nonce_sha256": "05ceed5316aa36b13a6c241450287ca817163f3a504358b73d154c8fb13ead99",
+    "old_handoff_nonce_possession": false,
+    "old_handoff_nonce_plaintext_available": false
+  },
+  "raw_access": {
+    "initial_fit_metadata_rows": 16000,
+    "initial_fit_raw_open_attempts": 15988,
+    "initial_fit_raw_open_successes": 15988,
+    "initial_fit_raw_bytes": 19239582561,
+    "initial_source_unavailable": 12,
+    "initial_outer_holdout_raw_opens": 0,
+    "initial_outer_holdout_raw_bytes": 0,
+    "resume_worker_raw_open_attempts": 0,
+    "resume_worker_raw_bytes": 0,
+    "resume_zero_access_evidence": "lineage_guard_raised_before_scope_load_and_scan",
+    "confirmed_full_fit_raw_passes": 1
+  },
+  "resource_state": {
+    "peak_process_rss_bytes": 4483543040,
+    "peak_cuda_allocated_bytes": 265518592,
+    "peak_cuda_reserved_bytes": 293601280,
+    "nonfinite_events": 0,
+    "oom_events": 0,
+    "checkpoint_writes": 1
+  },
+  "failure": {
+    "exception_type": "B1FatalError",
+    "message": "Phase B1 worker was not spawned by its bound parent process",
+    "stage": "fresh_resume_worker_before_second_raw_scan",
+    "root_cause": "windows_python_3_14_venv_redirector_inserts_one_waiting_launcher_process",
+    "synthetic_reproduction": {
+      "logical_parent_pid": 770028,
+      "worker_pid": 687088,
+      "observed_worker_ppid": 691632,
+      "direct_pid_match": false
+    }
+  },
+  "protocol": {
+    "original_marker_may_be_deleted_overwritten_or_reused": false,
+    "original_artifacts_may_be_overwritten": false,
+    "quality_metrics_computed": false,
+    "threshold_operations_performed": false,
+    "val_test_or_full_access": false,
+    "public_key_required": false
+  },
+  "recovery_boundary": {
+    "requires_new_explicit_local_custody_authorization": true,
+    "requires_new_lease_marker_and_nonce": true,
+    "original_nonce_continuity_claim_allowed": false,
+    "continuity_basis": "immutable_original_artifact_closure_plus_explicit_recovery_authority",
+    "maximum_additional_full_fit_raw_passes": 1,
+    "maximum_total_full_fit_raw_passes": 2,
+    "resume_cursor": 16384,
+    "old_budget_must_continue": true
+  },
+  "decision": "phase_b1_incomplete_allow_design_of_one_fail_closed_recovery_continuation",
+  "research_champion": "Loop151"
+}

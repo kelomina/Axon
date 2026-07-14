@@ -1,0 +1,209 @@
+{
+  "schema": "axon_loop28_pytorch_native_decode_compat_proposal_v1",
+  "loop_id": "p0_loop28_pytorch_native_decode_compat_001",
+  "created_at_utc": "2026-07-12T00:13:00Z",
+  "parent_closure": {
+    "path": "manifests/roadmap_9997/p0_loop28_pytorch_native_feasibility/post_manifest.json",
+    "sha256": "71110ee310a340fb231051df3c4fe3be865e4fa28a0281d96cdf3ddf2ef115cc",
+    "decision": "post_tiny_aoti_package_closed_utf8_cp936_compiler_probe_failure_no_load"
+  },
+  "parent_failure_manifest": {
+    "path": "manifests/roadmap_9997/p0_loop28_pytorch_native_feasibility/package_failure_manifest.json",
+    "sha256": "a445fa8956b444c500fe370cbf9493871a0efbc5c924c21a4d988acfb1db4792"
+  },
+  "upstream_basis": {
+    "path": "reports/roadmap_9997/p0_loop28_pytorch_native_feasibility/upstream_decode_compatibility_research.final.json",
+    "sha256": "280c8fc1792ae4affaf6252a0c0dfbd3f053a7d544100d1832b267a6678fa608",
+    "installed_behavior": "PyTorch v2.12 Windows subprocess decoding is strict and fatal on encoding mismatch.",
+    "upstream_behavior": "PyTorch v2.13 adds errors='replace' to Windows subprocess decoding."
+  },
+  "objective": "Determine whether one process-local compatibility shim that exactly mirrors the official PyTorch v2.13 Windows decoder behavior is sufficient for the installed PyTorch 2.12 stack to generate and dependency-audit one deterministic CPU AOTInductor package, without loading the package or installing dependencies.",
+  "hypothesis": "The previous protected package attempt failed only because installed v2.12 decoded UTF-8 MSVC help output with a strict CP936 decoder. Applying the upstream v2.13 errors='replace' behavior before any compiler probe will pass the exact failing preflight and allow package generation to reach the next factual gate.",
+  "options_considered": {
+    "selected": "One isolated default-locale worker plus a process-local PyTorch v2.13-compatible SUBPROCESS_DECODE_ARGS=(locale.getpreferredencoding(), replace) shim, with installed files unchanged.",
+    "rejected_python_utf8_only": "-X utf8 aligns the observed compiler output but changes process-wide text, file, stdio, and subprocess defaults; it is a useful decode control, not the narrow package branch.",
+    "rejected_cp936_only": "Avoiding code-page 65001 makes environment capture locale-dependent and is less reproducible across Windows hosts.",
+    "production_destination": "Qualify an actual PyTorch v2.13+ runtime after the synthetic compatibility experiment; do not ship the shim as a permanent private fork."
+  },
+  "scope": {
+    "tiny_model": "Reuse only the implementation-manifest-bound deterministic Linear -> exact GELU -> TopK CPU model constructor. Generate a new input from successor-owned constants whose SHA differs from the old partial input, under a fresh loop-specific tiny_v2 attempt root.",
+    "preflight": "Launch an isolated default-locale worker from a generated batch file limited to a pre-assignment gate, vcvars activation, and pre-import environment setup. The controller creates a Windows KILL_ON_JOB_CLOSE Job Object, launches the gated cmd child, assigns it before releasing job_assigned.flag, and proves zero active processes before closing the handle. The controller also owns console code pages through a WinAPI try/finally boundary that captures the prior values, sets input/output to UTF-8 around the child, and restores the exact prior values. Reproduce the exact cl.exe help bytes, verify strict CP936 failure, apply the in-memory upstream shim, and prove replacement decode plus _is_msvc_cl/get_cpp_compiler complete with CUDA uninitialized.",
+    "package": "After a new implementation manifest, package authorization, and single-use lease, execute one model construction, one torch.export, and one aoti_compile_and_package call.",
+    "post_package": "Audit archive safety, exactly one precompiled .pyd, retained size, CUDA state, and dumpbin dependencies. Stop before any Python or C++ package load."
+  },
+  "frozen_reuse": {
+    "tiny_model_source": {
+      "path": "scripts/run_loop28_pytorch_native_feasibility.py",
+      "sha256": "b2c61788e0e7ae1348090fcc41e7eeb2efecb3be3efa912fd6560ad030935166"
+    },
+    "archive_safety_source": {
+      "path": "scripts/run_loop28_pytorch_native_package_controller.py",
+      "sha256": "9baea0517a0b5cf7ecd80edb6f4e84911f1148d3a9d73d929d813f075e693f48"
+    },
+    "aoti_host": {
+      "path": "tools/axon_tiny_pytorch_native/build/bin/Release/axon_tiny_aoti_probe.exe",
+      "sha256": "097a41e61bfceeeea4592ff2f1dd079e3b447275b677980b7eceb3f02a5dcca0"
+    },
+    "direct_aten_host": {
+      "path": "tools/axon_tiny_pytorch_native/build/bin/Release/axon_tiny_aten_probe.exe",
+      "sha256": "595705bdc0716b7323a0da71b424470c0d474a6556ac7fa3c6507e5d4edfd524"
+    }
+  },
+  "static_governance": {
+    "official_source_manifest": "manifests/roadmap_9997/p0_loop28_pytorch_native_decode_compat/official_pytorch_v213_source_manifest.json",
+    "reused_binaries_manifest": "manifests/roadmap_9997/p0_loop28_pytorch_native_decode_compat/reused_cpp_binaries_manifest.json",
+    "both_required_before_preflight_authorization": true,
+    "official_source_contract": "Bind the official v2.13.0 tag, commit, cpp_builder.py payload SHA, normalized SUBPROCESS_DECODE_ARGS excerpt SHA, and issue 157673 without protected-stage network access.",
+    "reuse_authority_boundary": "Only the two frozen C++ binary bytes may be reused by hash; no parent authorization, ready lease, or consumed lease transfers authority."
+  },
+  "read_allowlist": [
+    "this loop's new manifests, scripts, tests, reports, work root, and tiny_v2 artifacts",
+    "the immutable parent closure, failure manifest, diagnostics, and upstream research",
+    "the two explicitly hashed frozen helper sources and two native host binaries",
+    "vnev/Lib/site-packages/torch/** and vnev/Scripts/python.exe",
+    "the frozen MSVC, Windows SDK, CMake, dumpbin, and Windows runtime surfaces"
+  ],
+  "forbidden": [
+    "modifying installed PyTorch, the frozen base runner, the frozen package controller, or either native host",
+    "reading or hashing any Axon checkpoint, ONNX, external-data, Stage-2, family-classifier, production bundle, raw, split, cache, prediction, error-row, heldout, Val, Test-10k, legacy full-test, sentinel, confirmation, or certification artifact",
+    "reading, copying, linking, or reusing artifacts/roadmap_9997/p0_loop28_pytorch_native_feasibility/tiny_v1/**, including its partial input",
+    "package loading, native runtime execution, TorchScript export, training, fitting, calibration, thresholding, selection, F1 computation, or quality claims",
+    "GPU execution, dependency installation, download, deployment, commit, push, or output replacement"
+  ],
+  "budget": {
+    "implementation_generations": 1,
+    "official_source_manifest_generations": 1,
+    "reused_binaries_manifest_generations": 1,
+    "preflight_leases": 1,
+    "preflight_worker_processes": 1,
+    "preflight_vcvars_activations": 1,
+    "preflight_torch_imports": 1,
+    "preflight_compiler_help_processes_max": 4,
+    "preflight_wall_clock_seconds_max": 1800,
+    "package_leases": 1,
+    "package_worker_processes": 1,
+    "package_vcvars_activations": 1,
+    "package_torch_imports": 1,
+    "package_compiler_help_processes_max": 4,
+    "package_dumpbin_processes_max": 64,
+    "package_wall_clock_seconds_max": 1800,
+    "tiny_model_constructions": 1,
+    "torch_export_calls": 1,
+    "aoti_compile_and_package_calls": 1,
+    "torchscript_export_calls": 0,
+    "package_load_calls": 0,
+    "native_probe_execution_count": 0,
+    "cpu_threads": 1,
+    "gpu_execution_count": 0,
+    "network_request_count": 0,
+    "max_retained_output_bytes": 536870912,
+    "quality_metric_count": 0
+  },
+  "stage_budgets": {
+    "preflight": {
+      "worker_processes": 1,
+      "vcvars_activations": 1,
+      "torch_imports": 1,
+      "compiler_help_processes_max": 4,
+      "wall_clock_seconds_max": 1800,
+      "model_constructions": 0,
+      "torch_export_calls": 0,
+      "aoti_compile_and_package_calls": 0,
+      "package_load_calls": 0,
+      "native_probe_execution_count": 0,
+      "gpu_execution_count": 0,
+      "network_request_count": 0,
+      "quality_metric_count": 0
+    },
+    "package": {
+      "worker_processes": 1,
+      "vcvars_activations": 1,
+      "compiler_help_processes_max": 4,
+      "dumpbin_processes_max": 64,
+      "wall_clock_seconds_max": 1800,
+      "max_retained_output_bytes": 536870912,
+      "torch_imports": 1,
+      "model_constructions": 1,
+      "torch_export_calls": 1,
+      "torch_export_completed": 1,
+      "aoti_compile_and_package_calls": 1,
+      "aoti_compile_and_package_completed": 1,
+      "torchscript_export_calls": 0,
+      "package_load_calls": 0,
+      "native_probe_execution_count": 0,
+      "gpu_execution_count": 0,
+      "network_request_count": 0,
+      "quality_metric_count": 0
+    }
+  },
+  "terminal_evidence_contract": {
+    "source_record_fields": [
+      "path",
+      "size_bytes",
+      "sha256"
+    ],
+    "source_before_and_after_exact_authorization_match": true,
+    "worker_temp_and_work_roots_removed": true,
+    "console_code_pages_utf8_around_started_child_and_exactly_restored": true,
+    "process_tree_termination_must_be_confirmed": true,
+    "windows_job_object_containment_required": true,
+    "job_assignment_gate_before_worker_start_required": true,
+    "taskkill_fallback_pre_gate_zero_journal_only": true,
+    "structured_worker_receipt_required_for_every_terminal": true,
+    "administrative_failure_zero_counter_receipt_required": true,
+    "frozen_python_torch_cuda_shim_hashes_required_when_torch_imported": true,
+    "worker_telemetry_counter_reconciliation_required": true,
+    "durable_worker_journal_hash_chain_required": true,
+    "journal_reconstruction_must_preserve_last_counters": true,
+    "journal_corruption_zero_fallback_forbidden": true,
+    "partial_inventory_error_forbidden_in_terminal_manifest": true,
+    "failure_reason_exact_classification_required": true,
+    "finite_budget_actual_reconciliation_required": true
+  },
+  "success_gate": {
+    "preflight_exact_prior_failure_path_passed": true,
+    "installed_torch_files_unchanged": true,
+    "upstream_v213_shim_process_local_only": true,
+    "python_preferred_encoding_frozen_before_torch_import": true,
+    "upstream_shim_uses_preferred_encoding_not_hardcoded_utf8": true,
+    "new_input_sha_differs_from_parent_partial": true,
+    "torch_export_calls": 1,
+    "aoti_compile_and_package_calls": 1,
+    "pt2_package_exclusive_create_passed": true,
+    "archive_paths_and_collisions_safe": true,
+    "precompiled_pyd_count": 1,
+    "forbidden_pyd_dependency_hits": [],
+    "cuda_initialized_before_and_after": false,
+    "package_load_calls": 0,
+    "quality_metric_count": 0
+  },
+  "exit_decisions": [
+    "decode_compat_preflight_failed_no_package_authorization",
+    "upstream_v213_decode_compat_package_generated_dependency_closure_ready_for_new_runtime_loop",
+    "decode_compat_pre_export_failure_no_package",
+    "decode_compat_applied_aoti_compile_or_package_still_unsupported",
+    "decode_compat_package_dependency_leakage_no_load",
+    "decode_compat_package_static_audit_failed_no_load",
+    "administrative_failure_no_protected_package_call",
+    "budget_exhausted_no_claim"
+  ],
+  "closure_contract": {
+    "preflight_failure_closes_without_implementation_or_package_authorization": true,
+    "package_success_and_every_package_failure_class_close_immutably": true,
+    "budget_exhaustion_closes_without_runtime_or_quality_claim": true,
+    "terminal_stage_authorization_and_consumed_lease_required_in_hash_dag": true,
+    "goal_delta_journal_status_then_post_manifest": true,
+    "post_manifest_self_hashing": false
+  },
+  "claim_boundary": {
+    "decoder_compatibility_claim_allowed": true,
+    "tiny_package_generation_claim_allowed": true,
+    "tiny_runtime_feasibility_claim_allowed": false,
+    "package_load_allowed": false,
+    "axon_checkpoint_access_allowed": false,
+    "axon_runtime_parity_claim_allowed": false,
+    "quality_claim_allowed": false,
+    "certification_claim_allowed": false
+  },
+  "decision": "propose_upstream_v213_decode_compat_package_only_successor"
+}

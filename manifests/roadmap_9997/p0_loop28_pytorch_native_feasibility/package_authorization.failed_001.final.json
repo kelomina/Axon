@@ -1,0 +1,143 @@
+{
+  "schema": "axon_loop28_pytorch_native_package_authorization_v1",
+  "loop_id": "p0_loop28_pytorch_native_feasibility_001",
+  "created_at_utc": "2026-07-11T23:41:07Z",
+  "attempt_id": "p0_loop28_pytorch_native_feasibility_001_package_attempt_001",
+  "lineage": {
+    "implementation_manifest": {
+      "path": "manifests/roadmap_9997/p0_loop28_pytorch_native_feasibility/implementation_manifest.json",
+      "sha256": "45d38299623ab32e701d6bf1408a509caa19513287c239b3866532cd405bd3f4"
+    },
+    "design_amendment": {
+      "path": "manifests/roadmap_9997/p0_loop28_pytorch_native_feasibility/design_amendment.json",
+      "sha256": "594360c471967ce2734244cf1991376d0949cf7dfb0e5262acf896c70ed612bf"
+    },
+    "build_authorization": {
+      "path": "manifests/roadmap_9997/p0_loop28_pytorch_native_feasibility/build_authorization.json",
+      "sha256": "0f4a0dd186ed784137dc6a85fc0fece40c9ef6f19c54718b04796586f5ebd792"
+    },
+    "consumed_build_lease": {
+      "path": "manifests/roadmap_9997/p0_loop28_pytorch_native_feasibility/build_lease.final.json",
+      "sha256": "c4bc986bc77a2234245775592c7bf725292427fa10ece4e41ad26d89a05e567c"
+    },
+    "cpp_build_receipt": {
+      "path": "reports/roadmap_9997/p0_loop28_pytorch_native_feasibility/cpp_build_receipt.final.json",
+      "sha256": "2ef9fc018cf72c0552902d4e9cca2190b4c5e983bdd15d4917dd5d926043dc77",
+      "decision": "lean_aten_and_aoti_hosts_built_package_requires_authorization"
+    }
+  },
+  "implementation_manifest_sha256": "45d38299623ab32e701d6bf1408a509caa19513287c239b3866532cd405bd3f4",
+  "cpp_build_receipt_sha256": "2ef9fc018cf72c0552902d4e9cca2190b4c5e983bdd15d4917dd5d926043dc77",
+  "frozen_binaries": {
+    "direct_aten_control": {
+      "path": "tools/axon_tiny_pytorch_native/build/bin/Release/axon_tiny_aten_probe.exe",
+      "sha256": "595705bdc0716b7323a0da71b424470c0d474a6556ac7fa3c6507e5d4edfd524",
+      "size_bytes": 159232
+    },
+    "aoti_host": {
+      "path": "tools/axon_tiny_pytorch_native/build/bin/Release/axon_tiny_aoti_probe.exe",
+      "sha256": "097a41e61bfceeeea4592ff2f1dd079e3b447275b677980b7eceb3f02a5dcca0",
+      "size_bytes": 160768
+    }
+  },
+  "preconditions": {
+    "implementation_manifest_verified": true,
+    "build_receipt_verified": true,
+    "build_forbidden_dependency_hits": [],
+    "tiny_artifact_root_absent": true,
+    "package_receipt_absent": true,
+    "package_failure_absent": true,
+    "package_ready_lease_absent": true,
+    "package_final_lease_absent": true
+  },
+  "canonical_command": [
+    "E:/Project/python/Axon_v2.6Exp/vnev/Scripts/python.exe",
+    "scripts/run_loop28_pytorch_native_feasibility.py",
+    "package"
+  ],
+  "artifact_root": "artifacts/roadmap_9997/p0_loop28_pytorch_native_feasibility/tiny_v1",
+  "work_root": "reports/roadmap_9997/p0_loop28_pytorch_native_feasibility/work",
+  "receipt_output": "reports/roadmap_9997/p0_loop28_pytorch_native_feasibility/package_receipt.final.json",
+  "failure_output": "reports/roadmap_9997/p0_loop28_pytorch_native_feasibility/package_failure.final.json",
+  "authorized_actions": [
+    "construct the single proposal-bound deterministic synthetic CPU tiny model",
+    "execute exactly one torch.export.export call",
+    "execute exactly one AOTInductor aoti_compile_and_package call",
+    "attempt exactly one optional TorchScript trace export",
+    "inventory the .pt2 archive and reject duplicate or unsafe member paths",
+    "require exactly one precompiled .pyd before any later load",
+    "write the fixed tiny input, package artifacts, package receipt, or fail-closed package failure"
+  ],
+  "authorized_outputs": [
+    "artifacts/roadmap_9997/p0_loop28_pytorch_native_feasibility/tiny_v1/input.f32.bin",
+    "artifacts/roadmap_9997/p0_loop28_pytorch_native_feasibility/tiny_v1/tiny_cpu_model.pt2",
+    "artifacts/roadmap_9997/p0_loop28_pytorch_native_feasibility/tiny_v1/tiny_cpu_control.pt",
+    "reports/roadmap_9997/p0_loop28_pytorch_native_feasibility/package_receipt.final.json",
+    "reports/roadmap_9997/p0_loop28_pytorch_native_feasibility/package_failure.final.json",
+    "reports/roadmap_9997/p0_loop28_pytorch_native_feasibility/work/package_*"
+  ],
+  "safety_contract": {
+    "synthetic_cpu_only": true,
+    "normal_user_temp_for_package_compile_forbidden": true,
+    "work_root_confined_compile_temp_required": true,
+    "runtime_package_load_allowed": false,
+    "cpp_host_execution_allowed": false,
+    "checkpoint_or_onnx_access_allowed": false,
+    "raw_split_cache_heldout_access_allowed": false,
+    "gpu_execution_allowed": false,
+    "network_access_allowed": false,
+    "dependency_installation_allowed": false,
+    "output_replacement_allowed": false
+  },
+  "environment_contract": {
+    "model_and_input_device": "cpu",
+    "cuda_initialized_before_required": false,
+    "cuda_initialized_after_required": false,
+    "TEMP_TMP_and_inductor_cache": "fresh work-root-confined package directory",
+    "compile_temp_removed_after_attempt": true,
+    "normal_user_TEMP_use_forbidden": true
+  },
+  "budget": {
+    "package_attempts": 1,
+    "tiny_model_specifications": 1,
+    "tiny_model_constructions": 1,
+    "torch_export_calls": 1,
+    "aoti_compile_and_package_calls": 1,
+    "torchscript_export_calls": 1,
+    "python_aoti_load_package_calls": 0,
+    "cpp_aoti_loader_calls": 0,
+    "native_probe_execution_count": 0,
+    "cpu_threads": 1,
+    "max_retained_output_bytes": 536870912,
+    "model_or_package_load_count": 0,
+    "native_host_execution_count": 0,
+    "checkpoint_or_onnx_load_count": 0,
+    "quality_metric_count": 0,
+    "gpu_execution_count": 0,
+    "network_request_count": 0
+  },
+  "post_package_gate": {
+    "package_manifest_required_before_any_execution_authorization": true,
+    "generated_pyd_dumpbin_audit_required_before_any_load": true,
+    "execution_runner_static_audit_required": true,
+    "current_frozen_execution_runner_known_safe": false,
+    "execution_controller_correction_required": true,
+    "execution_authorization_and_fresh_single_use_lease_required": true
+  },
+  "claim_boundary": {
+    "package_generation_claim_allowed": true,
+    "tiny_package_generation_allowed": true,
+    "tiny_export_capture_allowed": true,
+    "package_load_allowed": false,
+    "runtime_lane_execution_allowed": false,
+    "execution_authorization_issued": false,
+    "tiny_runtime_feasibility_claim_allowed": false,
+    "current_host_runtime_claim_allowed": false,
+    "axon_checkpoint_access_allowed": false,
+    "axon_runtime_parity_claim_allowed": false,
+    "population_parity_claim_allowed": false,
+    "quality_claim_allowed": false,
+    "certification_claim_allowed": false
+  },
+  "decision": "authorize_single_governed_tiny_aoti_package_generation"
+}

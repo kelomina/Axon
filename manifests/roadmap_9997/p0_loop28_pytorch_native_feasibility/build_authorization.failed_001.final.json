@@ -1,0 +1,41 @@
+{
+  "schema": "axon_loop28_pytorch_native_build_authorization_v1",
+  "loop_id": "p0_loop28_pytorch_native_feasibility_001",
+  "created_at_utc": "2026-07-11T23:18:28Z",
+  "implementation_manifest": {
+    "path": "manifests/roadmap_9997/p0_loop28_pytorch_native_feasibility/implementation_manifest.json",
+    "sha256": "d402bc4e2177b0120cc0678dc9b0b99cd514432107cb68f7309659b45028af2f"
+  },
+  "implementation_manifest_sha256": "d402bc4e2177b0120cc0678dc9b0b99cd514432107cb68f7309659b45028af2f",
+  "canonical_command": [
+    "E:/Project/python/Axon_v2.6Exp/vnev/Scripts/python.exe",
+    "scripts/run_loop28_pytorch_native_feasibility.py",
+    "build"
+  ],
+  "authorized_targets": [
+    "axon_tiny_aten_probe",
+    "axon_tiny_aoti_probe"
+  ],
+  "optional_targets": [],
+  "build_root": "tools/axon_tiny_pytorch_native/build",
+  "output": "reports/roadmap_9997/p0_loop28_pytorch_native_feasibility/cpp_build_receipt.final.json",
+  "budget": {
+    "clean_build_directories": 1,
+    "cmake_configure_calls": 1,
+    "required_target_build_calls": 2,
+    "parallel_jobs": 1,
+    "configure_timeout_seconds": 180,
+    "target_timeout_seconds": 1200,
+    "model_or_package_execution_count": 0,
+    "gpu_execution_count": 0,
+    "network_request_count": 0
+  },
+  "claim_boundary": {
+    "cpp_toolchain_and_link_surface_claim_allowed": true,
+    "package_generation_allowed": false,
+    "model_execution_allowed": false,
+    "axon_checkpoint_access_allowed": false,
+    "quality_claim_allowed": false
+  },
+  "decision": "authorize_one_clean_lean_cpp_surface_build"
+}

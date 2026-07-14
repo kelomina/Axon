@@ -1,0 +1,67 @@
+{
+  "schema": "axon_loop28_onnx_fidelity_administrative_lease_reissue_v1",
+  "loop_id": "p0_loop28_onnx_fidelity_001",
+  "attempt_id": "p0_loop28_onnx_fidelity_001_attempt_001",
+  "issued_at_utc": "2026-07-11T22:11:23Z",
+  "supersedes": {
+    "path": "manifests/roadmap_9997/p0_loop28_onnx_fidelity/localization_lease_reissue_authorization.json",
+    "sha256": "1d474bb546fc4d6120b71adc8b114bc80e7ccabd2d3c25f55e58e828807e9aad",
+    "limited_field": "budget_accounting.further_reissue_allowed",
+    "reason": "The authorized PYTHONPATH remedy was empirically not propagated by the isolated Windows interpreter, so the prior no-further-reissue premise was falsified before any scientific execution."
+  },
+  "implementation_manifest": {
+    "path": "manifests/roadmap_9997/p0_loop28_onnx_fidelity/implementation_manifest.json",
+    "sha256": "bd448172e6556d30a31219e7decba0872a956d1ea20de67b3314b803388e6f7d"
+  },
+  "localization_authorization": {
+    "path": "manifests/roadmap_9997/p0_loop28_onnx_fidelity/localization_authorization.json",
+    "sha256": "96748cb281529886a3c15da9a8d2d1db361d97e5eb2ca2a5a2240bdfe8659bf5"
+  },
+  "failed_consumed_leases": [
+    {
+      "path": "manifests/roadmap_9997/p0_loop28_onnx_fidelity/localization_lease.failed_001.final.json",
+      "sha256": "3d7509ccf8071d1e8d2545c5b883d9dcc4456c95f04ea189a00397e0fd8b1ab7"
+    },
+    {
+      "path": "manifests/roadmap_9997/p0_loop28_onnx_fidelity/localization_lease.failed_002.final.json",
+      "sha256": "65047ba2881d387091148c6e920e4af4e67f713dbe9bef2917391e64481ebd33"
+    }
+  ],
+  "failure_receipts": [
+    {
+      "path": "reports/roadmap_9997/p0_loop28_onnx_fidelity/localization_attempt_001_failure.json",
+      "sha256": "a7c6d26d58a608cc534b5a044bd542e8b3ccc09b4915ca7d8a0e790d16e1c222"
+    },
+    {
+      "path": "reports/roadmap_9997/p0_loop28_onnx_fidelity/localization_attempt_001_reissue_001_failure.json",
+      "sha256": "3d806ab67db39af38e4eb3296771f222db1ad7ba15d90c5e95c0598176debadb"
+    }
+  ],
+  "authorized_invocation_delta": {
+    "previous": "vnev/Scripts/python.exe scripts/diagnose_loop28_onnx_fidelity.py",
+    "authorized": "vnev/Scripts/python.exe -m scripts.diagnose_loop28_onnx_fidelity",
+    "working_directory": "E:/Project/python/Axon_v2.6Exp",
+    "purpose": "Make the immutable project root sys.path[0] without changing source or artifacts.",
+    "source_or_artifact_mutation_allowed": false
+  },
+  "budget_accounting": {
+    "cumulative_pytorch_forward_executions": 0,
+    "cumulative_onnxruntime_session_executions": 0,
+    "cumulative_native_subprocess_executions": 0,
+    "cumulative_fixture_count": 0,
+    "scientific_localization_budget_consumed": false,
+    "administrative_reissue_count": 2,
+    "further_reissue_allowed": false
+  },
+  "reissue_scope": {
+    "same_implementation_required": true,
+    "same_fixture_matrix_required": true,
+    "same_runtime_and_tolerance_required": true,
+    "new_ready_lease_required": true,
+    "all_failed_leases_and_receipts_must_remain_archived": true,
+    "raw_split_heldout_access_allowed": false,
+    "training_or_fitting_allowed": false,
+    "quality_metric_allowed": false
+  },
+  "decision": "authorize_final_module_invocation_lease_reissue"
+}

@@ -1,0 +1,53 @@
+{
+  "schema": "axon_loop77_pre_run_resource_leak_guard_v1",
+  "protocol": "read-only pre-run resource and static leak guard; no model loading, no CUDA import, no NPZ feature loading",
+  "guard_ready": true,
+  "decision": "pass",
+  "failures": [],
+  "warnings": [],
+  "limits": {
+    "max_system_used_pct": 90.0,
+    "max_python_rss_mb": 8192.0,
+    "max_gpu_memory_used_pct": 95.0,
+    "max_gpu_python_apps": 0,
+    "allowed_static_risks": []
+  },
+  "system_memory": {
+    "total_mb": 31964.89,
+    "available_mb": 11857.43,
+    "used_pct": 62.9
+  },
+  "python_processes": {
+    "count": 2,
+    "heavy_count": 0,
+    "heavy_examples": []
+  },
+  "gpu": {
+    "available": true,
+    "memory_used_mb": 3038,
+    "memory_total_mb": 8188,
+    "memory_used_pct": 37.103077674645824,
+    "utilization_pct": 21,
+    "compute_app_count": 31,
+    "python_compute_app_count": 0,
+    "python_compute_apps": []
+  },
+  "static_scan": {
+    "target_scripts": [
+      "E:\\Project\\python\\Axon_v2.6Exp\\scripts\\ml_authorization_runtime.py",
+      "E:\\Project\\python\\Axon_v2.6Exp\\scripts\\authorized_main.py",
+      "E:\\Project\\python\\Axon_v2.6Exp\\scripts\\build_hard_error_finetune_package.py",
+      "E:\\Project\\python\\Axon_v2.6Exp\\scripts\\build_hard_family_finetune_package.py",
+      "E:\\Project\\python\\Axon_v2.6Exp\\tests\\test_ml_authorization_runtime.py",
+      "E:\\Project\\python\\Axon_v2.6Exp\\tests\\test_build_hard_error_finetune_package.py"
+    ],
+    "missing_files": [],
+    "finding_count": 0,
+    "findings": []
+  },
+  "notes": [
+    "Run this guard before training, evaluation, cache recovery, or any script that can allocate substantial memory.",
+    "Static findings are conservative. If a risk is intentionally acceptable, pass --allow-risk with a reason in the experiment notes.",
+    "Passing this guard does not prove absence of leaks; it blocks known high-risk conditions before execution."
+  ]
+}

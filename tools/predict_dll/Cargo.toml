@@ -1,0 +1,12 @@
+[package]
+name = "axon-predict-dll"
+version = "0.1.0"
+edition = "2021"
+description = "C ABI DLL wrapper for Axon v2.6 prediction"
+
+[lib]
+name = "axon_predict"
+crate-type = ["cdylib"]
+
+[dependencies]
+serde_json = "1"

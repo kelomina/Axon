@@ -1,0 +1,343 @@
+{
+  "schema": "axon_loop166_phase_b1_step4096_recovery_authorization_v2",
+  "loop_id": "loop166_code_section_foundation",
+  "claim_scope": "local_train_only_one_fail_closed_step4096_recovery_v2_run_authorization",
+  "status": "granted_source_closure",
+  "authorization_granted": true,
+  "authority": {
+    "user_directed_local_custody": true,
+    "user_direction_received": true,
+    "run_authority_withheld_until_source_closure": false,
+    "public_key_required": false,
+    "external_signer_required": false,
+    "a2_or_a3_authority": false,
+    "val_test_or_full_authority": false,
+    "promotion_authority": false
+  },
+  "runtime": {
+    "python_executable": "E:\\Project\\python\\Axon_v2.6Exp\\vnev\\Scripts\\python.exe",
+    "base_executable": "C:\\Users\\Saika\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe",
+    "python_version": "3.14.4",
+    "implementation": "CPython",
+    "platform": "win32",
+    "torch_version": "2.12.0+cu132",
+    "tokenizers_version": "0.22.2",
+    "pefile_version": "2024.8.26",
+    "version_match_policy": "exact"
+  },
+  "canonical_paths": {
+    "project_root": "E:\\Project\\python\\Axon_v2.6Exp",
+    "incident": "E:\\Project\\python\\Axon_v2.6Exp\\manifests\\roadmap_9997\\loop166_code_section_foundation\\phase_b1_step4096_recovery_external_restart.json",
+    "contract": "E:\\Project\\python\\Axon_v2.6Exp\\manifests\\roadmap_9997\\loop166_code_section_foundation\\phase_b1_step4096_recovery_v2.json",
+    "authorization": "E:\\Project\\python\\Axon_v2.6Exp\\manifests\\roadmap_9997\\loop166_code_section_foundation\\phase_b1_step4096_recovery_v2_authorization.json",
+    "controller": "E:\\Project\\python\\Axon_v2.6Exp\\scripts\\run_loop166_phase_b1_step4096_recovery_v2.py",
+    "windows_process_lineage": "E:\\Project\\python\\Axon_v2.6Exp\\src\\loop166\\windows_process_lineage.py",
+    "tests": "E:\\Project\\python\\Axon_v2.6Exp\\tests\\test_loop166_phase_b1_step4096_recovery_v2.py",
+    "lineage_tests": "E:\\Project\\python\\Axon_v2.6Exp\\tests\\test_loop166_windows_process_lineage.py",
+    "folds": "E:\\Project\\python\\Axon_v2.6Exp\\reports\\roadmap_9997\\loop164\\local_train_diagnostic_folds.jsonl",
+    "folds_summary": "E:\\Project\\python\\Axon_v2.6Exp\\reports\\roadmap_9997\\loop164\\local_train_diagnostic_folds_summary.json",
+    "data_root": "E:\\Project\\python\\Axon_v2.6Exp\\data\\random_20w_worktree",
+    "origin_tokenizer": "E:\\Project\\python\\Axon_v2.6Exp\\reports\\roadmap_9997\\loop166\\phase_b1_tokenizer.json",
+    "origin_checkpoint": "E:\\Project\\python\\Axon_v2.6Exp\\models\\roadmap_9997\\loop166\\phase_b1_tiny_mlm.pt",
+    "recovery_marker": "E:\\Project\\python\\Axon_v2.6Exp\\reports\\roadmap_9997\\loop166\\phase_b1_step4096_recovery_v2_consumed.json",
+    "recovered_checkpoint": "E:\\Project\\python\\Axon_v2.6Exp\\models\\roadmap_9997\\loop166\\phase_b1_step4096_recovery_v2_tiny_mlm.pt",
+    "recovery_report": "E:\\Project\\python\\Axon_v2.6Exp\\reports\\roadmap_9997\\loop166\\phase_b1_step4096_recovery_v2_report.json",
+    "final_verify_receipt": "E:\\Project\\python\\Axon_v2.6Exp\\reports\\roadmap_9997\\loop166\\phase_b1_step4096_recovery_v2_final_verify_receipt.json",
+    "raw_progress_ledger": "E:\\Project\\python\\Axon_v2.6Exp\\reports\\roadmap_9997\\loop166\\phase_b1_step4096_recovery_v2_raw_progress.jsonl",
+    "raw_progress_ledger_source": "E:\\Project\\python\\Axon_v2.6Exp\\src\\loop166\\raw_progress_ledger.py",
+    "raw_progress_ledger_tests": "E:\\Project\\python\\Axon_v2.6Exp\\tests\\test_loop166_raw_progress_ledger.py",
+    "supervisor": "E:\\Project\\python\\Axon_v2.6Exp\\scripts\\run_loop166_phase_b1_step4096_recovery_v2_supervisor.py",
+    "windows_job": "E:\\Project\\python\\Axon_v2.6Exp\\src\\loop166\\windows_job.py",
+    "powershell_launcher": "E:\\Project\\python\\Axon_v2.6Exp\\scripts\\run_loop166_phase_b1_step4096_recovery_v2_detached.ps1",
+    "supervisor_tests": "E:\\Project\\python\\Axon_v2.6Exp\\tests\\test_loop166_recovery_v2_supervisor.py",
+    "windows_job_tests": "E:\\Project\\python\\Axon_v2.6Exp\\tests\\test_loop166_windows_job.py",
+    "supervisor_launch_receipt": "E:\\Project\\python\\Axon_v2.6Exp\\reports\\roadmap_9997\\loop166\\phase_b1_step4096_recovery_v2_launch_receipt.json",
+    "supervisor_exit_receipt": "E:\\Project\\python\\Axon_v2.6Exp\\reports\\roadmap_9997\\loop166\\phase_b1_step4096_recovery_v2_exit_receipt.json",
+    "stdout_log": "E:\\Project\\python\\Axon_v2.6Exp\\reports\\roadmap_9997\\loop166\\phase_b1_step4096_recovery_v2_stdout.log",
+    "stderr_log": "E:\\Project\\python\\Axon_v2.6Exp\\reports\\roadmap_9997\\loop166\\phase_b1_step4096_recovery_v2_stderr.log"
+  },
+  "canonical_invocation": {
+    "parent": {
+      "mode": "parent",
+      "argv": [
+        "E:\\Project\\python\\Axon_v2.6Exp\\vnev\\Scripts\\python.exe",
+        "E:\\Project\\python\\Axon_v2.6Exp\\scripts\\run_loop166_phase_b1_step4096_recovery_v2.py",
+        "--contract",
+        "E:\\Project\\python\\Axon_v2.6Exp\\manifests\\roadmap_9997\\loop166_code_section_foundation\\phase_b1_step4096_recovery_v2.json",
+        "--authorization",
+        "E:\\Project\\python\\Axon_v2.6Exp\\manifests\\roadmap_9997\\loop166_code_section_foundation\\phase_b1_step4096_recovery_v2_authorization.json",
+        "--folds",
+        "E:\\Project\\python\\Axon_v2.6Exp\\reports\\roadmap_9997\\loop164\\local_train_diagnostic_folds.jsonl",
+        "--folds-summary",
+        "E:\\Project\\python\\Axon_v2.6Exp\\reports\\roadmap_9997\\loop164\\local_train_diagnostic_folds_summary.json",
+        "--data-root",
+        "E:\\Project\\python\\Axon_v2.6Exp\\data\\random_20w_worktree",
+        "--source-tokenizer",
+        "E:\\Project\\python\\Axon_v2.6Exp\\reports\\roadmap_9997\\loop166\\phase_b1_tokenizer.json",
+        "--source-checkpoint",
+        "E:\\Project\\python\\Axon_v2.6Exp\\models\\roadmap_9997\\loop166\\phase_b1_tiny_mlm.pt",
+        "--checkpoint-output",
+        "E:\\Project\\python\\Axon_v2.6Exp\\models\\roadmap_9997\\loop166\\phase_b1_step4096_recovery_v2_tiny_mlm.pt",
+        "--report-output",
+        "E:\\Project\\python\\Axon_v2.6Exp\\reports\\roadmap_9997\\loop166\\phase_b1_step4096_recovery_v2_report.json"
+      ]
+    },
+    "internal_modes": {
+      "allowed_flags": ["--recovery-worker", "--final-verify-worker"],
+      "direct_user_invocation_allowed": false,
+      "must_inherit_new_authorization_marker_and_nonce": true,
+      "must_revalidate_runtime_paths_sources_lineage_and_lease": true
+    },
+    "unlisted_arguments_allowed": false,
+    "path_alias_or_symlink_allowed": false,
+    "working_directory": "E:\\Project\\python\\Axon_v2.6Exp"
+  },
+  "one_shot_recovery_lease": {
+    "lease_id": "loop166-b1-step4096-recovery-v2",
+    "consumption_marker_absolute": "E:\\Project\\python\\Axon_v2.6Exp\\reports\\roadmap_9997\\loop166\\phase_b1_step4096_recovery_v2_consumed.json",
+    "marker_must_not_exist_before_recovery_start": true,
+    "consume_before_any_raw_open": true,
+    "overwrite_delete_rename_or_reuse_marker_allowed": false,
+    "failed_attempt_consumes_lease": true,
+    "same_lease_retry_allowed": false,
+    "all_modes_must_bind_same_marker_content_sha256": true
+  },
+  "handoff_nonce": {
+    "minimum_entropy_bits": 256,
+    "direct_cli_value_allowed": false,
+    "plaintext_persistence_allowed": false,
+    "plaintext_child_handoff_channel": "environment_only",
+    "final_verify_must_prove_nonce_possession": true
+  },
+  "origin_checkpoint_authority": {
+    "load_policy": "weights_only",
+    "completed_optimizer_steps": 4096,
+    "next_permutation_cursor": 16384,
+    "origin_nonce_plaintext_or_possession_required": false,
+    "raw_commitment_sha256": "880b9cb7a79f5253b4d7562280baeb9e8543ccae6f89791a8a97a3da91159ffc",
+    "compact_commitment_sha256": "325119a0a5f7bb548b23112d16ecce7c2d43b9e9986c18e3061eaaa2bd77f13c",
+    "shuffle_commitment_sha256": "aa79b33bdf73ca13006f5b9772f73dd4d4d35fe43c8cd2fe61b07b5b2a9569ad"
+  },
+  "bindings": {
+    "incident": {
+      "path": "E:\\Project\\python\\Axon_v2.6Exp\\manifests\\roadmap_9997\\loop166_code_section_foundation\\phase_b1_step4096_recovery_external_restart.json",
+      "sha256": "708e7c8c015dda2353c9ff4feb19e59130cfaa17b1de41d9eb4970c964fdfc9b"
+    },
+    "prior_incident": {
+      "path": "E:\\Project\\python\\Axon_v2.6Exp\\manifests\\roadmap_9997\\loop166_code_section_foundation\\phase_b1_resume_lineage_failure.json",
+      "sha256": "4f012e8730e46261329126f6dd86cc14e87d14c5a5d9a6b1f34e320a0fa99361"
+    },
+    "original_authorization": {
+      "path": "E:\\Project\\python\\Axon_v2.6Exp\\manifests\\roadmap_9997\\loop166_code_section_foundation\\phase_b1_run_authorization.json",
+      "sha256": "ce271be62e335631db39079ade914f9a111dd58b4c220b319260a0c8bc2564f7"
+    },
+    "original_contract": {
+      "path": "E:\\Project\\python\\Axon_v2.6Exp\\manifests\\roadmap_9997\\loop166_code_section_foundation\\phase_b1_full_outer_resource_cell.json",
+      "sha256": "5e4355ef0d37aacd358e7b8323a35d6eb6bc9935620eb9cded6f460d3a61b609"
+    },
+    "original_controller": {
+      "path": "E:\\Project\\python\\Axon_v2.6Exp\\scripts\\run_loop166_phase_b1_full_outer_resource_cell.py",
+      "sha256": "12be192088b408a31682b1275d56b29a301841a3563f7518c6371afa49c931bb"
+    },
+    "original_tests": {
+      "path": "E:\\Project\\python\\Axon_v2.6Exp\\tests\\test_loop166_phase_b1.py",
+      "sha256": "0c45a5be3ff077d463c37634bd860bb7f0f59b8228f044a6b69ea0a52d4073ee"
+    },
+    "original_consumed_marker": {
+      "path": "E:\\Project\\python\\Axon_v2.6Exp\\reports\\roadmap_9997\\loop166\\phase_b1_execution_consumed.json",
+      "sha256": "a4b0de3556f2f084736b78c1cdce647464300ac0c9f2c27271373320172cbd75"
+    },
+    "original_tokenizer": {
+      "path": "E:\\Project\\python\\Axon_v2.6Exp\\reports\\roadmap_9997\\loop166\\phase_b1_tokenizer.json",
+      "sha256": "73734f28f01b5045ff6f77beb9c07bd62e52102c5153bd94e21c28285659c7f6"
+    },
+    "origin_checkpoint": {
+      "path": "E:\\Project\\python\\Axon_v2.6Exp\\models\\roadmap_9997\\loop166\\phase_b1_tiny_mlm.pt",
+      "sha256": "82177e6d69ef1a2e17a1ea09dcb3e870a32e3305f92ea15bcff124fdc86f14a6"
+    },
+    "recovery_contract": {
+      "path": "E:\\Project\\python\\Axon_v2.6Exp\\manifests\\roadmap_9997\\loop166_code_section_foundation\\phase_b1_step4096_recovery_v2.json",
+      "sha256": "aaca7c9bd24711da5637e0be1f969859f04db480a20ff5b811e5d7db02ac5657"
+    },
+    "recovery_controller": {
+      "path": "E:\\Project\\python\\Axon_v2.6Exp\\scripts\\run_loop166_phase_b1_step4096_recovery_v2.py",
+      "sha256": "08b65b7f9f39e43da49cd7dabe3b3f5733da538596449167d88d08cec1978ded"
+    },
+    "windows_process_lineage": {
+      "path": "E:\\Project\\python\\Axon_v2.6Exp\\src\\loop166\\windows_process_lineage.py",
+      "sha256": "9bf5fa53c16a468e0fb1c990f9b83d01042d7aa700f42525e6c3ade4f0ba9599"
+    },
+    "recovery_tests": {
+      "path": "E:\\Project\\python\\Axon_v2.6Exp\\tests\\test_loop166_phase_b1_step4096_recovery_v2.py",
+      "sha256": "23cd31fa9783998e53c1b29c38d4bfc55ea100dd749e90a1bddbda17ef11ce47"
+    },
+    "lineage_tests": {
+      "path": "E:\\Project\\python\\Axon_v2.6Exp\\tests\\test_loop166_windows_process_lineage.py",
+      "sha256": "cb3bb05e14bd867dbbef3f75ef1bac63233095ff548e0833de9443df98d0dc78"
+    },
+    "raw_progress_ledger": {
+      "path": "E:\\Project\\python\\Axon_v2.6Exp\\src\\loop166\\raw_progress_ledger.py",
+      "sha256": "e71e37bb86728c9cc49d9a0f8c214e9a99ffe77a1eb75cc7d33e70ac616c00d8"
+    },
+    "raw_progress_ledger_tests": {
+      "path": "E:\\Project\\python\\Axon_v2.6Exp\\tests\\test_loop166_raw_progress_ledger.py",
+      "sha256": "0b64054afc1c5d643cde3f23dc012914ce9339409877c4e4cc6b68c152526141"
+    },
+    "supervisor": {
+      "path": "E:\\Project\\python\\Axon_v2.6Exp\\scripts\\run_loop166_phase_b1_step4096_recovery_v2_supervisor.py",
+      "sha256": "6d5e1568bc14c8e08868dadcc66de2b748fa390fc5040df8ac6433fd7d5738f1"
+    },
+    "windows_job": {
+      "path": "E:\\Project\\python\\Axon_v2.6Exp\\src\\loop166\\windows_job.py",
+      "sha256": "251d03ea98bfbf8384225a9691a23fb0c3e515dc5b204e40d303f2914f853620"
+    },
+    "powershell_launcher": {
+      "path": "E:\\Project\\python\\Axon_v2.6Exp\\scripts\\run_loop166_phase_b1_step4096_recovery_v2_detached.ps1",
+      "sha256": "d6040cb9af9a05738dae15618dc62006f09bdfae8a5e0fe05f9d1c0951a567ad"
+    },
+    "supervisor_tests": {
+      "path": "E:\\Project\\python\\Axon_v2.6Exp\\tests\\test_loop166_recovery_v2_supervisor.py",
+      "sha256": "6e6fe3e664c3d724d2154a358d7c044f3064a893d9449af607896a3aca1c81d6"
+    },
+    "windows_job_tests": {
+      "path": "E:\\Project\\python\\Axon_v2.6Exp\\tests\\test_loop166_windows_job.py",
+      "sha256": "e0324e5213779e0fb81372e5ce256794efa52ed181897b4aa21b80a3ac0d5bf2"
+    },
+    "recovery_v1_contract": {
+      "path": "E:\\Project\\python\\Axon_v2.6Exp\\manifests\\roadmap_9997\\loop166_code_section_foundation\\phase_b1_step4096_recovery.json",
+      "sha256": "15d94c9ab63b75cdc56e11abf3d05f6e4eb54a5727eac3d9e849215ffcdd0391"
+    },
+    "recovery_v1_authorization": {
+      "path": "E:\\Project\\python\\Axon_v2.6Exp\\manifests\\roadmap_9997\\loop166_code_section_foundation\\phase_b1_step4096_recovery_authorization.json",
+      "sha256": "c156db642862b3362de615bf460cc6274f682c172d81ab1ccafac3a7da027f88"
+    },
+    "recovery_v1_controller": {
+      "path": "E:\\Project\\python\\Axon_v2.6Exp\\scripts\\run_loop166_phase_b1_step4096_recovery.py",
+      "sha256": "3ec5f8e8bc2987928dffa3a47da02a5f07db4228323f1b3748ac4498564c1ab0"
+    },
+    "recovery_v1_windows_process_lineage": {
+      "path": "E:\\Project\\python\\Axon_v2.6Exp\\src\\loop166\\windows_process_lineage.py",
+      "sha256": "9bf5fa53c16a468e0fb1c990f9b83d01042d7aa700f42525e6c3ade4f0ba9599"
+    },
+    "recovery_v1_tests": {
+      "path": "E:\\Project\\python\\Axon_v2.6Exp\\tests\\test_loop166_phase_b1_step4096_recovery.py",
+      "sha256": "b251c0d17a7452c95b4034c31c48def9c1c34baa7382ce115e4b5bfaf65dc389"
+    },
+    "recovery_v1_lineage_tests": {
+      "path": "E:\\Project\\python\\Axon_v2.6Exp\\tests\\test_loop166_windows_process_lineage.py",
+      "sha256": "cb3bb05e14bd867dbbef3f75ef1bac63233095ff548e0833de9443df98d0dc78"
+    },
+    "recovery_v1_consumed_marker": {
+      "path": "E:\\Project\\python\\Axon_v2.6Exp\\reports\\roadmap_9997\\loop166\\phase_b1_step4096_recovery_consumed.json",
+      "sha256": "2108a4c963f4964da52733139e1bc182363ebfcb1c51093c00f96f751fa64e3b"
+    }
+  },
+  "runtime_source_closure": {
+    "status": "complete",
+    "pending_bindings": [],
+    "all_sources_must_match_before_authorization": true,
+    "execution_with_pending_value_allowed": false
+  },
+  "raw_scope": {
+    "outer_holdout_raw_opens_allowed": 0,
+    "outer_holdout_raw_bytes_allowed": 0,
+    "outer_fit_folds": [1, 2, 3, 4],
+    "original_confirmed_full_fit_raw_passes": 1,
+    "recovery_v1_full_fit_raw_passes_minimum": 0,
+    "recovery_v1_full_fit_raw_passes_maximum": 1,
+    "recovery_v1_charged_full_pass_equivalents": 1,
+    "charged_full_pass_equivalents_before_v2": 2,
+    "recovery_v2_full_fit_rebuild_passes_allowed": 1,
+    "successful_completed_full_fit_raw_passes_minimum": 2,
+    "successful_completed_full_fit_raw_passes_maximum": 3,
+    "successful_charged_full_fit_raw_pass_equivalents": 3,
+    "physical_completion_count_exact": false,
+    "same_lease_rescan_allowed": false,
+    "final_verify_raw_access_allowed": false
+  },
+  "resource_authority": {
+    "source_checkpoint_cumulative_wall_seconds": 2554.2020570000022,
+    "prior_failed_handoff_debit_seconds": 300.0,
+    "v1_marker_parent_elapsed_seconds": 1.329434699997364,
+    "v1_marker_cumulative_wall_seconds": 2855.5314916999996,
+    "conservative_external_restart_debit_seconds": 900.0,
+    "recovery_budget_base_seconds": 3755.5314916999996,
+    "maximum_cumulative_wall_seconds": 28800.0,
+    "budget_reset_allowed": false
+  },
+  "raw_progress_ledger_authority": {
+    "path": "reports/roadmap_9997/loop166/phase_b1_step4096_recovery_v2_raw_progress.jsonl",
+    "record_schema": "axon_loop166_raw_progress_ledger_record_v1",
+    "genesis_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "create_before_first_raw_intent": true,
+    "append_only_and_fsync_each_record": true,
+    "existing_ledger_reopen_allowed": false,
+    "raw_or_token_payload_allowed": false,
+    "final_complete_validation_required": true
+  },
+  "supervisor_authority": {
+    "required": true,
+    "launch_receipt_path": "reports/roadmap_9997/loop166/phase_b1_step4096_recovery_v2_launch_receipt.json",
+    "exit_receipt_path": "reports/roadmap_9997/loop166/phase_b1_step4096_recovery_v2_exit_receipt.json",
+    "launch_schema": "axon_loop166_phase_b1_step4096_recovery_v2_supervisor_launch_v1",
+    "exit_schema": "axon_loop166_phase_b1_step4096_recovery_v2_supervisor_exit_v1",
+    "timeout_seconds": 25044.0,
+    "maximum_combined_log_bytes": 67108864,
+    "environment_handoff_fields": [
+      "AXON_B1_RECOVERY_V2_SUPERVISOR_LAUNCH_ID",
+      "AXON_B1_RECOVERY_V2_SUPERVISOR_PID"
+    ],
+    "pre_resume_job_assignment_required": true,
+    "marker_binds_launch_receipt_sha256": true
+  },
+  "artifact_authority": {
+    "old_artifact_overwrite_delete_or_reuse_allowed": false,
+    "new_checkpoint_path_only": "models/roadmap_9997/loop166/phase_b1_step4096_recovery_v2_tiny_mlm.pt",
+    "new_report_path_only": "reports/roadmap_9997/loop166/phase_b1_step4096_recovery_v2_report.json",
+    "new_receipt_path_only": "reports/roadmap_9997/loop166/phase_b1_step4096_recovery_v2_final_verify_receipt.json",
+    "new_raw_progress_ledger_path_only": "reports/roadmap_9997/loop166/phase_b1_step4096_recovery_v2_raw_progress.jsonl"
+  },
+  "allowed_modes": {
+    "parent": {
+      "may_open_raw": false
+    },
+    "recovery_worker": {
+      "may_open_outer_fit_raw_once": true,
+      "may_resume_from_cursor": 16384
+    },
+    "final_verify_worker": {
+      "may_open_raw": false
+    }
+  },
+  "forbidden": {
+    "outer_holdout_raw_access": true,
+    "val_test_or_full_access": true,
+    "quality_metrics": true,
+    "threshold_operations": true,
+    "public_key_dependency": true,
+    "same_lease_retry": true,
+    "raw_or_token_payload_persistence": true,
+    "original_artifact_mutation": true
+  },
+  "grant_prerequisites": {
+    "user_direction_received": true,
+    "v1_external_restart_incident_frozen": true,
+    "v1_lease_and_sources_immutable": true,
+    "v1_missing_outputs_remain_absent": true,
+    "v2_controller_and_tests_frozen": true,
+    "raw_progress_ledger_protocol_frozen": true,
+    "windows_job_supervisor_frozen": true,
+    "resource_budget_debited_conservatively": true,
+    "all_bindings_closed": true
+  },
+  "ready_for": {
+    "recovery_execution": true,
+    "final_verify_execution": true,
+    "five_fold_oof": false,
+    "val_test_or_full": false,
+    "promotion": false,
+    "blocked_by": []
+  },
+  "decision": "authorize_one_step4096_recovery_v2_continuation_after_v1_external_termination",
+  "research_champion": "Loop151"
+}

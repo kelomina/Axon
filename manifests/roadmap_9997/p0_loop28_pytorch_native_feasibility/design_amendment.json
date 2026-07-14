@@ -1,0 +1,79 @@
+{
+  "schema": "axon_loop28_pytorch_native_feasibility_design_amendment_v1",
+  "loop_id": "p0_loop28_pytorch_native_feasibility_001",
+  "created_at_utc": "2026-07-11T23:01:00Z",
+  "bindings": {
+    "proposal_sha256": "6b7af1c9d9db275041a924e9f275705a20fdc708edc84130343434f7eac8a5e4",
+    "authorization_sha256": "e4ee1b84bf9abba5efb172047b1b5ad8d7b28fb8bc863f401457192e6ed96589",
+    "preflight_sha256": "825ab5a1ec25e885bcf11602d70f654659bde75063c937b704435a7bd78e8119"
+  },
+  "reason": "Independent compiler and numerical review found two material facts after the original proposal: TorchScript is unsupported on Python 3.14 in the installed wheel and cannot validate the C++ toolchain, while the PyTorch 2.12 Windows AOTI package loader may recursively remove the process TEMP directory.",
+  "superseded_rules": {
+    "old_toolchain_control": "TorchScript/LibTorch load",
+    "new_toolchain_control": "C++ direct ATen Linear/GELU/TopK with the proposal's exact constants and input",
+    "torchscript_role": "optional serializer diagnostic only; failure does not invalidate the C++ toolchain and cannot promote TorchScript to the production route",
+    "old_aoti_link": "Torch plus torch_cpu plus c10 plus torch_python plus Python",
+    "new_aoti_link": "torch_cpu.lib plus c10.lib only",
+    "python_or_torch_python_dependency_in_cpp_aoti": "hard failure",
+    "torch_or_cuda_dependency_in_cpp_aoti": "hard failure for the lean-host claim"
+  },
+  "loader_safety_contract": {
+    "normal_user_TEMP_use": "forbidden",
+    "python_and_cpp_aoti_loads": "child processes only",
+    "TEMP_and_TMP": "one fresh empty work-root-confined directory per process",
+    "sentinel": "one separately hashed file outside disposable TEMP must survive unchanged",
+    "outputs": "must remain outside disposable TEMP",
+    "compiler_on_cpp_runtime_PATH": false,
+    "python_on_cpp_runtime_PATH": false,
+    "expected_cleanup": "the disposable TEMP root may be removed; no parent or sibling may change"
+  },
+  "package_safety_contract": {
+    "precompiled_pyd_count": 1,
+    "duplicate_archive_members_allowed": false,
+    "absolute_or_parent_archive_paths_allowed": false,
+    "runtime_compile_fallback_allowed": false,
+    "generated_pyd_dependency_audit_required_before_load": true,
+    "forbidden_cpp_dependencies": [
+      "torch_python.dll",
+      "python314.dll",
+      "torch.dll",
+      "torch_cuda.dll",
+      "cudart64_13.dll",
+      "cudnn64_9.dll",
+      "cublas64_13.dll",
+      "nvcuda.dll"
+    ]
+  },
+  "runtime_contract": {
+    "aoti_metadata_AOTI_DEVICE_KEY": "cpu",
+    "fresh_process_count_per_native_lane": 3,
+    "repeat_count_per_process": 3,
+    "AOTI_RUNTIME_CHECK_INPUTS": "1",
+    "OMP_NUM_THREADS": "1",
+    "MKL_NUM_THREADS": "1",
+    "all_topk_indices_exact": true,
+    "all_float_output_max_absolute_delta": 0.000001,
+    "within_and_cross_process_bit_exact": true
+  },
+  "revised_success_decision": "aoti_cpu_packaging_native_load_feasible_current_host",
+  "added_exit_decisions": [
+    "lean_aten_control_link_failed_toolchain_invalid",
+    "lean_aoti_loader_link_surface_missing_no_package",
+    "aoti_package_missing_precompiled_pyd_no_load",
+    "aoti_dependency_leakage_no_load",
+    "aoti_runtime_temp_safety_failure",
+    "aoti_numeric_or_route_mismatch",
+    "torchscript_serializer_unsupported_nonblocking"
+  ],
+  "claim_boundary": {
+    "tiny_runtime_feasibility_claim_allowed": true,
+    "current_host_only": true,
+    "cross_version_topk_stability_claim_allowed": false,
+    "axon_checkpoint_access_allowed": false,
+    "axon_runtime_parity_claim_allowed": false,
+    "population_parity_claim_allowed": false,
+    "quality_claim_allowed": false,
+    "certification_claim_allowed": false
+  },
+  "decision": "authorize_lean_aten_control_and_temp_contained_aoti_feasibility"
+}

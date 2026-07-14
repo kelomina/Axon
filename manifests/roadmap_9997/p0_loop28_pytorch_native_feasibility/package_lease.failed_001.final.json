@@ -1,0 +1,20 @@
+{
+  "schema": "axon_loop28_pytorch_native_package_lease_v1",
+  "loop_id": "p0_loop28_pytorch_native_feasibility_001",
+  "lease_id": "p0_loop28_pytorch_native_feasibility_001_package_attempt_001",
+  "created_at_utc": "2026-07-11T23:42:42Z",
+  "status": "consumed_before_execution",
+  "authorization_path": "manifests/roadmap_9997/p0_loop28_pytorch_native_feasibility/package_authorization.json",
+  "authorization_sha256": "ea806ec705eff319c28e2da9c7c68aeec779a3eca257785b4a66245ca8bc4a56",
+  "implementation_manifest_sha256": "45d38299623ab32e701d6bf1408a509caa19513287c239b3866532cd405bd3f4",
+  "build_receipt_sha256": "2ef9fc018cf72c0552902d4e9cca2190b4c5e983bdd15d4917dd5d926043dc77",
+  "frozen_binary_sha256": {
+    "aten": "595705bdc0716b7323a0da71b424470c0d474a6556ac7fa3c6507e5d4edfd524",
+    "aoti": "097a41e61bfceeeea4592ff2f1dd079e3b447275b677980b7eceb3f02a5dcca0"
+  },
+  "ready_command": "vnev/Scripts/python.exe scripts/run_loop28_pytorch_native_feasibility.py package",
+  "consumed_path": "manifests/roadmap_9997/p0_loop28_pytorch_native_feasibility/package_lease.final.json",
+  "failed_lease_reuse": false,
+  "single_use": true,
+  "original_lease_sha256": "d033f985440a49bf12ba6cf8ce7de453132d2fc18f9adc39563bdf7ccf36e059"
+}

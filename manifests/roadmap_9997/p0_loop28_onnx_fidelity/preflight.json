@@ -1,0 +1,180 @@
+{
+  "schema": "axon_loop28_onnx_fidelity_preflight_v1",
+  "loop_id": "p0_loop28_onnx_fidelity_001",
+  "generated_at_utc": "2026-07-11T21:33:04Z",
+  "amended_at_utc": "2026-07-11T22:01:10Z",
+  "amendment_scope": "Add the completed ONNX checker, source-level numerical-risk findings, clean standalone-probe build, and identity-only probe I/O smoke before the preflight hash is consumed by the implementation manifest.",
+  "git": {
+    "head": "2070bb979e3510d6c1459edd8682eedc11055718",
+    "branch": "codex/exp/loop145-noise-focus",
+    "dirty_worktree_acknowledged": true,
+    "unrelated_changes_must_be_preserved": true
+  },
+  "governance_binding": {
+    "proposal": {
+      "path": "manifests/roadmap_9997/p0_loop28_onnx_fidelity/proposal.json",
+      "sha256": "93a53c8cf8aa46b9ee228e4e18be308b4dfe1cda922ab32cc446d121d1117667"
+    },
+    "authorization": {
+      "path": "manifests/roadmap_9997/p0_loop28_onnx_fidelity/authorization.json",
+      "sha256": "1e0b04ce578f7bf36480e7a4daaed8ba6d02da6e859601cf3179a884e76c88d1"
+    },
+    "parent_closure": {
+      "path": "manifests/roadmap_9997/p0_loop28_parity_remediation/post_remediation_manifest.json",
+      "sha256": "005e3a37866818dc915cb4b0244ac6659c7f73ee647c336eb857f4220016e55d",
+      "verification_result": "19 artifacts; synthetic_pre_run_blocked_closure_frozen_no_raw_execution"
+    }
+  },
+  "runtime": {
+    "python": "3.14.4",
+    "platform": "Windows-11-10.0.29617-SP0",
+    "torch": "2.12.0+cu132",
+    "onnx": "1.22.0",
+    "onnxscript": "0.7.0",
+    "numpy": "2.4.4",
+    "pefile": "2024.8.26",
+    "onnxruntime_native": "1.24.4",
+    "cmake": "4.2.3-msvc3",
+    "cmake_generator": "Visual Studio 18 2026",
+    "cpu_only_required": true
+  },
+  "standalone_probe_preimplementation_smoke": {
+    "scope": "temporary identity-only ONNX graph with zero or deterministic synthetic tensors",
+    "axon_checkpoint_loaded": false,
+    "frozen_axon_onnx_loaded": false,
+    "dataset_artifact_accessed": false,
+    "clean_release_build_passed": true,
+    "probe_sha256": "2c71659f1fb6c726560d28b22fb3d2107f50b9562fe78f2d0593716dfca93d5a",
+    "repeat_count": 3,
+    "repeated_outputs_bit_exact": true,
+    "output_names": ["logits", "byte_echo", "stat_positive"],
+    "output_dtypes": ["float32", "int64", "bool"],
+    "temporary_manifest_sha256": "cb7b61dff3da592f370a5f109d5bf5f8baafa92d0e76817cdba01c2457dae0e5",
+    "temporary_artifacts_retained": false,
+    "result": "passed"
+  },
+  "project_analysis": {
+    "doctor": "passed_with_windows_node_25.2.1",
+    "supported_sources": 0,
+    "scan_preview_stopped_after": 5000,
+    "architecture_coverage_claim_allowed": false,
+    "wsl_node_18_cli_note": "The WSL node executable cannot parse the current ProjectAnalysis bundle; the required Windows Node 25.2.1 doctor path passed."
+  },
+  "frozen_graph_facts": {
+    "checker": "passed",
+    "ir_version": 10,
+    "producer_name": "pytorch",
+    "producer_version": "2.12.0+cu132",
+    "actual_default_domain_opset": 18,
+    "node_count": 7067,
+    "initializer_count": 291,
+    "external_initializer_count": 201,
+    "value_info_count": 7483,
+    "topk_node_count": 62,
+    "graph_inputs": {
+      "byte_seq": ["batch", 8192],
+      "pe_features": ["batch", 256],
+      "stat_features": ["batch", 49]
+    },
+    "graph_outputs": {
+      "logits": [1, 2]
+    },
+    "metadata_declared_opset": 17,
+    "metadata_verified_with_onnxruntime": false,
+    "lineage_gap": "The sidecar records requested opset 17 and no successful ORT verification, while the frozen graph is stamped opset 18 and does not bind checkpoint, exporter, Torch, ONNX, or ORT hashes."
+  },
+  "checkpoint_static_facts": {
+    "max_byte_length": 8192,
+    "pe_feature_dim": 256,
+    "stat_feature_dim": 49,
+    "dsra_dim": 160,
+    "dsra_heads": 4,
+    "dsra_slots": 160,
+    "dsra_read_topk": 12,
+    "dsra_write_topk": 4,
+    "dsra_chunk_size": 512,
+    "fusion_type": "concat",
+    "dsra_arch_config": null,
+    "hard_read_effective_default": false,
+    "hard_write_effective_default": false,
+    "exact_read_effective_default": false,
+    "exact_write_effective_default": false,
+    "causal_implication": "Hard read/write routing is not active in this checkpoint. TopK index instability remains testable, but a hard-routing-only explanation is not supported."
+  },
+  "numerical_risk_evidence": {
+    "graph_operator_counts": {
+      "TopK": 62,
+      "ScatterElements": 120,
+      "Softmax": 79,
+      "Einsum": 94,
+      "Sin": 92,
+      "Cos": 92
+    },
+    "micro_kernel_observations": {
+      "sdpa_export_decomposition_max_absolute_delta": 5.96e-7,
+      "layernorm_formula_max_absolute_delta": 9.54e-7,
+      "single_ulp_can_flip_topk_boundary": true,
+      "duplicate_index_scatter_order_sensitive": true
+    },
+    "constant_fold_observation": {
+      "layer0_write_tau_onnx_float32": 5.597752571,
+      "current_eager_float32": 5.597752094,
+      "ulp_delta": 1
+    },
+    "causal_claim_allowed": false,
+    "working_hypothesis": "Fused-versus-decomposed kernel ULP drift or source-default lineage drift can change sparse support and be recurrently amplified by chunk-state scatter updates."
+  },
+  "baseline_integrity": {
+    "checkpoint_sha256": "96a1b1ece41dd7dd9142a0f7f4330da3a7938a26cca8b01e0e7c7a1074e5e3a4",
+    "onnx_graph_sha256": "3199b158fc8f7e3a53a516b2681aef8b5d5aa4a210baf66152fded72a3ff07f4",
+    "onnx_data_sha256": "4865d52d861d780627ca9aea4b16f83d8c2df62dd5b2136217d1e42547b8c7fa",
+    "onnx_metadata_sha256": "8acbadf4772e2b5eba29a85f77e193ebb94f851dc007b60e50f200fec089fd0c",
+    "onnxruntime_sha256": "b95efb2113b603bbbf3f191061c5516a871ed546893c820e4f3b7b6c358dbf2a",
+    "fixture_contract_sha256": "e9360ac16ef5c5ea384788ce9f58d99e967d34c6ee8c53f79e96c9c240661d0c",
+    "config_source_sha256": "b4d592a2b453d86d7b865a1f3b610be46faf3d26f6f4c2aa5ed45d32c24fb85f",
+    "model_source_sha256": "bebaa61a0a9797631f8d8e1cc7f7c5142b3d37ba7b4cbcc2a48b2b481d612f8a",
+    "security_source_sha256": "7f17e01912e00099794cf427dc7c8fc410088ad683ed3f1f0a7a1cf7f913dea2",
+    "predict_api_source_sha256": "a9207224a777bb7abb38d75524f386f9fa818533e205e6594ab97de6f158daa2",
+    "dsra_init_sha256": "ffdc327e4aef2457023f0f5d597c12b8fe77e76a1140de6e7de4409c5f802435",
+    "dsra_domain_init_sha256": "9425d92e7a73985fe0d5325e931ac1e2724b21e20989902ac9e9ced709545763",
+    "dsra_arithmetic_source_sha256": "e6cd453c50284f373e4f94b1349ccca9032eee79706a173a4699cb325e9b9700",
+    "dsra_attention_spec_source_sha256": "02b848501367ccc2d8cd14c1db34e2d7d7a0a782765b80ee98c6b20c6c06b639",
+    "dsra_model_spec_source_sha256": "8af9f8cc172b992194e2a80ba3492372fb9795d43fea85e3fa38d204a40d437f",
+    "dsra_layer_source_sha256": "ffeef31e75645c690aae264746d591d323ffab977f7703c5deba80243d4a8921",
+    "dsra_model_source_sha256": "f55cdc9a5af73b05b247feafdf6c1f782d11b7aea449f8c2d6288e106db58f0b",
+    "mhdsra2_init_sha256": "7e11514cf6f2fddd457a9c3f02748a1b2c8b0ab5c282d7effd39029db84d9696",
+    "mhdsra2_source_sha256": "bd88cb9c8fbe8bea6e97b10adeed046591b8f60075c3a44332d33138e0733b1d",
+    "paged_memory_source_sha256": "25a4c93466381e335f0e7ac71d955bb6ccfcb8b500b568eeb6be30577f744b4e",
+    "kvd_init_sha256": "5cbbab3b526784391037f2c92c698e28700d7b2dbdd9b226011a9b1547011065",
+    "content_pe_source_sha256": "c8ae31d895ea746e154b88e5a2c1e47753f9cf5b322909222cf69f94e60b0a24",
+    "extractor_source_sha256": "1d456a0f0773e7ddec7540962feca4cb2862b806661bbfe82b45d693cadf312b",
+    "schema_names_source_sha256": "b46c2271f54c4991a0a49d71304c3141fa998afe5f0cb5dd52ac4c94e43c8681"
+  },
+  "output_preconditions": {
+    "implementation_manifest_present": false,
+    "localization_authorization_present": false,
+    "localization_lease_present": false,
+    "localization_evidence_present": false,
+    "post_manifest_present": false,
+    "exclusive_create_required": true
+  },
+  "access_boundary": {
+    "dataset_raw_accessed": false,
+    "split_metadata_accessed": false,
+    "cache_rows_accessed": false,
+    "heldout_accessed": false,
+    "prediction_or_metric_payload_accessed": false,
+    "training_or_fitting_performed": false,
+    "quality_metric_computed": false
+  },
+  "implementation_gate": {
+    "parent_closure_verified": true,
+    "baseline_hashes_match_authorization": true,
+    "static_environment_fingerprinted": true,
+    "lineage_gap_requires_localization": true,
+    "implementation_allowed": true,
+    "model_inference_allowed": false,
+    "requires_separate_localization_authorization": true
+  },
+  "decision": "synthetic_fidelity_tooling_implementation_ready"
+}

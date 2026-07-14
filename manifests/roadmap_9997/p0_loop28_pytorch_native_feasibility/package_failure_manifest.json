@@ -1,0 +1,152 @@
+{
+  "schema": "axon_loop28_pytorch_native_package_failure_manifest_v1",
+  "loop_id": "p0_loop28_pytorch_native_feasibility_001",
+  "generated_at_utc": "2026-07-12T00:10:00Z",
+  "lineage": {
+    "implementation_manifest_sha256": "45d38299623ab32e701d6bf1408a509caa19513287c239b3866532cd405bd3f4",
+    "cpp_build_receipt_sha256": "2ef9fc018cf72c0552902d4e9cca2190b4c5e983bdd15d4917dd5d926043dc77",
+    "package_controller_manifest_sha256": "d5164f3d785419fa9eec977580e55f4e8fa5e52ea798765a9a6691d8c5510dd7",
+    "package_authorization_sha256": "113ab7143fd2103fd70ddb8157be590f0084864fe1825a1f784ea6c5ba33ff2f",
+    "package_final_lease_sha256": "27a8adfa02ccf2eda30efb0ef57082bf870e663c7e5a28ca557bc149500ceeb7"
+  },
+  "outcome": {
+    "direct_aten_and_aoti_hosts_built": true,
+    "torch_export_completed": true,
+    "aoti_compile_and_package_call_count": 1,
+    "aoti_package_created": false,
+    "torchscript_export_call_count": 0,
+    "package_load_count": 0,
+    "native_runtime_execution_count": 0,
+    "checkpoint_or_onnx_load_count": 0,
+    "raw_split_cache_heldout_access_count": 0,
+    "protected_stage_network_request_count": 0,
+    "post_failure_research_request_count": 6,
+    "quality_metric_count": 0,
+    "failure_class": "protected_package_compile_toolchain_locale_integration_failure",
+    "failure_root_cause": "confirmed_pytorch_compiler_probe_decoder_console_codepage_mismatch",
+    "upstream_successor_basis": "upstream_v213_decoder_fix_identified_successor_still_requires_new_loop"
+  },
+  "integrity": {
+    "artifact_count": 15,
+    "all_required_present": true,
+    "positive_package_artifacts_absent": true,
+    "runtime_artifacts_absent": true,
+    "output_replacement_allowed": false
+  },
+  "artifacts": [
+    {
+      "name": "implementation_manifest",
+      "role": "frozen_source_closure",
+      "path": "manifests/roadmap_9997/p0_loop28_pytorch_native_feasibility/implementation_manifest.json",
+      "size_bytes": 6337,
+      "sha256": "45d38299623ab32e701d6bf1408a509caa19513287c239b3866532cd405bd3f4"
+    },
+    {
+      "name": "cpp_build_receipt",
+      "role": "successful_lean_cpp_build",
+      "path": "reports/roadmap_9997/p0_loop28_pytorch_native_feasibility/cpp_build_receipt.final.json",
+      "size_bytes": 6961,
+      "sha256": "2ef9fc018cf72c0552902d4e9cca2190b4c5e983bdd15d4917dd5d926043dc77"
+    },
+    {
+      "name": "controller_manifest",
+      "role": "package_controller_closure",
+      "path": "manifests/roadmap_9997/p0_loop28_pytorch_native_feasibility/package_controller_manifest.json",
+      "size_bytes": 2987,
+      "sha256": "d5164f3d785419fa9eec977580e55f4e8fa5e52ea798765a9a6691d8c5510dd7"
+    },
+    {
+      "name": "negative_authorization",
+      "role": "negative_closure_authority",
+      "path": "manifests/roadmap_9997/p0_loop28_pytorch_native_feasibility/negative_closure_authorization.json",
+      "size_bytes": 3395,
+      "sha256": "15c9423f8b074d034ed85fc7d7b180325f6a08f935cf4b6427d4ccfe3ba46b83"
+    },
+    {
+      "name": "package_authorization",
+      "role": "protected_attempt_authority",
+      "path": "manifests/roadmap_9997/p0_loop28_pytorch_native_feasibility/package_authorization.json",
+      "size_bytes": 5891,
+      "sha256": "113ab7143fd2103fd70ddb8157be590f0084864fe1825a1f784ea6c5ba33ff2f"
+    },
+    {
+      "name": "package_final_lease",
+      "role": "consumed_single_use_lease",
+      "path": "manifests/roadmap_9997/p0_loop28_pytorch_native_feasibility/package_lease.final.json",
+      "size_bytes": 1509,
+      "sha256": "27a8adfa02ccf2eda30efb0ef57082bf870e663c7e5a28ca557bc149500ceeb7"
+    },
+    {
+      "name": "package_failure",
+      "role": "base_inductor_failure",
+      "path": "reports/roadmap_9997/p0_loop28_pytorch_native_feasibility/package_failure.final.json",
+      "size_bytes": 361,
+      "sha256": "6fb22b6747d15b37e5c6ce67bb104df97eff594fb76c1fa41c7fd644c3333d97"
+    },
+    {
+      "name": "controller_failure",
+      "role": "controller_failure_record",
+      "path": "reports/roadmap_9997/p0_loop28_pytorch_native_feasibility/package_controller_failure.final.json",
+      "size_bytes": 504,
+      "sha256": "1fdec80c6149531a911b222d7d0b68a2a2e9cef0a5f667e1e7690e724425e7f4"
+    },
+    {
+      "name": "attempt_001_diagnostic",
+      "role": "administrative_attempt",
+      "path": "reports/roadmap_9997/p0_loop28_pytorch_native_feasibility/package_attempt_001_diagnostic.final.json",
+      "size_bytes": 3141,
+      "sha256": "590099120d81d6da31f1e2c301817301336750f618afecaa162c1742d07c296d"
+    },
+    {
+      "name": "attempt_002_diagnostic",
+      "role": "protected_attempt_diagnosis",
+      "path": "reports/roadmap_9997/p0_loop28_pytorch_native_feasibility/package_attempt_002_diagnostic.final.json",
+      "size_bytes": 5177,
+      "sha256": "a542ed54593e6524030d18e064046c68a4768d73aadb1042862d6d349f28ae05"
+    },
+    {
+      "name": "decode_diagnostic",
+      "role": "compiler_encoding_root_cause",
+      "path": "reports/roadmap_9997/p0_loop28_pytorch_native_feasibility/compiler_decode_diagnostic.final.json",
+      "size_bytes": 2836,
+      "sha256": "6ca1a3845659c365c20a38318e379e1b32cc8ac366702b1a46eb6cda297ad6aa"
+    },
+    {
+      "name": "upstream_research",
+      "role": "official_upstream_comparison",
+      "path": "reports/roadmap_9997/p0_loop28_pytorch_native_feasibility/upstream_decode_compatibility_research.final.json",
+      "size_bytes": 2933,
+      "sha256": "280c8fc1792ae4affaf6252a0c0dfbd3f053a7d544100d1832b267a6678fa608"
+    },
+    {
+      "name": "partial_input",
+      "role": "only_retained_tiny_artifact",
+      "path": "artifacts/roadmap_9997/p0_loop28_pytorch_native_feasibility/tiny_v1/input.f32.bin",
+      "size_bytes": 64,
+      "sha256": "caa371218bdbb95cb73bfe7ab65ec2f8f69222a747fca8f889b2bdc3e693d28b"
+    },
+    {
+      "name": "negative_builder",
+      "role": "negative_manifest_builder",
+      "path": "scripts/build_loop28_pytorch_native_negative_closure.py",
+      "size_bytes": 20842,
+      "sha256": "858c85dcf657acc2cc622877627468b391ac5a471e40400c5ee5762d45375adc"
+    },
+    {
+      "name": "negative_builder_test",
+      "role": "focused_negative_closure_tests",
+      "path": "tests/test_build_loop28_pytorch_native_negative_closure.py",
+      "size_bytes": 2333,
+      "sha256": "a9081b50241cf15a7d46fef18b0ffccc90103228e44c36e6754f57cfd5f0e656"
+    }
+  ],
+  "claim_boundary": {
+    "negative_toolchain_integration_claim_allowed": true,
+    "tiny_package_generation_claim_allowed": false,
+    "tiny_runtime_feasibility_claim_allowed": false,
+    "axon_runtime_parity_claim_allowed": false,
+    "quality_claim_allowed": false,
+    "certification_claim_allowed": false
+  },
+  "decision": "tiny_aoti_package_generation_closed_utf8_cp936_compiler_probe_failure_no_load"
+}

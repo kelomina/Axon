@@ -1,0 +1,133 @@
+{
+  "schema": "axon_loop28_onnx_operator_remediation_implementation_manifest_v1",
+  "loop_id": "p0_loop28_onnx_operator_remediation_001",
+  "generated_at_utc": "2026-07-11T22:49:41Z",
+  "contract": {
+    "structured_chain_validation": true,
+    "duplicate_json_keys_rejected": true,
+    "static_only": true,
+    "candidate_generation_forbidden": true,
+    "output_replace_allowed": false,
+    "manifest_self_hashed": false
+  },
+  "lineage": {
+    "proposal_sha256": "21e0699a3c6ceb4667bdb1acd7152ebf0d3029fa9b9fb3908e532fbe93a70100",
+    "authorization_sha256": "ddfcf4a3cd3a2832bdc3cf8ed914ca5f319bd950ee8d1610f30729509cd0879c",
+    "amendment_sha256": "e8080061764a3312e09f353a192314f110e70b3e1f92ff354aeb0c3b8d970797",
+    "preflight_sha256": "0d9544092f110f492b9093364776cb62925ea94bdfc97fef50e2773a67f3881a",
+    "parent_closure_sha256": "e36b720de8a20d137d740712242e67f4a102857b2365fdd2fdb7c8c5b2a5b719",
+    "parent_evidence_sha256": "a3caf51b5354fb6c3725c09cb25bc2360ce91322934708e586d1bb576e72ced0"
+  },
+  "proof_summary": {
+    "fixture_count": 4,
+    "shared_tied_occurrence": 15,
+    "shared_tied_node_index": 1739,
+    "success_branch_reachable": false
+  },
+  "validation_contract": {
+    "focused_pytest": {
+      "command": "vnev/Scripts/python.exe -m pytest -q tests/test_remediate_loop28_onnx_operator.py tests/test_build_loop28_onnx_operator_manifest.py",
+      "required_pass_count": 8
+    },
+    "ruff_check": {
+      "command": "vnev/Scripts/python.exe -m ruff check scripts/remediate_loop28_onnx_operator.py scripts/build_loop28_onnx_operator_manifest.py tests/test_remediate_loop28_onnx_operator.py tests/test_build_loop28_onnx_operator_manifest.py",
+      "required": true
+    },
+    "ruff_format": {
+      "command": "vnev/Scripts/python.exe -m ruff format --check scripts/remediate_loop28_onnx_operator.py scripts/build_loop28_onnx_operator_manifest.py tests/test_remediate_loop28_onnx_operator.py tests/test_build_loop28_onnx_operator_manifest.py",
+      "required": true
+    },
+    "py_compile": {
+      "command": "vnev/Scripts/python.exe -m py_compile scripts/remediate_loop28_onnx_operator.py scripts/build_loop28_onnx_operator_manifest.py tests/test_remediate_loop28_onnx_operator.py tests/test_build_loop28_onnx_operator_manifest.py",
+      "required": true
+    }
+  },
+  "artifacts": [
+    {
+      "name": "proposal",
+      "role": "frozen_single_candidate_proposal",
+      "path": "manifests/roadmap_9997/p0_loop28_onnx_operator_remediation/proposal.json",
+      "size_bytes": 8131,
+      "sha256": "21e0699a3c6ceb4667bdb1acd7152ebf0d3029fa9b9fb3908e532fbe93a70100"
+    },
+    {
+      "name": "authorization",
+      "role": "a1_scope_authorization",
+      "path": "manifests/roadmap_9997/p0_loop28_onnx_operator_remediation/authorization.json",
+      "size_bytes": 5436,
+      "sha256": "ddfcf4a3cd3a2832bdc3cf8ed914ca5f319bd950ee8d1610f30729509cd0879c"
+    },
+    {
+      "name": "preflight_amendment",
+      "role": "fail_closed_scope_reduction",
+      "path": "manifests/roadmap_9997/p0_loop28_onnx_operator_remediation/preflight_amendment.json",
+      "size_bytes": 2829,
+      "sha256": "e8080061764a3312e09f353a192314f110e70b3e1f92ff354aeb0c3b8d970797"
+    },
+    {
+      "name": "preflight",
+      "role": "formal_exact_tie_blocker",
+      "path": "manifests/roadmap_9997/p0_loop28_onnx_operator_remediation/preflight.json",
+      "size_bytes": 6514,
+      "sha256": "0d9544092f110f492b9093364776cb62925ea94bdfc97fef50e2773a67f3881a"
+    },
+    {
+      "name": "parent_closure",
+      "role": "immutable_fidelity_parent",
+      "path": "manifests/roadmap_9997/p0_loop28_onnx_fidelity/post_manifest.json",
+      "size_bytes": 15473,
+      "sha256": "e36b720de8a20d137d740712242e67f4a102857b2365fdd2fdb7c8c5b2a5b719"
+    },
+    {
+      "name": "parent_evidence",
+      "role": "immutable_route_evidence",
+      "path": "reports/roadmap_9997/p0_loop28_onnx_fidelity/localization_evidence.final.json",
+      "size_bytes": 2013412,
+      "sha256": "a3caf51b5354fb6c3725c09cb25bc2360ce91322934708e586d1bb576e72ced0"
+    },
+    {
+      "name": "static_auditor",
+      "role": "no_model_load_preflight_tool",
+      "path": "scripts/remediate_loop28_onnx_operator.py",
+      "size_bytes": 18484,
+      "sha256": "d31b2b05c9aca5345b768bebde3fc1e77a8574d734abbcec02954dc86af0ed49"
+    },
+    {
+      "name": "static_auditor_test",
+      "role": "focused_preflight_tests",
+      "path": "tests/test_remediate_loop28_onnx_operator.py",
+      "size_bytes": 2659,
+      "sha256": "5bfbf15a483595686e9e5901906d34630628991e7a615cc4ba85146e24e66419"
+    },
+    {
+      "name": "manifest_builder",
+      "role": "closure_builder",
+      "path": "scripts/build_loop28_onnx_operator_manifest.py",
+      "size_bytes": 19716,
+      "sha256": "54cd1ac82bb494fb3309a29d249dda79bfc4f1b142ae745598838418864591d6"
+    },
+    {
+      "name": "manifest_builder_test",
+      "role": "focused_builder_tests",
+      "path": "tests/test_build_loop28_onnx_operator_manifest.py",
+      "size_bytes": 2361,
+      "sha256": "f126acb6ff4cd416ffe9641d097eafe51a7e31bff7f6fd53e7381a53e771b13a"
+    }
+  ],
+  "integrity": {
+    "artifact_count": 10,
+    "required_artifact_count": 10,
+    "all_required_present": true,
+    "candidate_root_absent": true,
+    "forbidden_execution_artifact_count": 0
+  },
+  "claim_boundary": {
+    "synthetic_static_preflight_claim_allowed": true,
+    "onnx_candidate_claim_allowed": false,
+    "population_parity_claim_allowed": false,
+    "quality_claim_allowed": false,
+    "raw_rerun_allowed": false,
+    "certification_claim_allowed": false
+  },
+  "decision": "static_preflight_implementation_complete_candidate_execution_forbidden"
+}

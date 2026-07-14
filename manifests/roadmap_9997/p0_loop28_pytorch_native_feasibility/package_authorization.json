@@ -1,0 +1,117 @@
+{
+  "schema": "axon_loop28_pytorch_native_package_authorization_v1",
+  "loop_id": "p0_loop28_pytorch_native_feasibility_001",
+  "created_at_utc": "2026-07-11T23:59:00Z",
+  "attempt_id": "p0_loop28_pytorch_native_feasibility_001_package_attempt_002",
+  "package_reissue_authorization_sha256": "35f16bb360f07d031484f3fa26937e4afaf7df499a8178d5aa664162f065b8b8",
+  "package_controller_manifest_sha256": "d5164f3d785419fa9eec977580e55f4e8fa5e52ea798765a9a6691d8c5510dd7",
+  "implementation_manifest_sha256": "45d38299623ab32e701d6bf1408a509caa19513287c239b3866532cd405bd3f4",
+  "cpp_build_receipt_sha256": "2ef9fc018cf72c0552902d4e9cca2190b4c5e983bdd15d4917dd5d926043dc77",
+  "lineage": {
+    "reissue_authorization": {
+      "path": "manifests/roadmap_9997/p0_loop28_pytorch_native_feasibility/package_reissue_001_authorization.json",
+      "sha256": "35f16bb360f07d031484f3fa26937e4afaf7df499a8178d5aa664162f065b8b8"
+    },
+    "controller_manifest": {
+      "path": "manifests/roadmap_9997/p0_loop28_pytorch_native_feasibility/package_controller_manifest.json",
+      "sha256": "d5164f3d785419fa9eec977580e55f4e8fa5e52ea798765a9a6691d8c5510dd7",
+      "decision": "package_controller_frozen_reissue_authorization_required"
+    },
+    "implementation_manifest": {
+      "path": "manifests/roadmap_9997/p0_loop28_pytorch_native_feasibility/implementation_manifest.json",
+      "sha256": "45d38299623ab32e701d6bf1408a509caa19513287c239b3866532cd405bd3f4"
+    },
+    "cpp_build_receipt": {
+      "path": "reports/roadmap_9997/p0_loop28_pytorch_native_feasibility/cpp_build_receipt.final.json",
+      "sha256": "2ef9fc018cf72c0552902d4e9cca2190b4c5e983bdd15d4917dd5d926043dc77",
+      "decision": "lean_aten_and_aoti_hosts_built_package_requires_authorization"
+    },
+    "failed_attempt_diagnostic": {
+      "path": "reports/roadmap_9997/p0_loop28_pytorch_native_feasibility/package_attempt_001_diagnostic.final.json",
+      "sha256": "590099120d81d6da31f1e2c301817301336750f618afecaa162c1742d07c296d",
+      "decision": "administrative_pre_model_failure_eligible_for_single_package_reissue"
+    }
+  },
+  "frozen_binaries": {
+    "direct_aten_control": {
+      "path": "tools/axon_tiny_pytorch_native/build/bin/Release/axon_tiny_aten_probe.exe",
+      "sha256": "595705bdc0716b7323a0da71b424470c0d474a6556ac7fa3c6507e5d4edfd524",
+      "size_bytes": 159232
+    },
+    "aoti_host": {
+      "path": "tools/axon_tiny_pytorch_native/build/bin/Release/axon_tiny_aoti_probe.exe",
+      "sha256": "097a41e61bfceeeea4592ff2f1dd079e3b447275b677980b7eceb3f02a5dcca0",
+      "size_bytes": 160768
+    }
+  },
+  "canonical_command": [
+    "E:/Project/python/Axon_v2.6Exp/vnev/Scripts/python.exe",
+    "scripts/run_loop28_pytorch_native_package_controller.py",
+    "package"
+  ],
+  "authorized_actions": [
+    "machine-verify the reissue, controller, original implementation, build receipt, binaries, authorization, ready lease, and absence gates",
+    "activate the frozen MSVC environment through the validated work-root-confined command-file controller",
+    "delegate exactly once to the unchanged proposal-bound synthetic package function",
+    "execute exactly one torch.export and one AOTInductor package compilation",
+    "attempt exactly one optional TorchScript trace export",
+    "post-verify CUDA state, exact call counters, retained size, archive paths and collisions, compression, symlinks, and exactly one precompiled .pyd",
+    "write the base package receipt and controller receipt without loading any generated package"
+  ],
+  "artifact_root": "artifacts/roadmap_9997/p0_loop28_pytorch_native_feasibility/tiny_v1",
+  "work_root": "reports/roadmap_9997/p0_loop28_pytorch_native_feasibility/work",
+  "base_receipt_output": "reports/roadmap_9997/p0_loop28_pytorch_native_feasibility/package_receipt.final.json",
+  "controller_receipt_output": "reports/roadmap_9997/p0_loop28_pytorch_native_feasibility/package_controller_receipt.final.json",
+  "max_retained_output_bytes": 536870912,
+  "preconditions": {
+    "failed_attempt_archived": true,
+    "controller_manifest_verified": true,
+    "validation_tests_passed": 18,
+    "validation_tests_skipped": 1,
+    "validation_tests_failed": 0,
+    "corrected_vcvars_probe_passed": true,
+    "artifact_root_absent": true,
+    "package_receipt_absent": true,
+    "package_failure_absent": true,
+    "package_final_lease_absent": true,
+    "controller_receipt_absent": true,
+    "controller_failure_absent": true,
+    "work_root_empty": true
+  },
+  "budget_reconciliation": {
+    "administrative_attempts_consumed": 1,
+    "protected_generation_attempts_consumed": 0,
+    "protected_generation_attempts_remaining": 1,
+    "tiny_model_constructions_remaining": 1,
+    "torch_export_calls_remaining": 1,
+    "aoti_compile_and_package_calls_remaining": 1,
+    "torchscript_export_calls_remaining": 1,
+    "package_load_calls": 0,
+    "native_probe_execution_count": 0,
+    "checkpoint_or_onnx_load_count": 0,
+    "gpu_execution_count": 0,
+    "network_request_count": 0,
+    "quality_metric_count": 0
+  },
+  "environment_contract": {
+    "device": "cpu",
+    "cpu_threads": 1,
+    "cuda_initialized_before_required": false,
+    "cuda_initialized_after_required": false,
+    "normal_user_temp_for_package_compile_allowed": false,
+    "temp_tmp_and_inductor_cache_confined_to_work_root": true,
+    "compile_and_activation_temps_removed_after_attempt": true
+  },
+  "claim_boundary": {
+    "tiny_package_generation_allowed": true,
+    "tiny_export_capture_allowed": true,
+    "package_load_allowed": false,
+    "runtime_lane_execution_allowed": false,
+    "execution_authorization_issued": false,
+    "axon_checkpoint_access_allowed": false,
+    "raw_split_cache_heldout_access_allowed": false,
+    "quality_claim_allowed": false,
+    "certification_claim_allowed": false
+  },
+  "decision": "authorize_single_governed_tiny_aoti_package_generation_reissue_001"
+}

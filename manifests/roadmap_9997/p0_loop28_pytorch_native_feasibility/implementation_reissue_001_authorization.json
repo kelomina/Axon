@@ -1,0 +1,46 @@
+{
+  "schema": "axon_loop28_pytorch_native_implementation_reissue_authorization_v1",
+  "loop_id": "p0_loop28_pytorch_native_feasibility_001",
+  "created_at_utc": "2026-07-11T23:22:16Z",
+  "failed_attempt": {
+    "implementation_manifest": {
+      "path": "manifests/roadmap_9997/p0_loop28_pytorch_native_feasibility/implementation_manifest.failed_001.final.json",
+      "sha256": "d402bc4e2177b0120cc0678dc9b0b99cd514432107cb68f7309659b45028af2f"
+    },
+    "build_authorization": {
+      "path": "manifests/roadmap_9997/p0_loop28_pytorch_native_feasibility/build_authorization.failed_001.final.json",
+      "sha256": "de963aaee8a326c2915444fd622c917513a2fa05736c580106120586cf12ca91"
+    },
+    "consumed_lease": {
+      "path": "manifests/roadmap_9997/p0_loop28_pytorch_native_feasibility/build_lease.failed_001.final.json",
+      "sha256": "4bd08875c4e6ba66a7c150bcf8ca791703f5471e0c062e6368c95118f06f6dea"
+    },
+    "receipt": {
+      "path": "reports/roadmap_9997/p0_loop28_pytorch_native_feasibility/cpp_build_receipt.failed_001.final.json",
+      "sha256": "da2f0701fa53ff88d6a1164c0fca6138a9551045ade524876250f737da86ef2d",
+      "configure_returncode": 1,
+      "compiler_or_linker_invocations": 0,
+      "model_or_package_execution_count": 0
+    }
+  },
+  "root_cause": "The CMake precondition checked TORCH_ROOT/include/torch/torch.h, but the installed wheel places the public C++ API header at TORCH_ROOT/include/torch/csrc/api/include/torch/torch.h. Compiler discovery succeeded; no project target was generated, compiled, linked, or executed.",
+  "authorized_change": {
+    "path": "tools/axon_tiny_pytorch_native/CMakeLists.txt",
+    "before_sha256": "ff91228dda82cc9be521ad250cf6059193c1dc62d70b3539e8f0a8090e63b1b3",
+    "scope": "Correct only the TORCH_ROOT header-existence precondition to the installed wheel layout. No target, source, link library, runtime, model, or acceptance-gate change is authorized."
+  },
+  "authorized_reissue": {
+    "implementation_manifest_count": 1,
+    "clean_build_count": 1,
+    "required_new_implementation_hash_binding": true,
+    "required_new_build_authorization_and_lease": true,
+    "reuse_failed_lease_forbidden": true
+  },
+  "claim_boundary": {
+    "administrative_configuration_correction_only": true,
+    "model_or_package_execution_allowed": false,
+    "axon_artifact_access_allowed": false,
+    "quality_claim_allowed": false
+  },
+  "decision": "authorize_one_cmake_header_guard_correction_and_fresh_build_reissue"
+}

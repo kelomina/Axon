@@ -1,0 +1,37 @@
+{
+  "schema": "axon_loop28_onnx_fidelity_invocation_amendment_v1",
+  "loop_id": "p0_loop28_onnx_fidelity_001",
+  "attempt_id": "p0_loop28_onnx_fidelity_001_attempt_001",
+  "issued_at_utc": "2026-07-11T22:13:39Z",
+  "basis_authorization": {
+    "path": "manifests/roadmap_9997/p0_loop28_onnx_fidelity/localization_lease_reissue_002_authorization.json",
+    "sha256": "103ea16e08172cb06f173a18006a14d88b5b06a2b0bd06c6ede2379306cf3c75"
+  },
+  "pending_lease_before_amendment": {
+    "path": "manifests/roadmap_9997/p0_loop28_onnx_fidelity/localization_lease.json",
+    "sha256": "e8ff127d716b1165fba23cd2f25566e238e1b3dcd09aae18fe3f3b96d7734947",
+    "consumed": false
+  },
+  "preflight_observation": {
+    "module_invocation_project_root_available": true,
+    "top_level_manifest_builder_import_available": false,
+    "lease_consumed": false,
+    "scientific_execution_started": false
+  },
+  "authorized_invocation": {
+    "working_directory": "E:/Project/python/Axon_v2.6Exp",
+    "command": "vnev/Scripts/python.exe -c import sys; sys.path[:0]=['.','scripts']; import diagnose_loop28_onnx_fidelity as d; raise SystemExit(d.main())",
+    "path_delta": [".", "scripts"],
+    "purpose": "Expose both the immutable project-root src package and the immutable top-level manifest builder without modifying any bound source.",
+    "preflight_result": "dual_path_invocation_preflight_passed"
+  },
+  "mutation_boundary": {
+    "implementation_source_mutation_allowed": false,
+    "model_or_graph_mutation_allowed": false,
+    "runtime_mutation_allowed": false,
+    "fixture_mutation_allowed": false,
+    "pending_lease_metadata_amendment_allowed": true,
+    "scientific_budget_delta": 0
+  },
+  "decision": "authorize_dual_path_wrapper_invocation_before_lease_consumption"
+}

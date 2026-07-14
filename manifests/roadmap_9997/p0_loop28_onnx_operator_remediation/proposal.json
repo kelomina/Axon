@@ -1,0 +1,188 @@
+{
+  "schema": "axon_loop28_onnx_operator_remediation_proposal_v1",
+  "loop_id": "p0_loop28_onnx_operator_remediation_001",
+  "created_at_utc": "2026-07-11T22:35:08Z",
+  "parent_closure": {
+    "path": "manifests/roadmap_9997/p0_loop28_onnx_fidelity/post_manifest.json",
+    "sha256": "e36b720de8a20d137d740712242e67f4a102857b2365fdd2fdb7c8c5b2a5b719",
+    "decision": "post_fidelity_closure_frozen_localized_negative_no_raw"
+  },
+  "parent_localization_evidence": {
+    "path": "reports/roadmap_9997/p0_loop28_onnx_fidelity/localization_evidence.final.json",
+    "sha256": "a3caf51b5354fb6c3725c09cb25bc2360ce91322934708e586d1bb576e72ced0",
+    "decision": "localized_negative_no_raw"
+  },
+  "parent_goal_delta": {
+    "path": "reports/roadmap_9997/p0_loop28_onnx_fidelity/goal_delta.final.md",
+    "sha256": "14c3af85ee7151d27f81a44e59f686b5af169d59be311c06e74f123c5f010e75"
+  },
+  "objective": "Perform the single bounded operator-level ONNX remediation authorized by the frozen fidelity closure: triangulate the first input-projection linear/Erf/GELU/QKV boundary, generate exactly one explicit-kernel candidate, and either prove exact sparse-route support on four synthetic controls or permanently stop this ONNX route in favor of a separate PyTorch-compatible native-runtime proposal.",
+  "frozen_observation": {
+    "first_above_tolerance_boundary": "input_proj/00 GELU, ONNX node 15",
+    "pe32_first_topk_support_flip_occurrence": 17,
+    "pe32_plus_first_topk_support_flip_occurrence": 7,
+    "pe32_differing_route_range": [42, 43],
+    "pe32_plus_differing_routes": 6,
+    "tolerance": 0.000001
+  },
+  "triangulation_contract": {
+    "original_prefix_nodes": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      46,
+      47
+    ],
+    "outputs": ["linear", "gelu", "linear_1"],
+    "runtimes": ["pytorch_eager", "onnx_reference_evaluator", "onnxruntime_1.24.4_cpu"],
+    "classification_rules": {
+      "runtime_kernel": "PyTorch and ReferenceEvaluator pass the 1e-6 gate while ORT fails it",
+      "export_decomposition": "ReferenceEvaluator and ORT agree more closely with each other than either agrees with PyTorch, and both cross the PyTorch 1e-6 gate",
+      "mixed_or_inconclusive": "Neither preregistered relation is established"
+    },
+    "required_boundaries": ["pre_gelu_linear", "gelu", "first_qkv"]
+  },
+  "single_candidate": {
+    "candidate_id": "candidate_001_microsoft_gelu",
+    "selection_is_frozen": true,
+    "semantic_change": "Replace every one of the 16 unrolled input_proj exact-GELU Div/Erf/Add/Mul/Mul decompositions with one com.microsoft::Gelu occurrence while preserving each pre-GELU linear result and GELU output name.",
+    "input_projection_occurrences": 16,
+    "removed_nodes_per_occurrence": ["Div", "Erf", "Add", "Mul", "Mul"],
+    "replacement_node": "com.microsoft::Gelu",
+    "default_domain_opset": 18,
+    "vendor_domain": "com.microsoft",
+    "vendor_domain_opset": 1,
+    "production_candidate_count": 1,
+    "diagnostic_graph_count": 1,
+    "fallback_candidate_allowed": false
+  },
+  "fixture_matrix": [
+    {
+      "name": "pe32_numeric_resource_tls_callbacks",
+      "pe_plus": false,
+      "named_resource": false,
+      "tls_callbacks": true,
+      "baseline_control": "must_fail_original_probability_gate"
+    },
+    {
+      "name": "pe32_named_resource_tls_callbacks",
+      "pe_plus": false,
+      "named_resource": true,
+      "tls_callbacks": true,
+      "baseline_control": "must_fail_original_probability_gate"
+    },
+    {
+      "name": "pe32_numeric_resource_zero_tls_callbacks",
+      "pe_plus": false,
+      "named_resource": false,
+      "tls_callbacks": false,
+      "baseline_control": "must_fail_original_probability_gate"
+    },
+    {
+      "name": "pe32_plus_named_resource_zero_tls_callbacks",
+      "pe_plus": true,
+      "named_resource": true,
+      "tls_callbacks": false,
+      "baseline_control": "must_pass_original_probability_gate_but_fail_internal_route_fidelity"
+    }
+  ],
+  "read_allowlist": [
+    "manifests/roadmap_9997/p0_loop28_onnx_fidelity/**",
+    "reports/roadmap_9997/p0_loop28_onnx_fidelity/**",
+    "models/random_20w_8192/best_model.pt",
+    "models/random_20w_8192/axon_loop28_base.onnx",
+    "models/random_20w_8192/axon_loop28_base.onnx.data",
+    "models/random_20w_8192/axon_loop28_base.onnx.json",
+    "tools/axon_onnx_fidelity/build/bin/Release/axon_onnx_fidelity_probe.exe",
+    "tools/axon_onnx_dll/build/bin/Release/onnxruntime.dll",
+    "tests/test_native_loop28_parity_source.py",
+    "scripts/diagnose_loop28_onnx_fidelity.py",
+    "scripts/build_loop28_onnx_fidelity_manifest.py",
+    "src/config.py",
+    "src/model.py",
+    "src/security.py",
+    "src/predict_api.py",
+    "src/kvd_features/**",
+    "src/dsra/**"
+  ],
+  "write_allowlist": [
+    "manifests/roadmap_9997/p0_loop28_onnx_operator_remediation/**",
+    "reports/roadmap_9997/p0_loop28_onnx_operator_remediation/**",
+    "models/roadmap_9997/p0_loop28_onnx_operator_remediation/**",
+    "scripts/remediate_loop28_onnx_operator.py",
+    "scripts/build_loop28_onnx_operator_manifest.py",
+    "tests/test_remediate_loop28_onnx_operator.py",
+    "tests/test_build_loop28_onnx_operator_manifest.py"
+  ],
+  "forbidden": [
+    "reading or hashing any train, Val, Test-10k, legacy full-test, sentinel, confirmation, certification, split, cache-row, heldout-prediction, error-row, or raw-sample payload",
+    "training, fitting, fine-tuning, calibration, threshold search, feature selection, candidate search, quality metric computation, or F1 computation",
+    "modifying the checkpoint, frozen ONNX graph/data, Stage-2 model, native DLL, old probe, prior closure, prior governance artifact, goal.md, recommendations, or historical experiment journal",
+    "creating a second semantic candidate, changing provider or target DLL session settings, exporter lottery, tolerance relaxation, decision-only parity, or training around the runtime mismatch",
+    "dependency installation, GPU execution, network access, deployment, commit, push, split mutation, cache mutation, or data release"
+  ],
+  "budget": {
+    "implementation_generations": 1,
+    "semantic_candidates": 1,
+    "production_graphs": 1,
+    "diagnostic_graphs": 1,
+    "input_projection_occurrences_rewritten": 16,
+    "fixture_count": 4,
+    "probe_profiles_per_fixture": 2,
+    "native_subprocesses": 8,
+    "runtime_determinism_repeats": 3,
+    "per_subprocess_timeout_seconds": 180,
+    "total_wall_clock_seconds": 3600,
+    "max_retained_output_bytes": 536870912,
+    "cpu_only": true,
+    "gpu_executions": 0,
+    "network_requests_during_execution": 0
+  },
+  "success_gate": {
+    "baseline_controls_reproduced": true,
+    "three_runtime_boundary_triangulation_complete": true,
+    "candidate_input_hashes_exact": true,
+    "candidate_topk_indices_exact_for_all_62_routes": true,
+    "candidate_margin_guard_violations": 0,
+    "candidate_base_probability_max_absolute_delta_at_most": 0.000001,
+    "pytorch_repeats_bit_exact": true,
+    "reference_repeats_bit_exact": true,
+    "ort_repeats_bit_exact": true,
+    "production_graph_diff_in_scope": true,
+    "baseline_and_candidate_hashes_stable": true,
+    "raw_split_heldout_access_count": 0,
+    "quality_metric_count": 0
+  },
+  "exit_decisions": [
+    "operator_candidate_verified_synthetic_raw_requires_new_authorization",
+    "operator_candidate_route_mismatch_fallback_pytorch_native",
+    "operator_triangulation_inconclusive_no_candidate",
+    "candidate_graph_diff_out_of_scope_invalid",
+    "positive_control_or_lineage_invalid",
+    "budget_exhausted_no_claim",
+    "administrative_failure_no_execution"
+  ],
+  "claim_boundary": {
+    "synthetic_operator_remediation_claim_allowed": true,
+    "population_parity_claim_allowed": false,
+    "quality_claim_allowed": false,
+    "native_loop28_ready_claim_allowed": false,
+    "native_loop151_ready_claim_allowed": false,
+    "raw_rerun_allowed": false,
+    "certification_claim_allowed": false
+  },
+  "decision": "propose_single_bounded_input_projection_gelu_remediation"
+}

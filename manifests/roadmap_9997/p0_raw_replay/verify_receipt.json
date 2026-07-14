@@ -1,0 +1,246 @@
+{
+  "schema": "axon_loop151_raw_replay_receipt_v1",
+  "generated_at_utc": "2026-07-11T18:10:54.842376+00:00",
+  "mode": "verify",
+  "claim_scope": {
+    "quality_claim_allowed": false,
+    "legacy_test10k_or_full_test_used": false,
+    "legacy_metrics_role": "development_only",
+    "raw_file_to_legacy_report_replay_ready": false,
+    "raw_file_to_loop151_replay_ready": false,
+    "native_loop151_ready": false
+  },
+  "truth_manifest": {
+    "path": "manifests/roadmap_9997/p0_truth_freeze/loop151_truth_manifest.json",
+    "sha256": "174861be850a681025a7040798c59b7157cc67ab5503437088359692dad5659d",
+    "required_artifacts_verified": 0,
+    "decision": "artifact_freeze_complete_raw_replay_pending",
+    "champion_scope": "research_champion"
+  },
+  "inputs": {
+    "split_csv": null,
+    "split_csv_sha256": null
+  },
+  "dag": {
+    "ordered_stages": [
+      "loop28_python",
+      "loop28_native",
+      "loop127_primary_and_content",
+      "loop130_r5",
+      "loop134_oof_noise",
+      "loop136_selector",
+      "loop151_trusted_signer"
+    ],
+    "stages": [
+      {
+        "stage_id": "loop28_python",
+        "schema_version": "axon_loop151_raw_replay_receipt_v1",
+        "role": "Python base checkpoint plus Stage-2 HGB",
+        "frozen_parameters": {},
+        "raw_runtime_state": "not_inspected_before_authorization",
+        "raw_executable": false,
+        "status": "blocked",
+        "artifacts": [],
+        "pickle_policy": [],
+        "run_id": null,
+        "source_bundle_sha256": null,
+        "input_identity_fingerprint": null,
+        "output_identity_fingerprint": null,
+        "input_rows": null,
+        "output_rows": null,
+        "unresolved_rows": null,
+        "duplicate_rows": null,
+        "missing_rows": null,
+        "blockers": [
+          "authorization_gate_not_passed"
+        ]
+      },
+      {
+        "stage_id": "loop28_native",
+        "schema_version": "axon_loop151_raw_replay_receipt_v1",
+        "role": "Native ONNX base plus JSON Stage-2 HGB",
+        "frozen_parameters": {},
+        "raw_runtime_state": "not_inspected_before_authorization",
+        "raw_executable": false,
+        "status": "blocked",
+        "artifacts": [],
+        "pickle_policy": [],
+        "run_id": null,
+        "source_bundle_sha256": null,
+        "input_identity_fingerprint": null,
+        "output_identity_fingerprint": null,
+        "input_rows": null,
+        "output_rows": null,
+        "unresolved_rows": null,
+        "duplicate_rows": null,
+        "missing_rows": null,
+        "blockers": [
+          "authorization_gate_not_passed"
+        ]
+      },
+      {
+        "stage_id": "loop127_primary_and_content",
+        "schema_version": "axon_loop151_raw_replay_receipt_v1",
+        "role": "OOF fixed-v2 primary/conservative experts and content-cross expert",
+        "frozen_parameters": {
+          "primary_threshold": 0.31,
+          "conservative_threshold": 0.415,
+          "content_cross_threshold": 0.4
+        },
+        "raw_runtime_state": "not_inspected_before_authorization",
+        "raw_executable": false,
+        "status": "blocked",
+        "artifacts": [],
+        "pickle_policy": [],
+        "run_id": null,
+        "source_bundle_sha256": null,
+        "input_identity_fingerprint": null,
+        "output_identity_fingerprint": null,
+        "input_rows": null,
+        "output_rows": null,
+        "unresolved_rows": null,
+        "duplicate_rows": null,
+        "missing_rows": null,
+        "blockers": [
+          "authorization_gate_not_passed"
+        ]
+      },
+      {
+        "stage_id": "loop130_r5",
+        "schema_version": "axon_loop151_raw_replay_receipt_v1",
+        "role": "Frozen R5_r4_plus_vendor_strings guard",
+        "frozen_parameters": {
+          "selected_rule": "R5_r4_plus_vendor_strings"
+        },
+        "raw_runtime_state": "not_inspected_before_authorization",
+        "raw_executable": false,
+        "status": "blocked",
+        "artifacts": [],
+        "pickle_policy": [],
+        "run_id": null,
+        "source_bundle_sha256": null,
+        "input_identity_fingerprint": null,
+        "output_identity_fingerprint": null,
+        "input_rows": null,
+        "output_rows": null,
+        "unresolved_rows": null,
+        "duplicate_rows": null,
+        "missing_rows": null,
+        "blockers": [
+          "authorization_gate_not_passed"
+        ]
+      },
+      {
+        "stage_id": "loop134_oof_noise",
+        "schema_version": "axon_loop151_raw_replay_receipt_v1",
+        "role": "Noise-aware OOF stacker",
+        "frozen_parameters": {
+          "threshold": 0.39
+        },
+        "raw_runtime_state": "not_inspected_before_authorization",
+        "raw_executable": false,
+        "status": "blocked",
+        "artifacts": [],
+        "pickle_policy": [],
+        "run_id": null,
+        "source_bundle_sha256": null,
+        "input_identity_fingerprint": null,
+        "output_identity_fingerprint": null,
+        "input_rows": null,
+        "output_rows": null,
+        "unresolved_rows": null,
+        "duplicate_rows": null,
+        "missing_rows": null,
+        "blockers": [
+          "authorization_gate_not_passed"
+        ]
+      },
+      {
+        "stage_id": "loop136_selector",
+        "schema_version": "axon_loop151_raw_replay_receipt_v1",
+        "role": "Recall-aware pairwise selector at threshold 0.79",
+        "frozen_parameters": {
+          "threshold": 0.79
+        },
+        "raw_runtime_state": "not_inspected_before_authorization",
+        "raw_executable": false,
+        "status": "blocked",
+        "artifacts": [],
+        "pickle_policy": [],
+        "run_id": null,
+        "source_bundle_sha256": null,
+        "input_identity_fingerprint": null,
+        "output_identity_fingerprint": null,
+        "input_rows": null,
+        "output_rows": null,
+        "unresolved_rows": null,
+        "duplicate_rows": null,
+        "missing_rows": null,
+        "blockers": [
+          "authorization_gate_not_passed"
+        ]
+      },
+      {
+        "stage_id": "loop151_trusted_signer",
+        "schema_version": "axon_loop151_raw_replay_receipt_v1",
+        "role": "Frozen Authenticode trusted-signer guard",
+        "frozen_parameters": {
+          "score_threshold": 1.0
+        },
+        "raw_runtime_state": "not_inspected_before_authorization",
+        "raw_executable": false,
+        "status": "blocked",
+        "artifacts": [],
+        "pickle_policy": [],
+        "run_id": null,
+        "source_bundle_sha256": null,
+        "input_identity_fingerprint": null,
+        "output_identity_fingerprint": null,
+        "input_rows": null,
+        "output_rows": null,
+        "unresolved_rows": null,
+        "duplicate_rows": null,
+        "missing_rows": null,
+        "blockers": [
+          "authorization_gate_not_passed"
+        ]
+      }
+    ],
+    "full_dag_blockers": [
+      "authorization_gate_not_passed"
+    ]
+  },
+  "authorization": {
+    "path": "manifests/roadmap_9997/p0_raw_replay/verify_a1_authorization.json",
+    "sha256": "dabdffe990b63a2a68b8974210e9863fc10e521268bb0a4cc5772867b7379db4",
+    "authorization_level": "A1_scoped_change",
+    "allow_complete_loop151_raw_replay": false,
+    "truth_manifest_sha256": "174861be850a681025a7040798c59b7157cc67ab5503437088359692dad5659d"
+  },
+  "verification": {
+    "empty_workdir_replay_attempted": false,
+    "historical_prediction_csv_used": false,
+    "reported_row_count": 0,
+    "blockers": [
+      "authorization_does_not_allow_complete_loop151_raw_replay",
+      "authorization_gate_not_passed",
+      "authorization_level_is_not_A2_or_A3"
+    ]
+  },
+  "decision": "complete_loop151_raw_replay_blocked",
+  "invocation": {
+    "argv": [
+      "E:\\Project\\python\\Axon_v2.6Exp\\vnev\\Scripts\\python.exe",
+      "E:\\Project\\python\\Axon_v2.6Exp\\scripts\\replay_loop151_raw.py",
+      "verify",
+      "--authorization",
+      "manifests/roadmap_9997/p0_raw_replay/verify_a1_authorization.json"
+    ],
+    "cwd": "E:\\Project\\python\\Axon_v2.6Exp",
+    "python": "3.14.4 (tags/v3.14.4:23116f9, Apr  7 2026, 14:10:54) [MSC v.1944 64 bit (AMD64)]",
+    "platform": "Windows-11-10.0.29617-SP0",
+    "os_name": "nt",
+    "resource_receipt_required": true,
+    "authorization_scope": "explicit_A2_or_A3_required"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "schema": "axon_loop55_overlay_boundary_cache_v1",
+  "protocol": "content-only overlay/security-boundary features; filename/path/extension are not encoded",
+  "train_predictions": "E:\\Project\\python\\Axon_v2.6Exp\\reports\\random_20w_split\\loop24_dedup_corrected_full_test_base_predictions.csv",
+  "val_predictions": "E:\\Project\\python\\Axon_v2.6Exp\\reports\\random_20w_split\\loop24_dedup_corrected_full_test_base_predictions.csv",
+  "input_rows": 320000,
+  "unique_rows": 159994,
+  "feature_dim": 32,
+  "cache_counts": {
+    "processed": 159994,
+    "zero_features": 203,
+    "elapsed_sec": 2509.7063789999993,
+    "cache_dir": "E:\\Project\\python\\Axon_v2.6Exp\\reports\\random_20w_split\\loop57_overlay_boundary_cache_full_test"
+  }
+}

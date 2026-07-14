@@ -1,0 +1,46 @@
+{
+  "schema": "axon_roadmap_9997_proposal_v1",
+  "loop_id": "p0_raw_replay_001",
+  "parent_reference": "p0_truth_freeze_001",
+  "hypothesis": "A fail-closed raw-file runner that separates train smoke, Loop28 native parity, and complete Loop151 verification will expose the exact missing runtime edges without converting historical prediction CSVs into a false deployment claim.",
+  "failure_observation": "Loop151 is a multi-stage CSV research chain, src/predict_api.py only implements Loop28, the legacy Python Stage-2 pickle lacks a required metadata sidecar, and the native DLL does not contain Loop127 through Loop151.",
+  "new_independent_evidence": "One or two existing train raw files may be used only for SHA-bound identity smoke and Python/native Loop28 parity; no quality estimate is permitted.",
+  "runtime_availability": "The Windows Loop28 native selftest and DLL are locally buildable. The complete Loop151 raw runtime is not available.",
+  "allowed_splits": [
+    "train_smoke_only"
+  ],
+  "forbidden_inputs": [
+    "legacy Val predictions as raw runtime input",
+    "legacy Test-10k predictions as raw runtime input",
+    "legacy full-test predictions as raw runtime input",
+    "path, filename, hash, sample index, or split as model evidence"
+  ],
+  "frozen_thresholds": {
+    "native_probability_tolerance": 0.000001,
+    "loop136_selector_threshold": 0.79,
+    "loop151_score_threshold": 1.0
+  },
+  "minimum_support": "Not applicable to smoke; parity requires every selected row to pass with zero dropped rows.",
+  "sample_count": {
+    "train_identity_smoke_max": 8,
+    "native_execution_smoke_planned": 1,
+    "legacy_val": 0,
+    "legacy_test10k": 0,
+    "legacy_full_test": 0
+  },
+  "seeds": [],
+  "compute_budget": "A1 bounded CPU/native smoke only; no training, cache build, batch extraction, or heldout inference.",
+  "success_gate": "Every requested raw row remains in the receipt, its logical path is under the authorization-bound data root, its canonical target is under data or an explicit physical root, the streamed private snapshot SHA matches the frozen split, the native Loop28 subprocess reads only that snapshot under its private root, and no quality or Loop151 readiness claim is emitted.",
+  "business_gate": "No product promotion. This loop only establishes replay safety infrastructure.",
+  "slice_gate": "Not applicable; this is not an evaluation run.",
+  "stop_condition": "Stop on unauthorized split, missing or duplicate identity, SHA mismatch, path escape, missing metadata, unallowlisted pickle, parser/runtime error, dropped row, decision mismatch, or probability delta above 1e-6.",
+  "expected_artifacts": [
+    "scripts/replay_loop151_raw.py",
+    "tests/test_replay_loop151_raw.py",
+    "manifests/roadmap_9997/p0_raw_replay/pickle_sha256_allowlist.json",
+    "manifests/roadmap_9997/p0_raw_replay/loop28_stage2.metadata.json",
+    "manifests/roadmap_9997/p0_raw_replay/train_smoke_receipt.json"
+  ],
+  "authorization_level": "A1_scoped_change",
+  "native_path": "Only Loop28 is executable; Loop127, Loop130, Loop134, Loop136, and Loop151 remain explicitly blocked."
+}

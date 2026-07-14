@@ -1,0 +1,346 @@
+{
+  "schema": "axon_loop166_phase_b1_step4096_recovery_contract_v1",
+  "loop_id": "loop166_code_section_foundation",
+  "claim_scope": "local_train_only_one_fail_closed_step4096_recovery_continuation_not_model_quality",
+  "status": "source_closure_complete",
+  "authority": {
+    "user_directed_local_custody": true,
+    "public_key_required": false,
+    "external_signer_required": false,
+    "a2_or_a3_authority": false,
+    "val_test_or_full_authority": false,
+    "promotion_authority": false
+  },
+  "incident_binding": {
+    "path": "manifests/roadmap_9997/loop166_code_section_foundation/phase_b1_resume_lineage_failure.json",
+    "sha256": "4f012e8730e46261329126f6dd86cc14e87d14c5a5d9a6b1f34e320a0fa99361",
+    "required_status": "incomplete_fail_closed_at_resume_handoff",
+    "required_decision": "phase_b1_incomplete_allow_design_of_one_fail_closed_recovery_continuation"
+  },
+  "static_bindings": {
+    "incident": {
+      "path": "manifests/roadmap_9997/loop166_code_section_foundation/phase_b1_resume_lineage_failure.json",
+      "sha256": "4f012e8730e46261329126f6dd86cc14e87d14c5a5d9a6b1f34e320a0fa99361"
+    },
+    "original_authorization": {
+      "path": "manifests/roadmap_9997/loop166_code_section_foundation/phase_b1_run_authorization.json",
+      "sha256": "ce271be62e335631db39079ade914f9a111dd58b4c220b319260a0c8bc2564f7"
+    },
+    "original_contract": {
+      "path": "manifests/roadmap_9997/loop166_code_section_foundation/phase_b1_full_outer_resource_cell.json",
+      "sha256": "5e4355ef0d37aacd358e7b8323a35d6eb6bc9935620eb9cded6f460d3a61b609"
+    },
+    "original_controller": {
+      "path": "scripts/run_loop166_phase_b1_full_outer_resource_cell.py",
+      "sha256": "12be192088b408a31682b1275d56b29a301841a3563f7518c6371afa49c931bb"
+    },
+    "original_tests": {
+      "path": "tests/test_loop166_phase_b1.py",
+      "sha256": "0c45a5be3ff077d463c37634bd860bb7f0f59b8228f044a6b69ea0a52d4073ee"
+    },
+    "original_consumed_marker": {
+      "path": "reports/roadmap_9997/loop166/phase_b1_execution_consumed.json",
+      "sha256": "a4b0de3556f2f084736b78c1cdce647464300ac0c9f2c27271373320172cbd75"
+    },
+    "original_tokenizer": {
+      "path": "reports/roadmap_9997/loop166/phase_b1_tokenizer.json",
+      "sha256": "73734f28f01b5045ff6f77beb9c07bd62e52102c5153bd94e21c28285659c7f6"
+    },
+    "origin_checkpoint": {
+      "path": "models/roadmap_9997/loop166/phase_b1_tiny_mlm.pt",
+      "sha256": "82177e6d69ef1a2e17a1ea09dcb3e870a32e3305f92ea15bcff124fdc86f14a6"
+    }
+  },
+  "original_artifacts": {
+    "original_authorization": {
+      "path": "manifests/roadmap_9997/loop166_code_section_foundation/phase_b1_run_authorization.json",
+      "sha256": "ce271be62e335631db39079ade914f9a111dd58b4c220b319260a0c8bc2564f7",
+      "immutable": true
+    },
+    "original_contract": {
+      "path": "manifests/roadmap_9997/loop166_code_section_foundation/phase_b1_full_outer_resource_cell.json",
+      "sha256": "5e4355ef0d37aacd358e7b8323a35d6eb6bc9935620eb9cded6f460d3a61b609",
+      "immutable": true
+    },
+    "original_controller": {
+      "path": "scripts/run_loop166_phase_b1_full_outer_resource_cell.py",
+      "sha256": "12be192088b408a31682b1275d56b29a301841a3563f7518c6371afa49c931bb",
+      "immutable": true
+    },
+    "original_tests": {
+      "path": "tests/test_loop166_phase_b1.py",
+      "sha256": "0c45a5be3ff077d463c37634bd860bb7f0f59b8228f044a6b69ea0a52d4073ee",
+      "immutable": true
+    },
+    "original_consumed_marker": {
+      "path": "reports/roadmap_9997/loop166/phase_b1_execution_consumed.json",
+      "sha256": "a4b0de3556f2f084736b78c1cdce647464300ac0c9f2c27271373320172cbd75",
+      "lease_id": "loop166-b1-outer0-resource-cell-v1",
+      "required_status": "consumed_before_raw_access",
+      "must_exist": true,
+      "immutable": true,
+      "delete_overwrite_rename_or_reuse_allowed": false
+    },
+    "original_tokenizer": {
+      "path": "reports/roadmap_9997/loop166/phase_b1_tokenizer.json",
+      "sha256": "73734f28f01b5045ff6f77beb9c07bd62e52102c5153bd94e21c28285659c7f6",
+      "use": "read_only_rebuild_input",
+      "immutable": true
+    },
+    "origin_checkpoint": {
+      "path": "models/roadmap_9997/loop166/phase_b1_tiny_mlm.pt",
+      "sha256": "82177e6d69ef1a2e17a1ea09dcb3e870a32e3305f92ea15bcff124fdc86f14a6",
+      "load_policy": "weights_only",
+      "use": "read_only_step4096_recovery_origin",
+      "immutable": true
+    },
+    "original_incomplete_outputs": {
+      "report": "reports/roadmap_9997/loop166/phase_b1_full_outer_resource_cell.json",
+      "final_verify_receipt": "reports/roadmap_9997/loop166/phase_b1_final_verify_receipt.json",
+      "recovery_may_create_or_backfill": false
+    }
+  },
+  "recovery_execution_closure": {
+    "controller": {
+      "path": "scripts/run_loop166_phase_b1_step4096_recovery.py",
+      "sha256": "3ec5f8e8bc2987928dffa3a47da02a5f07db4228323f1b3748ac4498564c1ab0"
+    },
+    "windows_process_lineage": {
+      "path": "src/loop166/windows_process_lineage.py",
+      "sha256": "9bf5fa53c16a468e0fb1c990f9b83d01042d7aa700f42525e6c3ade4f0ba9599"
+    },
+    "contract_tests": {
+      "path": "tests/test_loop166_phase_b1_step4096_recovery.py",
+      "sha256": "b251c0d17a7452c95b4034c31c48def9c1c34baa7382ce115e4b5bfaf65dc389"
+    },
+    "lineage_tests": {
+      "path": "tests/test_loop166_windows_process_lineage.py",
+      "sha256": "cb3bb05e14bd867dbbef3f75ef1bac63233095ff548e0833de9443df98d0dc78"
+    },
+    "run_allowed_with_pending_binding": false,
+    "all_pending_bindings_must_be_replaced_by_exact_lowercase_sha256": true,
+    "binding_drift_action": "fail_before_recovery_lease_consumption_or_raw_open"
+  },
+  "canonical_runtime": {
+    "python_executable": "E:\\Project\\python\\Axon_v2.6Exp\\vnev\\Scripts\\python.exe",
+    "base_executable": "C:\\Users\\Saika\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe",
+    "python_version": "3.14.4",
+    "implementation": "CPython",
+    "platform": "win32",
+    "torch_version": "2.12.0+cu132",
+    "tokenizers_version": "0.22.2",
+    "pefile_version": "2024.8.26",
+    "version_match_policy": "exact",
+    "controller_must_pass_both_executables_from_authorization_to_lineage_validator": true,
+    "child_runtime_self_report_is_authoritative": false
+  },
+  "canonical_paths": {
+    "project_root": "E:\\Project\\python\\Axon_v2.6Exp",
+    "contract": "manifests/roadmap_9997/loop166_code_section_foundation/phase_b1_step4096_recovery.json",
+    "authorization": "manifests/roadmap_9997/loop166_code_section_foundation/phase_b1_step4096_recovery_authorization.json",
+    "controller": "scripts/run_loop166_phase_b1_step4096_recovery.py",
+    "windows_process_lineage": "src/loop166/windows_process_lineage.py",
+    "tests": "tests/test_loop166_phase_b1_step4096_recovery.py",
+    "lineage_tests": "tests/test_loop166_windows_process_lineage.py",
+    "folds": "reports/roadmap_9997/loop164/local_train_diagnostic_folds.jsonl",
+    "folds_summary": "reports/roadmap_9997/loop164/local_train_diagnostic_folds_summary.json",
+    "data_root": "data/random_20w_worktree",
+    "origin_tokenizer": "reports/roadmap_9997/loop166/phase_b1_tokenizer.json",
+    "origin_checkpoint": "models/roadmap_9997/loop166/phase_b1_tiny_mlm.pt",
+    "recovery_marker": "reports/roadmap_9997/loop166/phase_b1_step4096_recovery_consumed.json",
+    "recovered_checkpoint": "models/roadmap_9997/loop166/phase_b1_step4096_recovered_tiny_mlm.pt",
+    "recovery_report": "reports/roadmap_9997/loop166/phase_b1_step4096_recovery_report.json",
+    "final_verify_receipt": "reports/roadmap_9997/loop166/phase_b1_step4096_recovery_final_verify_receipt.json"
+  },
+  "origin_checkpoint_state": {
+    "schema": "axon_loop166_phase_b1_tiny_mlm_checkpoint_v1",
+    "completed_optimizer_steps": 4096,
+    "completed_sequence_count": 16384,
+    "next_permutation_cursor": 16384,
+    "permutation_prefix_original_bytes": 8200700,
+    "prepared_sequence_count": 115072,
+    "total_optimizer_steps": 28768,
+    "remaining_sequence_count": 98688,
+    "remaining_optimizer_steps": 24672,
+    "resume_pid": 0,
+    "checkpoint_cumulative_wall_seconds": 2554.202057,
+    "exact_tensor_optimizer_scaler_rng_and_synthetic_logit_audit_required": true,
+    "commitments": {
+      "outer_fit_corpus_sha256": "880b9cb7a79f5253b4d7562280baeb9e8543ccae6f89791a8a97a3da91159ffc",
+      "compact_corpus_sha256": "325119a0a5f7bb548b23112d16ecce7c2d43b9e9986c18e3061eaaa2bd77f13c",
+      "shuffle_sha256": "aa79b33bdf73ca13006f5b9772f73dd4d4d35fe43c8cd2fe61b07b5b2a9569ad",
+      "tokenizer_sha256": "73734f28f01b5045ff6f77beb9c07bd62e52102c5153bd94e21c28285659c7f6"
+    }
+  },
+  "frozen_commitments": {
+    "outer_fit_corpus_sha256": "880b9cb7a79f5253b4d7562280baeb9e8543ccae6f89791a8a97a3da91159ffc",
+    "compact_corpus_sha256": "325119a0a5f7bb548b23112d16ecce7c2d43b9e9986c18e3061eaaa2bd77f13c",
+    "shuffle_sha256": "aa79b33bdf73ca13006f5b9772f73dd4d4d35fe43c8cd2fe61b07b5b2a9569ad",
+    "tokenizer_sha256": "73734f28f01b5045ff6f77beb9c07bd62e52102c5153bd94e21c28285659c7f6",
+    "all_must_match_before_training_continuation": true
+  },
+  "continuation": {
+    "recipe_source": "immutable_original_contract",
+    "fresh_model_or_optimizer_initialization_allowed": false,
+    "fresh_tokenizer_fit_allowed": false,
+    "origin_checkpoint_load_policy": "weights_only",
+    "restore_model_optimizer_scaler_cpu_rng_cuda_rng_and_mask_rng": true,
+    "resume_cursor": 16384,
+    "first_recovery_sequence_cursor": 16384,
+    "final_sequence_cursor": 115072,
+    "prefix_rewind_repeat_or_retrain_allowed": false,
+    "remaining_sequence_repeat_skip_or_padding_allowed": false,
+    "recipe_microbatch_precision_optimizer_or_schedule_change_allowed": false,
+    "checkpoint_roundtrip_exact_synthetic_logits_required": true,
+    "success_requires_exact_once_full_epoch": true
+  },
+  "raw_scope": {
+    "split_role": "train",
+    "outer_holdout_fold": 0,
+    "outer_holdout_raw_opens_allowed": 0,
+    "outer_holdout_raw_bytes_allowed": 0,
+    "outer_fit_folds": [1, 2, 3, 4],
+    "outer_fit_metadata_rows": 16000,
+    "expected_fit_raw_open_successes": 15988,
+    "expected_fit_raw_bytes": 19239582561,
+    "expected_source_unavailable": 12,
+    "recovery_full_fit_rebuild_passes_allowed": 1,
+    "same_lease_rescan_or_retry_allowed": false,
+    "final_verify_raw_access_allowed": false,
+    "all_raw_access_must_use_canonical_data_root_and_bound_fold_scope": true,
+    "raw_access_ledger_required": true
+  },
+  "raw_pass_accounting": {
+    "confirmed_full_fit_raw_passes_before_recovery": 1,
+    "maximum_additional_full_fit_raw_passes": 1,
+    "maximum_total_full_fit_raw_passes": 2,
+    "successful_recovery_requires_total_full_fit_raw_passes": 2,
+    "recovery_parent_or_preflight_raw_passes_allowed": 0,
+    "recovery_worker_raw_passes_allowed": 1,
+    "final_verifier_raw_passes_allowed": 0,
+    "commitment_mismatch_action": "consume_lease_then_fail_closed_without_rescan"
+  },
+  "process_lineage": {
+    "old_direct_ppid_rule_may_be_reused": false,
+    "windows_venv_redirector_is_the_only_allowed_intermediate_process": true,
+    "maximum_allowed_intermediate_processes": 1,
+    "broad_ancestor_or_name_only_acceptance_allowed": false,
+    "authorized_python_executable_source": "authorization.runtime.python_executable",
+    "authorized_base_executable_source": "authorization.runtime.base_executable",
+    "child_default_or_self_reported_executable_allowed": false,
+    "allowed_modes": ["parent", "recovery_worker", "final_verify_worker"],
+    "internal_mode_flags": ["--recovery-worker", "--final-verify-worker"],
+    "lineage_must_bind_nonce_marker_authorization_argv_and_process_creation_order": true,
+    "lineage_failure_action": "fail_before_raw_open_or_checkpoint_acceptance"
+  },
+  "resource_gates": {
+    "checkpoint_cumulative_wall_seconds": 2554.202057,
+    "conservative_failed_handoff_debit_seconds": 300.0,
+    "recovery_budget_base_seconds": 2854.202057,
+    "maximum_cumulative_wall_seconds": 28800,
+    "maximum_recovery_elapsed_seconds": 25945.797943,
+    "budget_reset_allowed": false,
+    "all_recovery_and_final_verify_wall_time_added_to_base": true,
+    "maximum_cuda_allocated_bytes_exclusive": 8000000000,
+    "maximum_cuda_reserved_bytes_exclusive": 8000000000,
+    "maximum_process_rss_bytes_exclusive": 12000000000,
+    "minimum_original_bytes_per_training_second": 2000,
+    "minimum_free_disk_bytes_before_raw_open": 1073741824,
+    "minimum_free_disk_bytes_during_run": 536870912,
+    "maximum_total_new_durable_output_bytes": 536870912,
+    "nonfinite_events_allowed": 0,
+    "oom_events_allowed": 0,
+    "any_gate_failure_action": "phase_b1_step4096_recovery_resource_gate_fail"
+  },
+  "one_shot_recovery_lease": {
+    "lease_id": "loop166-b1-step4096-recovery-v1",
+    "marker_schema": "axon_loop166_phase_b1_step4096_recovery_consumption_v1",
+    "consumption_marker": "reports/roadmap_9997/loop166/phase_b1_step4096_recovery_consumed.json",
+    "marker_must_not_exist_before_recovery_start": true,
+    "marker_creation": "atomic_O_EXCL_then_file_fsync_then_parent_directory_flush_best_effort_on_windows",
+    "consume_before_any_raw_open": true,
+    "overwrite_delete_rename_or_reuse_marker_allowed": false,
+    "failed_attempt_consumes_lease": true,
+    "same_lease_process_or_raw_retry_allowed": false,
+    "new_authorization_required_after_any_failed_attempt": true
+  },
+  "handoff_nonce": {
+    "required": true,
+    "minimum_entropy_bits": 256,
+    "must_differ_from_original_nonce": true,
+    "generated_immediately_before_atomic_recovery_lease_consumption": true,
+    "direct_cli_value_allowed": false,
+    "plaintext_persistence_allowed": false,
+    "plaintext_child_handoff_channel": "environment_only",
+    "marker_checkpoint_report_and_receipt_contain_sha256_commitment_only": true,
+    "final_verify_must_prove_nonce_possession": true
+  },
+  "artifact_policy": {
+    "old_artifact_overwrite_delete_or_reuse_allowed": false,
+    "origin_tokenizer_read_only": true,
+    "origin_checkpoint_read_only": true,
+    "recovered_checkpoint_path": "models/roadmap_9997/loop166/phase_b1_step4096_recovered_tiny_mlm.pt",
+    "recovered_checkpoint_atomic_rolling_updates_allowed": true,
+    "recovered_checkpoint_must_bind_origin_checkpoint_incident_authorization_contract_marker_and_nonce": true,
+    "recovery_report_path": "reports/roadmap_9997/loop166/phase_b1_step4096_recovery_report.json",
+    "recovery_report_schema": "axon_loop166_phase_b1_step4096_recovery_report_v1",
+    "final_verify_receipt_path": "reports/roadmap_9997/loop166/phase_b1_step4096_recovery_final_verify_receipt.json",
+    "final_verify_receipt_schema": "axon_loop166_phase_b1_step4096_recovery_final_verification_v1",
+    "durable_raw_code_or_reversible_token_cache_allowed": false
+  },
+  "forbidden": {
+    "original_artifact_mutation": true,
+    "outer_holdout_raw_access": true,
+    "val_test_or_full_access": true,
+    "heldout_tokenizer_or_mlm_fit": true,
+    "labels_or_identity_as_model_inputs": true,
+    "quality_metrics": true,
+    "training_loss_reporting": true,
+    "threshold_operations": true,
+    "f1_accuracy_auc_perplexity_or_bits_per_byte_claim": true,
+    "hard_decisions_or_predictions": true,
+    "five_fold_oof_claim": true,
+    "promotion_claim": true,
+    "public_key_dependency": true
+  },
+  "required_success_invariants": {
+    "origin_artifact_closure_unchanged": true,
+    "outer_holdout_raw_opens": 0,
+    "outer_holdout_raw_bytes": 0,
+    "recovery_full_fit_raw_passes": 1,
+    "total_full_fit_raw_passes": 2,
+    "raw_compact_and_shuffle_commitments_match": true,
+    "resume_cursor_started_at": 16384,
+    "final_cursor": 115072,
+    "final_optimizer_steps": 28768,
+    "dropped_content_tokens": 0,
+    "dropped_original_bytes": 0,
+    "overlength_windows_excluded": 0,
+    "quality_metrics_computed": false,
+    "threshold_operations_performed": false,
+    "final_verify_raw_access": false,
+    "pass_decision": "phase_b1_completed_via_authorized_step4096_recovery",
+    "failure_decision": "phase_b1_step4096_recovery_resource_gate_fail"
+  },
+  "grant_prerequisites": {
+    "incident_and_origin_closure_reverified": true,
+    "all_pending_sha256_replaced_by_exact_lowercase_sha256": true,
+    "recovery_controller_lineage_and_tests_pass": true,
+    "authorization_contract_and_canonical_argv_frozen": true,
+    "new_marker_and_outputs_absent": true,
+    "authorization_status_changed_to_granted": true,
+    "authorization_granted_changed_to_true": true
+  },
+  "ready_for": {
+    "recovery_execution": true,
+    "final_verify_execution": true,
+    "five_fold_oof": false,
+    "val_test_or_full": false,
+    "promotion": false,
+    "blocked_by": []
+  },
+  "decision": "allow_one_step4096_recovery_continuation",
+  "research_champion": "Loop151",
+  "target_f1": 0.9997,
+  "target_achieved": false
+}

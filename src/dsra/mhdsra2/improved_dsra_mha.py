@@ -31,6 +31,7 @@ class MHDSRA2Config:
     use_local: bool = True
     use_retrieval: bool = True
     tau_init: float = 8.0
+    read_tau_max: float = 64.0
     tau_write_init: float = 4.0
     eta: float = 0.25
     max_update: float = 0.50
@@ -66,6 +67,14 @@ class MHDSRA2Config:
     novelty_threshold: float = 0.0  # 写入阈值：novelty > threshold 才写入
     write_protection: int = 0  # 写入保护：写入后 N 步内不允许覆盖
     write_gate_min: float = 0.2  # token_write_gate 下限，防止梯度将写入概率压到过低
+    forget_max: float = 0.95  # 遗忘门上限
+    write_tau_max: float = 64.0  # 写入tau上限
+    max_v_norm: float = 10.0
+    write_gate_bias_init: float = 3.0
+    write_gate_weight_std: float = 0.01
+    init_confidence: float = 0.01
+    age_reset_threshold: float = 0.1
+    write_mass_threshold_multiplier: float = 10.0
 
     def __post_init__(self) -> None:
         if self.dim % self.heads != 0:
@@ -87,8 +96,30 @@ class MHDSRA2State:
     local_v: Optional[torch.Tensor] = None
     position: int = 0
     stage_dominance: Optional[torch.Tensor] = None
-    slot_positions: Optional[torch.Tensor] = None  # [B, H, slots] last-write positions for RoPE
-    protected_until: Optional[torch.Tensor] = None  # [B, H, slots] position until which slot is protected
+    slot_positions: Optional[torch.Tensor] = None
+    protected_until: Optional[torch.Tensor] = None
+
+    def __post_init__(self):
+        if self.slot_k is not None and self.position != 0:
+            assert self.slot_k.device is not None, "state tensors must be on a valid device"
+
+    def detach(self) -> "MHDSRA2State":
+        def maybe_detach(value: Optional[torch.Tensor]) -> Optional[torch.Tensor]:
+            return value.detach() if value is not None else None
+
+        return MHDSRA2State(
+            slot_k=self.slot_k.detach(),
+            slot_v=self.slot_v.detach(),
+            age=self.age.detach(),
+            usage=self.usage.detach(),
+            confidence=self.confidence.detach(),
+            local_k=maybe_detach(self.local_k),
+            local_v=maybe_detach(self.local_v),
+            position=self.position,
+            stage_dominance=maybe_detach(self.stage_dominance),
+            slot_positions=maybe_detach(self.slot_positions),
+            protected_until=maybe_detach(self.protected_until),
+        )
 
 
 class RotaryEmbedding(nn.Module):
@@ -159,9 +190,8 @@ class MultiHeadDSRA2(nn.Module):
         self.token_write_gate = nn.Linear(self.d_head, 1)
         # 初始化 token_write_gate 的 bias 为较大的正值，提高初始写入概率
         # sigmoid(3.0) ≈ 0.95，确保训练初期 MH 分支能正常写入 slot
-        nn.init.constant_(self.token_write_gate.bias, 3.0)
-        # 初始化权重为小值，避免初始输出过大
-        nn.init.normal_(self.token_write_gate.weight, mean=0.0, std=0.01)
+        nn.init.constant_(self.token_write_gate.bias, cfg.write_gate_bias_init)
+        nn.init.normal_(self.token_write_gate.weight, mean=0.0, std=cfg.write_gate_weight_std)
         self.fuse_gate = nn.Linear(self.d_head, 3)
 
         # CCFM: Context-Conditioned Feature Modulation (per-feature FiLM)
@@ -249,11 +279,11 @@ class MultiHeadDSRA2(nn.Module):
         """
         cfg = self.cfg
         k = F.normalize(self.slot_k_init, dim=-1).unsqueeze(0).expand(batch_size, -1, -1, -1)
-        v = self.slot_v_init.unsqueeze(0).expand(batch_size, -1, -1, -1)
+        v = F.normalize(self.slot_v_init, dim=-1).unsqueeze(0).expand(batch_size, -1, -1, -1)
         k = k.to(device=device, dtype=dtype)
         v = v.to(device=device, dtype=dtype)
         zeros = torch.zeros(batch_size, cfg.heads, cfg.slots, device=device, dtype=torch.float32)
-        conf = torch.full_like(zeros, 0.1)
+        conf = torch.full_like(zeros, 0.01)
         slot_positions = torch.zeros(batch_size, cfg.heads, cfg.slots, device=device, dtype=torch.long) if cfg.slot_pe == "rope" else None
         protected_until = None
         if cfg.write_protection > 0:
@@ -303,10 +333,10 @@ class MultiHeadDSRA2(nn.Module):
         d = values.shape[-1]
         idx_flat = idx.reshape(b * h, t * r)
         src = (weights.unsqueeze(-1) * values.unsqueeze(3)).reshape(b * h, t * r, d)
-        # Ensure dtype matches target tensor for scatter_add_
-        src = src.to(dtype=values.dtype)
-        out = torch.zeros(b * h, slots, d, device=values.device, dtype=values.dtype)
+        src = src.to(dtype=torch.float32)
+        out = torch.zeros(b * h, slots, d, device=values.device, dtype=torch.float32)
         out.scatter_add_(1, idx_flat.unsqueeze(-1).expand(-1, -1, d), src)
+        out = out.to(dtype=values.dtype)
 
         mass_src = weights.reshape(b * h, t * r, 1).to(dtype=torch.float32)
         mass = torch.zeros(b * h, slots, 1, device=values.device, dtype=torch.float32)
@@ -346,10 +376,11 @@ class MultiHeadDSRA2(nn.Module):
             qn = F.normalize(q, dim=-1)
             sk = F.normalize(slot_k, dim=-1)
 
-        tau = self.log_tau_read.exp().to(dtype=q.dtype)
-        logits = torch.einsum("bhtd,bhkd->bhtk", qn, sk) * tau
-        logits = logits + cfg.conf_read_bias * state.confidence.to(dtype=q.dtype).unsqueeze(2)
-        logits = logits - cfg.age_read_penalty * torch.log1p(state.age).to(dtype=q.dtype).unsqueeze(2)
+        tau = self.log_tau_read.exp().float()
+        tau = tau.clamp(min=1.0, max=cfg.read_tau_max)
+        logits = torch.einsum("bhtd,bhkd->bhtk", qn.float(), sk.float()) * tau
+        logits = logits + cfg.conf_read_bias * state.confidence.float().unsqueeze(2)
+        logits = logits - cfg.age_read_penalty * torch.log1p(state.age).float().unsqueeze(2)
 
         r = min(cfg.read_topk, cfg.slots)
         top_logits, top_idx = torch.topk(logits, r, dim=-1)
@@ -437,13 +468,13 @@ class MultiHeadDSRA2(nn.Module):
         if (not cfg.use_retrieval) or retrieved_k is None or retrieved_v is None:
             return torch.zeros_like(q)
         scale = self.d_head**-0.5
-        tau = torch.tensor(float(cfg.retrieval_tau), device=q.device, dtype=q.dtype)
+        tau = torch.tensor(float(cfg.retrieval_tau), device=q.device, dtype=torch.float32)
         if retrieved_k.dim() == 4:
-            logits = torch.einsum("bhtd,bhrd->bhtr", q, retrieved_k.to(dtype=q.dtype)) * scale
+            logits = torch.einsum("bhtd,bhrd->bhtr", q.float(), retrieved_k.float()) * scale
             weights = F.softmax(tau * logits, dim=-1)
             return torch.einsum("bhtr,bhrd->bhtd", weights, retrieved_v.to(dtype=q.dtype))
         if retrieved_k.dim() == 5:
-            logits = torch.einsum("bhtd,bhtrd->bhtr", q, retrieved_k.to(dtype=q.dtype)) * scale
+            logits = torch.einsum("bhtd,bhtrd->bhtr", q.float(), retrieved_k.float()) * scale
             weights = F.softmax(tau * logits, dim=-1)
             return torch.einsum("bhtr,bhtrd->bhtd", weights, retrieved_v.to(dtype=q.dtype))
         raise ValueError("retrieved_k/v must be [B,H,R,d] or [B,H,T,R,d]")
@@ -474,8 +505,18 @@ class MultiHeadDSRA2(nn.Module):
         batch_size, heads, seq_len, d_head = k.shape
         slot_k = state.slot_k.to(dtype=k.dtype)
         slot_v = state.slot_v.to(dtype=v.dtype)
-        kn = F.normalize(k, dim=-1)
-        sk = F.normalize(slot_k, dim=-1)
+
+        if cfg.slot_pe == "rope" and self.rotary is not None and state.slot_positions is not None:
+            B, H, T, D = k.shape
+            q_pos = torch.arange(state.position, state.position + T, device=k.device, dtype=torch.float32)
+            q_pos = q_pos.view(1, 1, T, 1).expand(B, H, T, 1)
+            k_pos = state.slot_positions.to(device=k.device, dtype=torch.float32).unsqueeze(-1)
+            kn = F.normalize(self.rotary.apply(k, q_pos), dim=-1)
+            sk = F.normalize(self.rotary.apply(slot_k, k_pos), dim=-1)
+        else:
+            kn = F.normalize(k, dim=-1)
+            sk = F.normalize(slot_k, dim=-1)
+
         sim = torch.einsum("bhtd,bhkd->bhtk", kn, sk)
         max_sim = sim.max(dim=-1).values
         novelty = (1.0 - max_sim).clamp(0.0, 1.0)
@@ -493,17 +534,13 @@ class MultiHeadDSRA2(nn.Module):
         if cfg.novelty_threshold > 0:
             novelty = novelty * (novelty > cfg.novelty_threshold).to(dtype=novelty.dtype)
 
-        tau = self.log_tau_write.exp().to(dtype=k.dtype)
-        tau = tau.clamp(min=1.0, max=64.0)
-        read_hint = read_mass.to(dtype=k.dtype).unsqueeze(2).clamp(0.0, 1.0)
-        usage_penalty = cfg.usage_prior * torch.log1p(state.usage).to(
-            dtype=k.dtype
-        ).unsqueeze(2)
-        write_logits = sim * tau
+        tau = self.log_tau_write.exp().float()
+        tau = tau.clamp(min=1.0, max=cfg.write_tau_max)
+        read_hint = read_mass.float().unsqueeze(2).clamp(0.0, 1.0)
+        usage_penalty = cfg.usage_prior * torch.log1p(state.usage).float().unsqueeze(2)
+        write_logits = sim.float() * tau
         write_logits = write_logits - usage_penalty * (1.0 - read_hint)
-        write_logits = write_logits + cfg.age_write_bias * torch.log1p(state.age).to(
-            dtype=k.dtype
-        ).unsqueeze(2)
+        write_logits = write_logits + cfg.age_write_bias * torch.log1p(state.age).float().unsqueeze(2)
         write_logits = write_logits + tau * read_hint
 
         w_top = min(cfg.write_topk, cfg.slots)
@@ -520,9 +557,8 @@ class MultiHeadDSRA2(nn.Module):
             # 直通估计器：前向用 hard_route，反向用 route 的梯度
             route = hard_route + route - route.detach()
         
-        token_gate = torch.sigmoid(self.token_write_gate(k)).squeeze(-1) * novelty
-        # 写入门控下限：防止梯度将 token_gate 压到接近 0，确保 slot 始终有最低写入量
-        token_gate = token_gate.clamp(min=cfg.write_gate_min)
+        raw_gate = torch.sigmoid(self.token_write_gate(k)).squeeze(-1).clamp(min=cfg.write_gate_min)
+        token_gate = (raw_gate * novelty).clamp(min=1e-6)
         weights = route * token_gate.unsqueeze(-1)
 
         # Apply write protection: prevent writing to slots that are still protected
@@ -546,29 +582,30 @@ class MultiHeadDSRA2(nn.Module):
 
         agg_k, mass = self._scatter_values(top_idx, weights, k, cfg.slots)
         agg_v, _ = self._scatter_values(top_idx, weights, v, cfg.slots)
+        safe_mask = (mass > cfg.eps).to(dtype=k.dtype)
         mass_safe = mass.clamp_min(cfg.eps).to(dtype=k.dtype)
-        new_k = agg_k / mass_safe
-        new_v = agg_v / mass_safe
-        has_write = (mass > cfg.eps).to(dtype=k.dtype)
+        new_k = (agg_k / mass_safe) * safe_mask
+        new_v = (agg_v / mass_safe) * safe_mask
+        has_write = safe_mask
 
         conflict = (
             (1.0 - F.cosine_similarity(new_k, slot_k, dim=-1, eps=cfg.eps))
             .clamp(0.0, 2.0)
             .unsqueeze(-1)
         )
-        read_mass_boost = read_mass.to(dtype=k.dtype).unsqueeze(-1).clamp(0.0, 1.0)
+        read_mass_boost = read_mass.float().unsqueeze(-1).clamp(0.0, 1.0)
         reinforced_mass = mass + read_mass_boost * has_write
-        write_gate = (1.0 - torch.exp(-cfg.eta * reinforced_mass)).to(dtype=k.dtype).clamp(
+        write_gate = (1.0 - torch.exp(-cfg.eta * reinforced_mass.float())).clamp(
             0.0, cfg.max_update
-        ) * has_write
+        ).to(dtype=k.dtype) * has_write
 
-        conflict_protection = state.confidence.to(dtype=k.dtype).unsqueeze(-1)
-        write_gate = write_gate * (1.0 - cfg.conflict_protection_coef * conflict_protection)
+        conflict_protection = state.confidence.float().unsqueeze(-1)
+        write_gate = write_gate * (1.0 - cfg.conflict_protection_coef * conflict_protection).clamp(min=0.0).to(dtype=k.dtype)
 
-        age_term = cfg.forget_age * torch.log1p(state.age).unsqueeze(-1).to(dtype=k.dtype)
-        forget = cfg.forget_base + age_term + cfg.forget_conflict * write_gate * conflict
+        age_term = cfg.forget_age * torch.log1p(state.age).float().unsqueeze(-1)
+        forget = cfg.forget_base + age_term + cfg.forget_conflict * write_gate.float() * conflict
         forget = torch.maximum(forget, write_gate * has_write)
-        forget = forget.clamp(0.0, 0.95)
+        forget = forget.clamp(0.0, cfg.forget_max)
 
         # 精确写入模式：完全覆盖
         if cfg.exact_write:
@@ -577,15 +614,25 @@ class MultiHeadDSRA2(nn.Module):
             slot_k_next = (1.0 - forget_exact) * slot_k + write_gate_exact * new_k
             slot_k_next = F.normalize(slot_k_next, dim=-1)
             slot_v_next = (1.0 - forget_exact) * slot_v + write_gate_exact * new_v
+            effective_write_gate = write_gate_exact
+            effective_forget = forget_exact
         else:
             slot_k_next = (1.0 - forget) * slot_k + write_gate * new_k
             slot_k_next = F.normalize(slot_k_next, dim=-1)
             slot_v_next = (1.0 - forget) * slot_v + write_gate * new_v
+            effective_write_gate = write_gate
+            effective_forget = forget
 
-        wg32 = write_gate.squeeze(-1).to(dtype=torch.float32)
-        fg32 = forget.squeeze(-1).to(dtype=torch.float32)
+        max_v_norm = cfg.max_v_norm
+        v_norm = slot_v_next.norm(dim=-1, keepdim=True)
+        scale = torch.clamp(max_v_norm / (v_norm + 1e-6), max=1.0)
+        slot_v_next = slot_v_next * scale
+
+        wg32 = effective_write_gate.squeeze(-1).to(dtype=torch.float32)
+        fg32 = effective_forget.squeeze(-1).to(dtype=torch.float32)
         age_next = (state.age + k.shape[2]).to(dtype=torch.float32)
-        age_next = age_next * (1.0 - wg32).clamp(0.0, 1.0)
+        age_reset_mask = (wg32 > cfg.age_reset_threshold).to(dtype=torch.float32)
+        age_next = age_next * (1.0 - age_reset_mask)
         usage_next = cfg.usage_decay * state.usage + read_mass + mass.squeeze(-1).to(
             dtype=torch.float32
         )
@@ -596,14 +643,14 @@ class MultiHeadDSRA2(nn.Module):
         # RoPE: update slot positions for written slots
         slot_positions_next = state.slot_positions
         if cfg.slot_pe == "rope" and state.slot_positions is not None:
-            wrote_mask = (mass.squeeze(-1) > cfg.eps).to(device=k.device)
+            wrote_mask = (mass.squeeze(-1) > cfg.eps * cfg.write_mass_threshold_multiplier).to(device=k.device)
             new_pos = torch.full_like(state.slot_positions, state.position + k.shape[2], dtype=torch.long)
             slot_positions_next = torch.where(wrote_mask, new_pos, state.slot_positions.to(device=k.device))
 
         # 方案 3: 写入保护 - 更新 protected_until
         protected_until_next = state.protected_until
         if cfg.write_protection > 0:
-            wrote_mask = (mass.squeeze(-1) > cfg.eps).to(device=k.device)
+            wrote_mask = (mass.squeeze(-1) > cfg.eps * cfg.write_mass_threshold_multiplier).to(device=k.device)
             if protected_until_next is None:
                 # 正确初始化 protected_until，不依赖可能为 None 的 slot_positions
                 protected_until_next = torch.full(
@@ -621,10 +668,10 @@ class MultiHeadDSRA2(nn.Module):
             "token_gate_mean": token_gate.detach().mean().to(dtype=torch.float32),
             "write_mass_mean": write_mass.detach().mean(),
             "write_mass_max": write_mass.detach().max(),
-            "write_gate_mean": write_gate.detach().mean().to(dtype=torch.float32),
-            "write_gate_max": write_gate.detach().max().to(dtype=torch.float32),
-            "forget_gate_mean": forget.detach().mean().to(dtype=torch.float32),
-            "forget_gate_max": forget.detach().max().to(dtype=torch.float32),
+            "write_gate_mean": effective_write_gate.detach().mean().to(dtype=torch.float32),
+            "write_gate_max": effective_write_gate.detach().max().to(dtype=torch.float32),
+            "forget_gate_mean": effective_forget.detach().mean().to(dtype=torch.float32),
+            "forget_gate_max": effective_forget.detach().max().to(dtype=torch.float32),
             "conflict_mean": conflict.detach().mean().to(dtype=torch.float32),
             "novelty_mean": novelty.detach().mean().to(dtype=torch.float32),
             "write_mass": write_mass.detach(),
@@ -634,11 +681,18 @@ class MultiHeadDSRA2(nn.Module):
         }
 
         if cfg.detach_state:
+            if getattr(self, "_capture_slot_k_before_detach", False):
+                self._slot_k_before_detach = slot_k_next
+            elif hasattr(self, "_slot_k_before_detach"):
+                del self._slot_k_before_detach
             slot_k_next = slot_k_next.detach()
             slot_v_next = slot_v_next.detach()
             age_next = age_next.detach()
             usage_next = usage_next.detach()
             conf_next = conf_next.detach()
+        else:
+            if hasattr(self, '_slot_k_before_detach'):
+                del self._slot_k_before_detach
 
         return MHDSRA2State(
             slot_k=slot_k_next.contiguous(),
@@ -648,7 +702,7 @@ class MultiHeadDSRA2(nn.Module):
             confidence=conf_next.contiguous(),
             local_k=state.local_k,
             local_v=state.local_v,
-            position=state.position + k.shape[2],
+            position=min(state.position + k.shape[2], (1 << 24) - 1),
             stage_dominance=None,
             slot_positions=slot_positions_next,
             protected_until=protected_until_next,
@@ -663,19 +717,24 @@ class MultiHeadDSRA2(nn.Module):
         return_aux: bool = False,
         stage_id: int | None = None,
         context_id: int | None = None,
+        _precomputed_qkv: Optional[torch.Tensor] = None,
     ):
         cfg = self.cfg
         b, t, d = x.shape
         if d != self.dim:
             raise ValueError(f"expected dim={self.dim}, got {d}")
 
-        # CCFM: Update active context if provided
         if context_id is not None and cfg.use_context_film:
             self._active_context_id = int(context_id)
         if state is None:
             state = self.init_state(b, device=x.device, dtype=x.dtype)
+        elif cfg.detach_state:
+            state = state.detach()
 
-        qkv = self.qkv(x)
+        if _precomputed_qkv is not None:
+            qkv = _precomputed_qkv
+        else:
+            qkv = self.qkv(x)
         q, k, v = qkv.chunk(3, dim=-1)
 
         # CCFM: Context-Conditioned Feature Modulation (per-feature FiLM)
@@ -739,6 +798,7 @@ class MultiHeadDSRA2(nn.Module):
         kv_cache: Optional[Tuple[torch.Tensor, torch.Tensor]] = None,
         retrieved_k: Optional[torch.Tensor] = None,
         retrieved_v: Optional[torch.Tensor] = None,
+        _precomputed_qkv: Optional[torch.Tensor] = None,
     ) -> Tuple[torch.Tensor, MHDSRA2State, Tuple[Optional[torch.Tensor], Optional[torch.Tensor]]]:
         """Run one autoregressive decoding step with DSRA-compatible outputs.
 
@@ -775,6 +835,9 @@ class MultiHeadDSRA2(nn.Module):
             and state.local_v is None
         ):
             cached_k, cached_v = kv_cache
+            if self.cfg.detach_state:
+                cached_k = cached_k.detach()
+                cached_v = cached_v.detach()
             state.local_k = cached_k
             state.local_v = cached_v
 
@@ -784,6 +847,7 @@ class MultiHeadDSRA2(nn.Module):
             retrieved_k=retrieved_k,
             retrieved_v=retrieved_v,
             return_aux=False,
+            _precomputed_qkv=_precomputed_qkv,
         )
         next_kv_cache = (next_state.local_k, next_state.local_v)
         return out_t, next_state, next_kv_cache
@@ -794,11 +858,16 @@ class MultiHeadDSRA2(nn.Module):
         Penalizes slot collapse within each head without using an O(K^3) inverse.
         Complexity is O(B * H * K^2 * d), so use only during training and small K.
         """
-        sk = F.normalize(state.slot_k, dim=-1)
-        gram = torch.einsum("bhkd,bhld->bhkl", sk, sk)
-        eye = torch.eye(gram.shape[-1], device=gram.device, dtype=gram.dtype)
-        off = gram - eye.view(1, 1, gram.shape[-1], gram.shape[-1])
-        return (off**2).mean()
+        sk_source = getattr(self, '_slot_k_before_detach', state.slot_k)
+        try:
+            sk = F.normalize(sk_source, dim=-1)
+            gram = torch.einsum("bhkd,bhld->bhkl", sk.float(), sk.float())
+            eye = torch.eye(gram.shape[-1], device=gram.device, dtype=gram.dtype)
+            off = gram - eye.view(1, 1, gram.shape[-1], gram.shape[-1])
+            return (off**2).mean()
+        finally:
+            if hasattr(self, '_slot_k_before_detach'):
+                del self._slot_k_before_detach
 
 
 def estimate_attention_memory_bytes(

@@ -1,0 +1,1087 @@
+# Axon 机器学习改进建议
+
+更新时间：2026-07-12
+
+## 2026-07-12 补充：99.97 长期路线与 P0 raw replay 闸门
+
+项目的主目标已从“继续优化反复观察过的 random-20w 榜单”升级为认证级系统目标：两个未来、按时间/家族/来源/近重复隔离的 sealed full-test 上达到 `F1 >= 0.9997`，并同时满足置信下界、FPR/FNR、coverage、延迟和成本门槛。旧 Val、Test-10k 和 16 万 full-test 全部只保留为 development evidence。当前研究冠军仍是 Loop151：legacy full-test `F1=0.9908541911012403`、`1466` errors、`FP/FN=879/587`；目标误差预算仅约 `47-48`，至少还需净消除 `1418` 个错误。完整合同见 `goal.md`。
+
+P0 已冻结 Loop151 指标、策略、模型、实现、Python/native runtime 闭包和 dirty-worktree 证据，当前 truth manifest 有 `79/79` 个 required artifacts、blockers `0`。但必须区分三种状态：Loop151 只是 research champion；当前 native product 仍是 Loop28；connected system 尚不存在。Loop127、Loop130、Loop134、Loop136 和 Loop151 还没有串成一个 raw-file runtime，所以不能把历史 CSV evaluator 称为原生部署或 raw replay。
+
+本轮建立了 fail-closed raw runner：A1 授权把逻辑根锁定到项目 `data`，目录链接展开后的物理根必须显式授权；源文件在同一流中复制并校验到私有快照，Python/native 只读取快照。Stage-2 pickle 只能由服务端 allowlist 授信，并同时校验 metadata/model SHA、`64 MiB` 上限和同一内存字节缓冲区。Release native path probe 已确认物理中文根可通过，而 `allowed_root=data` 的外部目录链接、`models`、前缀碰撞和 traversal 均拒绝。
+
+唯一 train smoke 上，Python/native 的 benign 决策一致，但 base probability delta 为 `0.00013463559140205333`，Stage-2 delta 为 `0.000004856637441869656`，均超过冻结的 `1e-6` 容差。因此 `native_loop28_parity_blocked`、完整 Loop151 raw replay 和 certification 必须继续为 false。下一合法技术门是先定位并消除 Loop28 Python/native 特征或 runtime 漂移，再按 Loop127 -> Loop130 -> Loop134 -> Loop136 -> Loop151 顺序实现逐文件 adapter 和 SHA-bound metadata；训练、cache/split 修改、Val、Test-10k 和 full-test 重跑仍未授权。详细证据见 `reports/hard_family_finetune/experiment_journal.md` 的 `2026-07-12` 记录。
+
+P0 train-only 组件诊断已把首个分歧锁定到 `feature_extraction`，而不是先发生在 ONNX 或 HGB：`byte_seq` 为 `8192/8192` 精确一致；PE 仅在 `117/125/126/135` 四列不同，对应 section entropy std、section raw-size std/CV 和 network API ratio；stat 仅在 `45` 不同，对应 chunk-std diff 的 float32 reduction。Stage-2 的 `106/1520` 个差异由 base probability transforms `6`、stat `1`、PE `4`、byte summary `91`、content PE `4` 构成，lightweight `256/256` 全同。content PE 的四列是 resource entry/type 与 relocation block/entry 计数，当前 native 实现仍为固定零近似。诊断只使用同一个冻结 train 样本；没有访问 heldout raw/prediction/metric，没有计算 F1，也没有改变 Loop151 冠军或 readiness。
+
+修复顺序冻结为：先对齐 PE/stat 的 NumPy 精度与 API prefix 语义；再把 byte-summary 的 float32 `log1p/log2/pairwise reduction` 精确移植；再实现 resource/TLS/relocation 目录解析；特征向量逐元素一致后，才把 native HGB 的 threshold/leaf/baseline JSON 解析与存储改为 double。所有修复先过 synthetic/静态测试和 clean Release build；随后必须在新的 proposal、authorization、implementation manifest、run authorization 和 one-shot lease 下，只复验同一个 train 样本。只有组件 parity 与最终概率均达到冻结 `<=1e-6`，才允许启动 Loop127 -> Loop151 native adapters；任何 Val、Test-10k 或 full-test 仍不在本轮范围。
+
+### 2026-07-12 更正：feature remediation 通过，但 ONNX base parity 在 raw 前失败
+
+扩展 synthetic 矩阵推翻了“禁用 ORT graph rewrite 后即可进入 train-only 复验”的单样本判断。旧 fixture 的 resource directory header 混有随机 `NumberOfNamedEntries`，Python 和 C++ 实际都跳过了 resource tree；修正后，本轮增加了 PE32/PE32+、numeric/named resource、TLS callback present/zero、relocation、invalid RVA、`NumberOfRvaAndSizes` 和 NumPy reduction 的 mutation-sensitive 覆盖。四个有效模型 fixture 上，`byte_seq`、PE、stat 均逐元素一致，Stage-2 `6..1519` 也全部一致，说明 feature remediation 本身成立。
+
+剩余阻塞已前移到 `base_inference`。三个 PE32 fixture 的 base probability delta 分别为 `0.0074248304705810675`、`0.003849865531158403` 和 `0.004712764657287649`，全部远超 `1e-6`；其中两个 fixture 的 Stage-2 delta 进一步放大到约 `0.0411009`。唯一 PE32+ fixture 的 base/Stage-2 delta 为 `1.289367723700252e-9 / 1.2860954523574719e-8`，能够通过。所有输入 HMAC 都精确一致，因此这不是特征差异，而是冻结 PyTorch checkpoint 与冻结 ONNX 执行在不同有效输入上并不统一数值忠实。当前 ONNX 导出记录本身也明确写着 `verified_with_onnxruntime=false`，不能再用单个易通过 fixture 代替导出验证。
+
+本轮因此在 raw 前 fail closed：没有生成 implementation manifest、run authorization 或新 lease，没有读取 train raw，更没有访问 Val、Test-10k、full-test。下一合法 P0 不是继续调容差，也不是赌冻结 train 样本能通过，而是另开 synthetic-only ONNX fidelity loop：先定位 PyTorch -> ONNX 的首个中间激活分歧，再在“可验证的稳定 ONNX 导出”和“PyTorch-compatible native runtime”之间做 canonical runtime 决策。新方案至少要覆盖多种 PE32/PE32+ deterministic fixtures、hard-routing 边界和 repeated-run determinism；全部通过后，才允许重新申请一次 train-only raw lease。机器证据见 `manifests/roadmap_9997/p0_loop28_parity_remediation/synthetic_pre_run_blocked.json`。
+
+## 2026-07-08 补充：Loop151 trusted signer guard becomes new strict best
+
+Loop151 按“进展不佳时要激进，但不能盲冲 Test”的原则，引入真正正交的外部证据：Windows Authenticode `Valid` 状态和 signer certificate subject。新增 `scripts/evaluate_authenticode_trusted_signer_guard.py`，规则只在当前预测为 malicious、签名状态为 `Valid`、且 signer subject 命中预声明 trusted publisher term 时，把预测降级为 benign。路径、文件名、目录、后缀、hash、`source_sha256`、`sample_index`、split 和 row order 仍只用于打开文件、对齐和审计，不作为模型证据。
+
+漏斗结果：Val 从 Loop136 的 `F1=0.9910789933`、`179` errors、`FP/FN=122/57` 改为 `F1=0.9919193935`、`162` errors、`FP/FN=105/57`，进入 Test-10k；Test-10k 从 `83` errors、`FP/FN=54/29` 改为 `78` errors、`FP/FN=49/29`，进入 full-test；最终 full-test 从 `F1=0.9903723842`、`1544` errors、`FP/FN=958/586` 改为 `F1=0.9908541911`、`1466` errors、`FP/FN=879/587`。也就是净减少 `78` 个错误，修复 `79` 个 FP，同时新增 `1` 个 FN。Loop151 因此成为新的 strict best，但它是 precision-side 改进，不是 99.9% 级别突破。
+
+本轮也做了 negative controls：Authenticode valid-status 粗规则在 Loop136 Val 上没有改善；Cert-OOF Test-10k 为 `134` errors；Loop136 vs Cert-OOF pairwise Test-10k 为 `84` errors；R11 + fixed + cert union Test-10k 为 `85` errors；Loop144 union 再接 trusted signer guard 后 Test-10k 仍为 `81` errors，弱于 Loop151 的 `78`。因此后续不要继续堆证书 blob 小特征或 R11 union，小心 FP 外溢。详见 `docs/phase3_loop151_trusted_signer_guard_report.md`。
+
+新的短期建议：冻结当前 trusted signer term list，不得根据 full-test 结果追加发布者；继续推进 Loop150 Val `86` 行高冲突复核，确认坏行后 same-original-label fresh redraw；若要继续冲击 `F1 >= 99.9%`，需要外部信誉、多引擎、行为沙箱或动态证据，而不是继续微调静态 selector。
+
+## 2026-07-08 补充：Loop152 Val 噪声 redraw readiness bridge
+
+Loop152 补上 Loop150 Val `86` 行高冲突复核包到 Loop76 redraw readiness 的安全桥接：新增 `scripts/run_loop152_loop150_val_focus_redraw_readiness.py` 和对应测试。这个入口只读，不训练、不评估、不采样 replacement、不改 split/cache；若后续独立内容/外部证据确认 `label_wrong`、`feature_broken` 或 `out_of_scope`，它只会生成 `exclude_and_replace` plan，且 `replacement_label` 固定为原 locked split label。也就是“坏文件/坏特征就重新抽同原始标签样本”，不是让坏样本补齐，也不是直接改标。
+
+真实 no-op 复验结果：Loop150 Val focus `rows=86`、`annotated_rows=0`、`replacement_required_rows=0`、`blockers=[]`；Loop152 bridge 决策为 `await_external_verdicts`，`planned_rows=0`、`replacement_required=0`、`training_policy_rows=0`，并重新确认 split 仍是严格 `200000 = 20000/20000/160000` 且每个 split 黑白平衡。Train/Val、Test-10k 和 full-test 均未授权。详见 `docs/phase3_loop152_loop150_val_redraw_readiness_report.md`。
+
+下一步不应该自动 redraw，也不应该把 full-test `784` focus 身份用于模型选择。只有 Val `86` 行获得独立 verdict 后，才按 Loop152 -> Loop76 -> candidate pool -> corrected split -> replacement audit -> cache metadata readiness -> strict split metadata audit 的顺序推进；任一环节出现 shortfall、metadata mismatch、非 20w 或 label-balance drift 都必须停。
+
+机器可读状态台账也已同步：`reports/model_review/final_model_selection/ml_recommendation_status.json` 现在把 `current_strict_best_loop151` 标为 `current_strict_best`，并把 `loop152_val_noise_redraw_readiness` 标为 `awaiting_independent_val_verdicts`。这份 ledger 的对应 evidence 当前均为 present，后续 agent 不应再把 Loop136 当成 F1/total-error 口径下的当前 best；Loop136 只保留为 recall fallback 和历史对照。
+
+## 2026-07-08 补充：Loop153 current-best Val noise focus
+
+Loop153 把噪声治理入口从旧 Loop136 Val 错误重建到当前 strict best Loop151：新增 `scripts/build_loop153_current_best_val_noise_focus.py`，读取 `reports/phase3_loop151/loop151_trusted_signer_guard_val_predictions.csv`，按 `trusted_signer_guard_prediction` 找出当前 `162` 个 Val 错误，再用 `source_sha256` 只做对齐，把 Loop136 Val neighbor/content 证据过滤到这 `162` 行。过滤后 neighbor/content 均为 `162/179`，当前错误证据缺失 `0`。
+
+真实输出为 `reports/phase3_loop153/loop153_loop151_val_noise_focus_blinded.csv` 和 private map。高冲突 focus 行为 `73` 行，`FP/FN=52/21`，priority band 为 `critical=3/high=70`；review lane 为 `benign_trust_or_label_quality_review=48`、`malware_blindspot_or_label_quality_review=14`、`content_evidence_review=11`。公开表不包含路径、文件名、hash、`source_sha256`、模型分数、概率、prediction、neighbor label 或 similarity；这些字段只保留在 private map 做定位和审计，不是证据。
+
+当前 preflight 和 redraw readiness 都是 no-op：`rows=73`、`annotated_rows=0`、`replacement_required=0`、`blockers=[]`、decision `await_external_verdicts`，Train/Val、Test-10k 和 full-test 全部不授权。也就是说，Loop153 是“当前 best 的复核队列”，不是自动重抽或训练许可。后续只有独立内容/外部证据确认 `label_wrong`、`feature_broken` 或 `out_of_scope`，才允许 quarantine 并从 locked manifest 的同原始标签池 fresh redraw；坏样本不能自己补齐，最终仍必须严格 `200000 = 20000/20000/160000`。
+
+建议更新：后续噪声治理优先使用 Loop153 的 `73` 行当前-best Val focus，而不是旧 Loop150 的 `86` 行 Loop136 focus。Loop150 仍可作为历史对照，但不再代表当前 best 的错误面。详见 `docs/phase3_loop153_current_best_val_noise_focus_report.md`。
+
+## 2026-07-08 补充：Loop156 current-best Val full-error review
+
+Loop156 在 Loop153 基础上继续扩面：Loop153 只覆盖 `73 / 162` 个当前-best Val 高冲突错误，Loop156 则把 Loop151 当前仍错的全部 `162` 个 Val 样本导出成盲化复核包。新增 `scripts/build_loop156_current_best_val_full_error_review.py`，输入仍是 Loop153 已过滤到当前 best 的 neighbor/content 证据，不读 full-test，不训练，不采样 replacement，不改 split/cache。
+
+真实输出为 `reports/phase3_loop156/loop156_loop151_val_all_errors_blinded.csv` 和 private map。总行数 `162`，`FP/FN=105/57`；support bucket 分布为 `neighbors_support_model_prediction=73`、`neighbors_support_dataset_label=24`、`neighbors_mixed=65`；review lane 为 `benign_trust_or_label_quality_review=94`、`malware_blindspot_or_label_quality_review=45`、`content_evidence_review=23`。公开表继续排除路径、文件名、hash、`source_sha256`、模型分数、概率、prediction、neighbor label 和 similarity；private map 只用于定位和审计。
+
+真实 no-op preflight/readiness 结果：`rows=162`、`annotated_rows=0`、`replacement_required=0`、`blockers=[]`、decision `await_external_verdicts`，fresh redraw、Train/Val、Test-10k 和 full-test 全部不授权。Loop156 是“当前 best 全 Val 错误面复核入口”，不是自动重抽或训练许可。后续只有独立内容/外部证据确认 `label_wrong`、`feature_broken` 或 `out_of_scope`，才允许 quarantine 并从 locked manifest 的同原始标签池 fresh redraw；坏样本不能自己补齐，最终仍必须严格 `200000 = 20000/20000/160000`。详见 `docs/phase3_loop156_current_best_val_full_error_review_report.md`。
+
+## 2026-07-08 补充：Loop157 external annotation package
+
+Loop157 把 Loop156 的 `162` 行当前-best Val 全错误盲化包整理成外部标注安全包：新增 `scripts/export_loop157_current_best_val_external_annotation_package.py`，输出 reviewer context、header-only annotation template 和 reviewer guide。这个入口不读 private map、不 unblind、不训练、不采样 replacement、不改 split/cache；外部 reviewer 只看到 `review_focus_id`、当前标签、错误方向、review lane 和内容派生字段。
+
+真实导出 `reports/phase3_loop157/loop157_loop151_val_all_errors_external_package_summary.json` 显示：rows `162`、context fields `33`、label `0/1=105/57`、error `FP/FN=105/57`、missing required `0`、forbidden input columns `0`、context header violations `0`、context value violations `0`、missing/duplicate review IDs `0/0`，decision `ready_for_external_content_annotation`。annotation template 只含四列：`review_focus_id/manual_label_verdict/manual_verdict_note/recommended_action`。
+
+决策：Loop157 可以交给独立内容/外部证据系统使用，但它不产生自动 verdict。返回文件如果混入路径、文件名、hash、`source_sha256`、`sample_index`、模型分数、概率、prediction 或 threshold，必须被 preflight 阻断。若后续确认坏行，仍然只能同原始标签 fresh redraw，并保持严格 20w。详见 `docs/phase3_loop157_external_annotation_package_report.md`。
+
+## 2026-07-08 补充：Loop158 Loop157 external annotation ingress
+
+Loop158 补上了 Loop157 返回文件的安全入口：新增 `scripts/import_loop158_current_best_val_external_annotations.py`，只接受四列 `review_focus_id/manual_label_verdict/manual_verdict_note/recommended_action`。这一步比 Loop126 更靠前，因为外部返回文件不能直接携带 `current_label` 之外的内部上下文，更不能混入 private map、路径、hash、`source_sha256`、`sample_index`、模型概率、prediction 或 threshold。
+
+真实 no-op 运行使用 Loop157 的 header-only annotation template：context `162` 行、context fields `33`、label `0/1=105/57`；returned annotation rows `0`、annotated rows `0`、forbidden columns `0`、note identity/model term rows `0`、blockers `[]`，decision `ready_noop_no_external_annotations`，`private_join_performed=false`。也就是说目前还没有真实外部 verdict，Loop158 只证明入口是干净的，不授权 redraw、训练、Test-10k 或 full-test。
+
+决策：后续真实标注返回后必须先跑 Loop158。Loop158 会先挡住额外列、未知/重复 ID、空 manual 行，以及 note 中把路径/hash/概率/prediction/threshold 当证据的写法；通过后才合回 Loop157 context 的 `current_label` 并调用 Loop126 preflight，再视情况进入 Loop152/Loop76 same-original-label fresh redraw readiness。详见 `docs/phase3_loop158_loop157_external_annotation_ingress_report.md`。
+
+## 2026-07-08 补充：Loop154 trusted signer threshold tightening negative
+
+Loop154 复验了一个保守但可能有收益的假设：Loop151 trusted signer guard 在 full-test 新增 `1` 个 FN，若把 signer guard 的 `score_threshold` 从 `1.0` 收紧到 `0.995`，也许能保留 Val/Test-10k 收益并减少 full-test 新增 FN。本轮没有扩展 signer term，也没有用 full-test 选择发布者；冻结 term list 与 Loop151 完全一致。
+
+结果是三段完全等价：Val 仍为 `F1=0.9919193935`、`162` errors、`FP/FN=105/57`；Test-10k 仍为 `F1=0.9921921922`、`78` errors、`FP/FN=49/29`；full-test 仍为 `F1=0.9908541911`、`1466` errors、`FP/FN=879/587`。逐行 prediction diff 也确认 Val `20000/20000`、Test-10k `10000/10000`、full-test `160000/160000` 均为 `0` 差异。说明所有实际触发的 frozen trusted-signer downgrade 分数都已经 `<=0.995`，收紧阈值没有改变行为。
+
+决策：Loop154 不替代 Loop151，且关闭 `0.995` 到 `1.0` 附近继续扫 signer score threshold 的路线。后续只有出现新的 score 来源，或有外部/人工预批准的新 signer term list，才重新从 Val 打开 signer guard 实验。详见 `docs/phase3_loop154_trusted_signer_threshold_tightening_report.md`。
+
+## 2026-07-08 补充：Loop155 candidate governance audit
+
+Loop155 把 Loop151 周边几个容易误判的候选统一放回 Val-first 漏斗审计。关键发现是：存在一个 full-test 错误数更低但不能采用的候选。OOF-noise/R5 + trusted signer 在 full-test 上是 `F1=0.9908950309`、`1460` errors、`FP/FN=906/554`，比 Loop151 的 `1466` errors 少 `6` 个；但它在 Val 上只有 `F1=0.9913702798`、`173` errors、`FP/FN=110/63`，比 Loop151 的 Val `162` errors 多 `11` 个，因此属于 `reject_val_gate_full_test_mirage`，不能用 full-test 反向选成新 best。
+
+另一个候选 Loop144 union + trusted signer 在 Val 上更强：`150` errors、`FP/FN=104/46`，但 Test-10k 退到 `81` errors、`FP/FN=55/26`，弱于 Loop151 的 `78` errors，所以是 `reject_test10k_gate`。Loop154 threshold `0.995` 与 Loop151 完全等价。结论：Loop151 仍是当前可部署 strict best；后续 agent 不应把 `1460` full-test errors 误读为新当前 best。
+
+这份审计也强化了下一步方向：要么继续从 Val-first 的正交证据源突破，要么推进 Loop153 当前-best Val `73` 行噪声 verdict；不能为了 6 个 full-test 错误净收益去破坏 Test 集隔离。详见 `docs/phase3_loop155_candidate_governance_audit.md`。
+
+## 2026-07-08 补充：Loop159 R11-only recall candidate audit
+
+Loop159 把 Loop144 union 拆开，只保留 R11-filtered 分支，再叠加 Loop151 冻结 trusted signer guard，测试一个更窄的激进方向：能不能只吃 R11 的召回收益，而避开 Loop144 union 在 Test-10k 上的 FP 外溢。这个实验没有训练、没有阈值搜索，也没有扩展 signer term。
+
+漏斗结果：Val 从 Loop151 的 `162` errors 改为 `155` errors，`FP/FN=106/49`，也就是多 `1` 个 FP、少 `8` 个 FN；Test-10k 为 `78` errors，`FP/FN=52/26`，总错误与 Loop151 持平但 FP/FN 交换为 `+3/-3`。随后对已有 frozen full-test 结果做确认，full-test 为 `F1=0.9907064008`、`1491` errors、`FP/FN=962/529`，比 Loop151 多 `25` 个错误，F1 更低。
+
+决策：Loop159 不替代 Loop151。它是一个高召回 trade-off 记录：full-test FN 少 `58`，但 FP 多 `83`，总错误和 F1 都不如当前 strict best。若未来产品明确需要“高召回模式”，可以把它作为候选重新评审；但在当前 F1/total-error 目标下不进入主线。详见 `docs/phase3_loop159_r11_only_candidate_audit.md`。
+
+## 2026-07-08 补充：Loop160 low-probability R11 gate
+
+Loop160 继续把 R11 recall rescue 收紧：只用 Val 选择一个非身份概率阈值，规则是“在 Loop151 当前预测 benign、R11 候选预测 malicious 的行里，找满足 Val 至少减少 `3` 个错误且 FP 不增加的最小 `baseline_prob_malicious` 阈值”。选出的阈值是 `<=0.2487261742`，没有使用 Test-10k 或 full-test 来选阈值。
+
+漏斗结果：Val 接受 `3` 行且全对，错误 `162 -> 159`，`FP/FN=105/54`；Test-10k 接受 `1` 行且全对，错误 `78 -> 77`，`FP/FN=49/28`；但 frozen full-test 接受 `41` 行，其中 `18` 对、`23` 错，最终错误 `1466 -> 1471`，`FP/FN=902/569`。也就是 FN 少 `18`，但 FP 多 `23`，总错误多 `5`。
+
+决策：Loop160 通过 Val 和 Test-10k，但 full-test 失败，不替代 Loop151。这条路线证明 Test-10k 的 1 个样本级收益仍可能是抽样波动；后续如果继续做 recall rescue，不能只靠概率阈值，必须引入更强内容/外部证据过滤 full-test FP 外溢。详见 `docs/phase3_loop160_lowprob_r11_gate.md`。
+
+## 2026-07-08 补充：Loop161 Test-10k promotion margin guard
+
+Loop161 把“Test-10k 确认”变成明确闸门：Val 至少减少 `3` 个错误，且 Test-10k 也至少减少 `3` 个错误，才允许进入 full-test。这个规则是为了防止 Loop160 这种“Test-10k 只少 1 个错误、full-test 反转”的情况继续消耗 full-test。
+
+真实审计显示：Loop151 trusted signer guard 是唯一通过者，Val `-17`、Test-10k `-5`；Loop144 union + signer 虽然 Val `-12`，但 Test-10k `+3`；Loop159 R11-only + signer 虽然 Val `-7`，但 Test-10k `0`；Loop160 low-prob R11 虽然 Val `-3`、Test-10k `-1`，但 Test-10k margin 太小。结论是：当前后续候选不能再靠 0-1 个样本级 Test-10k 波动进入 full-test。
+
+决策：Loop161 不改变当前 best，但作为后续 full-test promotion guard 启用。继续改模型时，要么在 Val 和 Test-10k 上都有足够宽的错误数改善，要么停在候选/负面记录，不再进入 full-test。详见 `docs/phase3_loop161_test10k_promotion_margin_guard.md`。
+
+## 2026-07-08 补充：Loop162 Loop160 failure posthoc
+
+Loop162 对 Loop160 的失败做 posthoc 归因，不作为新选择信号。它统计 Loop160 实际接受的 R11 rescue 行：Val 接受 `3` 行且 `3/0` 全对；Test-10k 接受 `1` 行且 `1/0` 全对；但 full-test 接受 `41` 行，其中 `18` 对、`23` 错。也就是说，full-test 的 wrong accepted 多于 correct accepted，直接导致 Loop160 总错误反转。
+
+关键观察是：Val/Test-10k 接受样本太少，无法估计 full-test FP 外溢风险；而且 wrong accepted 和 correct accepted 都集中在同一个低分桶 `(0.20,0.25]`。这说明继续做 R11 rescue 不能只靠概率阈值，还需要独立内容证据或外部证据来区分真假 rescue。
+
+决策：Loop162 是失败归因记录，不授权阈值、模型、signer term、GA mask、replacement sampling 或生产规则。full-test 行只允许 posthoc 解释，不能反向用于下一轮选择。详见 `docs/phase3_loop162_loop160_failure_posthoc.md`。
+
+## 2026-07-08 补充：Loop163 R11 rescue support audit
+
+Loop163 回到 Val 侧问一个更基础的问题：R11 rescue 到底有没有足够样本支撑继续训练 selector 或写规则？真实审计显示，Val 上 Loop151 和 R11-only 候选只有 `9` 个分歧，其中 `8` 个修复、`1` 个破坏；Test-10k 只有 `6` 个分歧，修复/破坏为 `3/3`。这类支撑规模太小，继续搜索 selector 很容易把噪声当规律。
+
+本轮设定了保守支撑阈值：Val disagreement 至少 `30`，Val fix 至少 `10`，Val break 最多 `0`。真实结果同时触发 `val_disagreement_support_below_minimum`、`val_fix_support_below_minimum`、`val_break_rows_exceed_limit`，decision 为 `reject_low_support_no_selector_training`。
+
+决策：停止 probability-only / R11-only selector 搜索。后续若要继续救 FN，必须先引入新的 Val-side 内容证据或外部证据，而不是继续在 9 个 Val 分歧上调规则。详见 `docs/phase3_loop163_r11_rescue_support_audit.md`。
+
+## 2026-07-07 补充：Loop150 aggressive long-context rejection and noise route
+
+Loop150 对 Loop149 aggressive 32768-byte 候选做了严格复验：训练后的最佳 Val 仍只有 `F1=0.9231154771`、`1534` errors；严格 Val sweep 最优阈值 `0.45` 也只有 `F1=0.9243755897`、`1523` errors、`FP/FN=831/692`，远弱于当前 strict best Loop136 的 Val `F1=0.9910789933`、`179` errors、`FP/FN=122/57`。因此 Loop149 不进入 Test-10k，更不进入 full-test。
+
+本轮也做了互补性证伪：Loop149 在同一 Val 20,000 行上只修复 `59` 个 Loop136 错误，却新增 `1414` 个 Loop136 原本正确的错误；去掉 string sidecar 后，Train-only fit / Val-only selection 的 pairwise selector 在严格 gate 和宽松 gate 下都没有任何候选被选中。结论是：继续调 32768 LR、epoch、阈值或小 selector 不是“激进”，而是低收益消耗。
+
+新的激进路线是转向噪声治理和正交证据：Loop150 已把 Loop145 的 Top 300 高冲突 full-test focus 扩展为全量 `784` 行，并额外生成 Loop136 Val 高冲突 `86` 行 focus 包。它们只用于独立内容/外部证据复核，不是 verdict，不允许自动改标、自动替换、模型特征或阈值/融合输入。若确认 `label_wrong`、`feature_broken` 或 `out_of_scope`，只能 quarantine 并从 locked manifest 的同原始标签池 fresh redraw；最终 split 仍必须严格 `200000` 行，一个都不能少。详见 `docs/phase3_loop150_loop149_rejection_and_aggressive_route.md`。
+
+## 2026-07-03 补充：Loop113 external focus annotation package
+
+Loop113 新增 `scripts/export_loop113_external_focus_annotation_package.py`，把 Loop106 focus 表导出成外部内容复核安全包：`context_csv` 只含 `blind_review_id` 和内容派生字段，`annotation_template_csv` 只含 Loop111 允许的四列表头，`reviewer_guide_json` 写明允许的 verdict/action 和禁止证据。它会移除 `loop106_focus_rank`、`loop106_focus_score`、manual 字段、身份字段和模型字段，避免外部 reviewer 或证据系统把排序分数当成 verdict 证据。
+
+真实导出 `reports/random_20w_split/loop113_external_focus_package_summary.json` 显示：rows `240`、label counts `0=207/1=33`、context field count `25`、forbidden focus columns `[]`、context header violations `[]`、context value violation count `0`，决策为 `ready_for_external_content_annotation`。随后用 header-only 模板跑 Loop112 no-op，`reports/random_20w_split/loop113_to_loop112_noop_summary.json` 仍为 `ready_noop_no_actionable_verdicts`，Loop87 actionable `0`、replacement required `0`、training/Test-10k/full-test 全部不授权。
+
+## 2026-07-03 补充：Loop112 external focus verdict pipeline
+
+Loop112 新增 `scripts/run_loop112_external_focus_verdict_pipeline.py`，把 Loop111 外部标注导入和 Loop110 严格 focus verdict pipeline 串成单入口：先导入外部四列标注，再跑导入后 Loop109 preflight，只有通过后才允许 merge、unblind 和 Loop87 import。这样外部文件里只要混入 filename、path、hash、`source_sha256`、`sample_index`、split、probability、score、threshold 或 `loop57` 等身份/模型字段，或者 note 只引用这些伪证据，就会在 Loop110 之前被阻断。
+
+真实 no-op 复验输出 `reports/random_20w_split/loop112_external_focus_pipeline_noop_summary.json`：external rows `0`、imported rows `0`、post-import actionable rows `0`、Loop87 rows `1868`、Loop87 actionable rows `0`、replacement required rows `0`、training policy rows `0`，决策仍为 `ready_noop_no_actionable_verdicts`。因此 Loop112 只是收紧入口顺序，没有创造自动 verdict；Train/Val、Test-10k 和 full-test 仍全部不授权。
+
+## 2026-07-03 补充：Loop111 focus external annotation import
+
+Loop111 新增 `scripts/import_loop111_focus_external_annotations.py`，把外部/人工 focus verdict 入口收紧成只接受 `blind_review_id/manual_label_verdict/manual_verdict_note/recommended_action` 四列的受控导入器。任何额外列都会被拒绝；如果额外列包含 filename、path、directory、extension、hash、`source_sha256`、`sample_index`、split、probability、score、prediction、threshold、`loop57` 等身份或模型分数字段，会明确记为身份/模型字段违规。导入器不读 private map、不 unblind、不训练、不调阈值、不采样 replacement、不改 split/cache。
+
+导入后会立即复用 Loop109 preflight，因此“filename 证明”“source_path 证明”“loop57 probability 证明”这类 note 即使字段层面没有泄漏，也会被后置证据质量门禁拦截。真实 no-op 复验使用 `reports/random_20w_split/loop111_external_annotations_noop.csv`，输出 `reports/random_20w_split/loop111_focus_external_annotation_import_noop_summary.json`：focus `240` 行、imported `0`、post-preflight actionable `0`、invalid `0`。随后接入 Loop110 的 `reports/random_20w_split/loop111_to_loop110_focus_pipeline_noop_summary.json` 仍为 `ready_noop_no_actionable_verdicts`，Loop87 actionable `0`、replacement required `0`、training/Test-10k/full-test 全部不授权。
+
+## 2026-07-03 补充：Loop110 focus verdict pipeline
+
+Loop110 把 Loop106 focus 标注后的严格入口串成单命令：`scripts/run_loop110_focus_verdict_pipeline.py` 按顺序执行 Loop109 focus annotation preflight、Loop107 focus merge、Loop96 unblind、Loop87 verdict import。任一阶段出现 blocker 就停止后续阶段，避免绕过盲化预检、直接 merge/unblind 或把无效人工字段送进后续 redraw 链路。这个 pipeline 仍是只读操作，不训练、不调阈值、不加载 checkpoint、不打开 NPZ 数组、不采样 replacement、不改 split/cache。
+
+真实 no-op 链路已跑通：`reports/random_20w_split/loop110_focus_verdict_pipeline_noop_summary.json` 显示四个阶段均通过，`preflight_rows=240`、`preflight_annotated_rows=0`、`merged_annotated_rows=0`、`loop87_rows=1868`、`loop87_actionable_rows=0`、`loop87_replacement_required_rows=0`、`loop87_training_policy_rows=0`，最终 `decision=ready_noop_no_actionable_verdicts`。因此当前仍不能 redraw、Train/Val、Test-10k 或 full-test；下一步仍是给 focus 表填入独立内容/外部证据 verdict 后重新跑 Loop110。
+
+## 2026-07-03 补充：Loop109 focus annotation preflight
+
+Loop109 在 Loop107 focus 合并和 Loop96 unblind 之前新增盲化标注质量预检：`scripts/preflight_loop106_focus_annotations.py`。它只读 `reports/random_20w_split/loop106_content_review_focus_top240.csv`，检查 `manual_label_verdict/manual_verdict_note/recommended_action` 三个手填字段是否合法、是否有重复或缺失 `blind_review_id`、是否混入身份/模型列、actionable verdict 是否有 note，以及 note 是否只引用文件名、路径、目录、hash、`source_sha256`、`sample_index`、split、review rank、模型分数、概率、prediction 或 threshold。它不读 private map、不 unblind、不 merge、不训练、不调阈值、不动 split/cache。
+
+真实 240 行 focus 表预检结果为 `ready_noop_no_focus_annotations`：`rows=240`、`blockers=[]`、`annotated_rows=0`、`actionable_rows=0`、`invalid_rows=0`、`identity_or_model_term_mention_rows=0`。这说明当前 focus 表结构可作为 no-op 合并输入，但仍没有任何独立 verdict，不能触发 redraw、Train/Val、Test-10k 或 full-test。该门禁的价值是把伪证据拦截前移：以后外部/人工标注方在提交 focus CSV 前就能发现“只写 filename/source_path/loop57 probability/threshold”这类无效说明，而不是等到 unblind 后才被 Loop87 阻断。
+
+## 2026-07-03 补充：Loop108 focus-aware route gate
+
+Loop108 把 Loop107 的 focus 合并 no-op 结果接回高层路线审计和 ML 授权预检：`reports/random_20w_split/loop108_focus_aware_route_audit_noop.json` 使用 `reports/random_20w_split/loop107_focus_merged_verdict_import_noop.json` 作为 verdict 输入，随后生成 `reports/random_20w_split/loop108_focus_aware_ml_authorization_preflight_noop.json`。本轮仍然是只读操作，不训练、不调阈值、不加载 checkpoint、不打开 NPZ 数组、不改 split/cache。
+
+真实结果保持严格阻断：fixed-v2 cache 与当前 20w split 通过，`total_rows=200000`、`covered_rows=200000`、`missing_rows=0`、`metadata_checked_rows=200000`、`metadata_failure_rows=0`，130 个历史坏特征槽位仍是 `replacement_rows=130`、`self_replacements=0`。但 focus 合并后的 Loop87 verdict 仍为 `ready_noop_no_actionable_verdicts`，`actionable_rows=0`、`replacement_required_rows=0`、`training_policy_rows=0`，所以 `allowed_operations=[]`，Train/Val、threshold sweep、Test-10k、full-test 和 redraw preflight 全部为 `false`。
+
+这里再次明确“不能根据命名来”的业务边界：目录名或文件名最多只能解释早期人工语料怎样被转成 locked manifest/split label，不能解释模型为何判黑/判白。真实部署命名和训练集命名不是同一分布，且攻击者可以随时改名；因此 filename、path、extension、directory、hash、`source_sha256`、`sample_index`、split、row order、model score 只能做 loading、alignment、cache audit、duplicate detection、manual/external review indexing，不能进入模型特征、verdict 证据、GA feature mask、阈值/融合、自动改标、replacement sampling 或生产推理。若怀疑标签噪声，只能依靠独立内容/外部证据复核，确认坏行后 quarantine，并从 locked manifest 的同原始标签池 fresh redraw。
+
+## 2026-07-03 补充：Loop107 focus annotation merge
+
+Loop107 补上了 Loop106 到 Loop87 的回流链路：新增 `scripts/merge_loop106_focus_annotations.py`，允许人工或外部引擎只标注 `reports/random_20w_split/loop106_content_review_focus_top240.csv`，再按 `blind_review_id` 把三个字段 `manual_label_verdict/manual_verdict_note/recommended_action` 合回完整 `1868` 行盲审 CSV。合并脚本不读 private map，不恢复路径/hash/sample_index/split，不使用模型分数，只把人工字段回填到原始 Loop96 full blinded CSV；focus rank/score/reasons 不会进入下游 Loop87。
+
+真实 no-op 链路已经跑通：focus CSV 当前仍无人工标注，合并后 `merged_annotated_rows=0`、`blockers=[]`；再经 Loop96 unblind 和 Loop87 import，结果仍是 `ready_noop_no_actionable_verdicts`、`actionable_rows=0`、`replacement_required_rows=0`、训练和 Test-10k 均不允许。这样后续外部判定只需填 240 行 focus 表，再走同一条严格 gate，而不是直接改 split 或拿身份字段做证据。
+
+## 2026-07-03 补充：Loop106 content review focus
+
+Loop106 针对当前最大卡点 `actionable_rows=0` 做了只读推进：新增 `scripts/build_loop106_content_review_focus.py`，从 `reports/random_20w_split/loop96_full_queue_blinded_review.csv` 生成内容优先复核批次。排序只使用盲审 CSV 中的 PE/静态内容字段，例如 entropy、overlay、security directory 后附加数据、section 数、import/resource/security directory 形态、重复内容组标记和 objective issue；不读取 private map，不恢复路径/hash/sample_index/split/row order，不使用模型概率或分数。
+
+真实输出为 `reports/random_20w_split/loop106_content_review_focus_top240.csv` 和 `.json`：输入 `1868` 行，选出 `240` 行，`blockers=[]`，禁用字段泄漏扫描为 `0`。Top 复核理由集中在 `overlay_present=240`、`high_overlay_entropy=235`、`benign_label_malware_like_static_shape=207`、`high_file_entropy=184`、`post_security_overlay_present=136`。这只是复核优先级，不是 verdict；仍必须由独立人工/外部引擎填写 `manual_label_verdict/manual_verdict_note/recommended_action`，并经 Loop87 验证内容或外部证据后，才可能进入 quarantine + 同原始标签 fresh redraw。
+
+## 2026-07-03 补充：Loop105 main entry authorization
+
+Loop105 在 Loop104 总闸之上增加了 official train/eval 的轻量授权入口：`scripts/authorized_main.py`。它会先读取 `reports/random_20w_split/loop104_ml_authorization_preflight.json`，判断当前命令需要 `train_val`、`threshold_sweep`、`test10k` 还是 `full_test` 授权；若未授权，直接在导入 `scripts/main.py`、torch、模型、checkpoint 或数据之前退出。当前真实阻断验证显示，`eval --split test` 会在 missing checkpoint 检查前被拦截，原因是 `full_test_allowed=false`、`actionable_rows=0`。
+
+同时，`scripts/build_hard_error_finetune_package.py` 和 `scripts/build_hard_family_finetune_package.py` 生成的 official 训练/评估命令已改为走 `scripts\authorized_main.py --ml-preflight "reports\random_20w_split\loop104_ml_authorization_preflight.json" -- ...`，不再直接生成 `scripts\main.py train/eval`。这一步不是放行训练，而是防止旧 README/plan 命令绕过 Loop104；在当前证据下，官方训练、阈值扫、Test-10k 和 full-test 仍然保持 blocked。相关记录见 `docs/phase3_loop105_main_entry_authorization.md`。
+
+## 2026-07-03 补充：Loop104 ML authorization preflight gate
+
+Loop104 把 `scripts/build_ml_authorization_preflight.py` 从“检查 A/B/C 包输入是否存在”升级为“训练/评估重操作授权总闸”。新版报告读取三类只读证据：`reports/random_20w_split/loop101_identity_safe_route_audit.json`、`reports/random_20w_split/loop101_current_state_gate_metadata.json` 和 `reports/random_20w_split/loop100_cache_ready_metadata.json`。只有 fixed-v2 cache metadata、当前 20w split、路线审计和独立 verdict 状态都满足条件时，才会在 `operation_authorization` 里放行对应操作。
+
+真实输出是 `reports/random_20w_split/loop104_ml_authorization_preflight.json`。当前结论为 `ml_gate_result.passed=false`，`allowed_operations=[]`，只允许 read-only review；`train_val_allowed=false`、`threshold_sweep_allowed=false`、`test10k_allowed=false`、`full_test_allowed=false`、`redraw_preflight_allowed=false`。阻断原因不是 cache 不健康，而是 Loop96/98 仍然 `actionable_rows=0`、`await_independent_blinded_verdicts`。A/B/C/D 完成记录和 E 的 open heavy package 现在都会显示在 `package_scope_audit`，但 completed package 只作为记录，不再被误读成训练、阈值扫描、Test-10k 或 full-test 授权。
+
+本轮也把“不能根据命名来”落成机器可读边界：filename、path、extension、directory、hash、`source_sha256`、`sample_index`、split、row order、model score 都只能用于 loading、alignment、cache audit、duplicate detection、manual/external review indexing，不能作为模型特征、判定证据、阈值/融合输入、GA feature mask 输入、自动改标依据、replacement sampling 依据或生产推理依据。训练集最初如果靠人工目录整理得到标签，这一步也必须止步于 locked manifest/split label；后续 fresh redraw 只能从 locked manifest 的同原始标签池抽，不能重新按名字或路径推断。
+
+## 2026-07-03 补充：Loop100 full cache metadata readiness
+
+Loop100 把 corrected split 的 cache readiness 从“文件存在”升级成“文件存在且内部元数据一致”。`scripts/audit_corrected_split_cache_ready.py` 现在默认打开每个 NPZ 的轻量元数据，检查必需字段、`label`、`source_sha256`，并用 `.npy` 头信息核对 `byte_sequence / pe_features / stat_features / lightweight_features` 的原始 shape，不做完整数值数组扫描、不加载模型、不使用 CUDA。显式跳过只能通过 `--no-validate-cache-metadata`，Loop76 会把未启用 metadata 校验的 cache readiness 视为阻断项。
+
+真实 20w 复验已完成：`reports/random_20w_split/loop100_cache_ready_metadata.json` 显示 `total_rows=200000`、`covered_rows=200000`、`missing_rows=0`、`metadata_checked_rows=200000`、`metadata_failure_rows=0`、`cache_ready=true`，并且强制 label balance 后仍保持 train/val/test `20000/20000/160000`、每个 split 黑白平衡。空明细文件分别是 `reports/random_20w_split/loop100_cache_ready_missing_cache.csv` 和 `reports/random_20w_split/loop100_cache_ready_metadata_issues.csv`。
+
+这次补强直接回应“坏文件/坏特征不能拿来补齐”的要求：若以后发现 NPZ 内部 label/hash/shape 错位，Loop76 不再把它当作普通 missing cache 去补，而是阻断为 `cache_metadata_failures_present`，下一步只能 quarantine 这些坏行，并从 locked manifest 的同原始标签池 fresh redraw，重新生成严格 `200000` split/cache 后再走 Val-first。路径、文件名、目录、后缀和 hash 仍然只允许用于加载、对齐、cache audit、重复检测和复核索引，不能作为恶意/良性证据，也不能作为模型、阈值、融合、GA feature mask 或自动 verdict 的输入。
+
+## 2026-07-03 补充：Loop101 metadata-ready route gate
+
+Loop101 把 Loop100 的全量 metadata readiness 接入高层总闸，防止后续流程继续引用旧的“只证明文件存在”的 cache_ready 报告。`scripts/build_loop79_current_state_gate.py` 默认 `--current-cache-ready` 已切到 `reports/random_20w_split/loop100_cache_ready_metadata.json`，并强制要求 `cache_metadata_validation_enabled=true`、`metadata_checked_rows=200000`、`metadata_failure_rows=0`、label balance enforced、missing `0`。`scripts/build_loop98_route_audit.py` 也会读取并验证这些字段；如果 Loop79 传入旧报告或 metadata failure，不再允许 fixed-v2 route 通过。
+
+真实复验输出为 `reports/random_20w_split/loop101_current_state_gate_metadata.json` 和 `reports/random_20w_split/loop101_identity_safe_route_audit.json`。Loop101 版 Loop79 决策为 `pass`，固定数据口径确认：130 个坏特征槽位为 `strict_extracted=130/130`、`self_replacements=0`；当前 split/cache 为 `200000/200000`、missing `0`、metadata checked `200000`、metadata failure `0`；1% 抽样仍为 `2000/2000` 通过。Loop101 版 Loop98 仍然给出 `await_independent_blinded_verdicts`，并明确 `training_allowed_now=false`、`test10k_allowed_now=false`、`full_test_allowed_now=false`。也就是说，数据门禁健康只是训练前提，不是继续拿 Test-10k 或 full-test 试错的授权。
+
+## 2026-07-03 补充：Loop102 content-hash replacement candidate pool
+
+Loop102 收紧了 fresh redraw 的候选池：`scripts/build_replacement_candidate_pool.py` 现在默认对候选原始文件计算真实内容 SHA，而不是把 SHA-like 文件名当作充分身份；只有显式 `--no-hash-files` 才允许旧兼容模式。Loop76 也会阻断没有启用 strict content hash 或存在 unhashed rows 的 candidate pool，防止同一内容换名后被当成 fresh replacement。这里的 hash 只用于“是否重复/是否已经在 split 或 manifest 里/是否可追溯”的物流审计，不是恶意性证据，也不允许进入模型。
+
+真实只读候选池报告为 `reports/random_20w_split/loop102_replacement_candidate_pool_content_hash.json`。本轮按历史 130 坏特征替换需求设置 `required-label0=125`、`required-label1=5`，bounded scan 在 16.9 秒完成：候选 `305` 行，label `0=250`、label `1=55`，`source_sha256_origin_counts={"content_hash": 305}`，`unhashed_candidates=0`，`replacement_shortfall={}`，`enough_for_required_replacements=true`。这证明如果后续独立 verdict 确认坏样本，当前原始池足够执行同原始标签 fresh redraw；但仍必须先有独立 verdict，不能把候选池本身当作训练或替换授权。
+
+## 2026-07-03 补充：Loop103 corrected split builder candidate SHA gate
+
+Loop103 把 Loop102 的内容 hash 要求下沉到 corrected split 低层构造器。`scripts/build_corrected_split_from_plan.py` 现在默认拒绝没有合法 64 位 `source_sha256` 的 replacement candidate；只有显式 `--allow-unhashed-candidates-legacy` 才能打开旧兼容模式，并且 summary 会记录 `allow_unhashed_candidates_legacy=true` 与 `candidate_load_summary.require_candidate_sha256=false`。这避免有人绕过 Loop76，直接把旧 candidate CSV 喂给 builder 生成 corrected split。
+
+本轮没有生成新的 20w corrected split，因为 Loop101/98 仍显示 actionable verdict 为 `0`，`training_allowed_now=false`、`test10k_allowed_now=false`。验证重点是入口门禁：未哈希候选默认会被过滤并导致 replacement shortfall；带 legacy 逃生口的小型兼容测试才允许通过。相关测试集合 `69 passed`，覆盖 candidate pool、Loop76、corrected split builder、replacement audit、cache metadata readiness、Loop79/98 route gate 和 Loop87 import。
+
+## 2026-07-03 补充：Loop98 identity-safe route audit
+
+Loop98 已把当前路线做成只读总闸：不训练、不调阈值、不加载模型、不打开 NPZ 数组、不改 split/cache，只汇总 Loop79/80/85/95/96/97 的证据。真实输出是 `reports/random_20w_split/loop98_identity_safe_route_audit.json`，当前决策为 `await_independent_blinded_verdicts`。
+
+关键结论如下：fixed-v2 cache 与 130 个坏特征槽位已经通过严格复核，替换方式是 `130/130` 整批 fresh redraw，`self_replacements=0`，当前 split/cache 为 `200000/200000`、missing `0`，仍保持 `20000/20000/160000`。这满足“坏文件/坏特征不合格就重新抽，而不是让坏样本补齐”的要求。
+
+模型路线方面，当前没有可自动推进的 Test-10k 或 full-test 候选。概率校准器在 16 万 full-test 上为 F1 `0.9686442786`、`5042` errors，明显差于当前 best Loop57 的 F1 `0.9883629658`、`1868` errors；Loop83/84 已关闭当前 Loop57/校准器融合路线；Speakeasy timeout/dynamic triage 只能作为人工/外部复核上下文，因为确认集新增 FN；Loop95/96 full queue 已覆盖 `1868/1868` 个 current-best 错误，但 actionable verdict 仍为 `0`，所以不允许训练、替换、Test-10k 或 full-test。
+
+命名和路径边界继续作为硬约束：filename、path、directory、extension、hash、`source_sha256`、`sample_index`、split、row order、model score 都不是模型证据，也不是 verdict、replacement sampling、threshold、fusion 或生产推理证据。它们只允许用于加载、对齐、cache audit、重复检测和人工/外部复核索引。实战命名与训练集命名不是同一分布，攻击者可以随时改名，因此任何依赖命名的“改进”都必须视为泄漏路线。
+
+下一步唯一合法路线是：填充 Loop96 blinded review 的独立内容/外部 verdict，unblind 后跑 Loop87；若确认 `label_wrong`、`feature_broken` 或 `out_of_scope`，只能 quarantine 并从 locked manifest 的同原始标签池 fresh redraw，随后全量 cache readiness，再回到 Train/Val-only 漏斗。没有独立 verdict 之前，不再继续同一批分数差、命名、路径、hash 或 full-test 错误身份字段驱动的候选。
+
+## 2026-07-03 补充：Loop99 verdict-redraw chain hardening
+
+Loop99 补强了 Loop76 redraw readiness gate，专门堵住 full-error 数据治理链里的 direct relabel 绕路。通用人工计划工具为了兼容早期 Train/Val 工作流，仍能表达 `label_wrong + corrected_label -> relabel`；但在当前 20w full-error / held-out 复核口径下，这不允许进入数据修复链。Loop76 现在会阻断任何非 `exclude_and_replace` 的 adjustment plan 行，包括 `relabel` 和 `held_out_test_verdict_only`，错误码为 `adjustment_plan_contains_non_replacement_actions` 或 `adjustment_plan_contains_non_replacement_rows`。
+
+同时 Loop76 已兼容 Loop87 full-queue verdict import 的 schema：Loop87 输出的 `rows/expected_rows/duplicate_sample_index_rows` 会映射为通用 import 摘要，真实 no-op 复验 `reports/random_20w_split/loop99_noop_redraw_readiness.json` 回到正确状态：`decision=await_external_verdicts`、`review_rows=1868`、`sample_index_match_count=1868`、`strict_failures=[]`、`replacement_required=0`、`training_policy_rows=0`。这保证当前空 verdict 不会误触发重抽或训练，同时一旦出现 actionable bad-row verdict，也只能进入 quarantine + fresh same-original-label redraw，而不是直接改标。
+
+进一步补强后，`scripts/build_corrected_split_from_plan.py` 默认也会拒绝 `relabel` plan rows，并默认强制严格 20w 形状；旧 Train/Val relabel 兼容能力只能通过显式 `--allow-relabel-legacy` 打开，非 20w 小型测试才允许显式 `--no-strict-20w`。也就是说，即使有人绕过 Loop76 直接调用低层 corrected split builder，默认也不能把 full-error verdict 变成训练标签修改，且不能产出非 `200000 = 20000/20000/160000` 的 split。
+
+## 2026-07-03 补充：Loop61 override-only classifier 未通过 Test-10k
+
+命名问题已收紧为硬约束：训练集目录、文件名、后缀和路径只允许在“人工语料 -> 显式 split/manifest label”这一步充当标签来源或索引，不允许进入任何模型矩阵、二阶段融合、阈值捷径或自动改标规则。实战命名和训练集命名不是同一分布，攻击者也能随时改名；所以当前路线只承认字节、PE 结构、统计特征、证书/overlay 等内容证据。若怀疑原始目录桶标签本身有噪声，只能做人工/外部证据判定；确认坏样本后按同原始标签池 fresh re-draw，重新生成严格 `200000` split 和 cache，而不是让坏行补齐或让模型学习命名。
+
+Loop61 把 Loop57 的 FN gate 改成更窄的 override-only classifier：只在 locked base 判白、overlay-aware candidate 判黑的 possible override 行上训练 allow/block 分类器，仍然只允许 `0 -> 1`，不允许把 base 判黑改成白。该实验继续使用严格 OOF train 分数，Val 选择 classifier 和 allow threshold，身份字段只用于加载、对齐和审计，不作为模型证据。
+
+Val 上 Loop61 确实超过 Loop57：从 Loop57 的 F1 `0.9926635724`、`147` errors、FP/FN `92/55`，提升到 F1 `0.9930139721`、`140` errors、FP/FN `90/50`。但冻结 Test-10k 没有超过当前 best：Loop61 为 F1 `0.9897816069`、`102` errors、FP/FN `62/40`，与 Loop57 的 `102` errors 持平，只是把 FP `-3` 换成 FN `+3`。因此按漏斗规则拒绝 full-test，Loop57 仍是当前 best full-test reference。
+
+这个结果说明 override-only 分类方向能削减一部分新增 FP，但 possible override 训练样本太少：本轮 train possible override 只有 `160` 行，其中真修复 `54`、新 FP `106`；Val possible override 只有 `130` 行，其中真修复 `42`、新 FP `88`。继续在同一批 score/overlay gate 上薄调很容易过拟合 Val。下一步应转向更强的内容证据或回到噪声/源标签审计，而不是把 Test-10k tie 强行推进 full-test。相关记录见 `docs/phase3_loop61_override_classifier.md`。
+
+随后补做了两件只读审计。第一，Loop61 exchange audit 解释了 Val/Test-10k 不一致：Val 上 Loop61 相对 Loop57 是 `13` 个修复对 `6` 个新增错，Test-10k 变成 `6` 对 `6`，净收益归零。第二，Loop62 尝试把匿名 content matrix 加入 override-only classifier，但 Val 退到 `148` errors、FP/FN `87/61`，说明高维内容特征在百级 possible override 行上更像过拟合或过度保守，不进 Test-10k。
+
+Loop63 已把路线切回噪声/数据复核：基于当前 best Loop57 full-test 生成持久错误队列，`160000` test 行中仍有 `1868` 个错误，其中 `1760` 个是 Loop28 与 Loop57 都错的持久错误，`108` 个是 Loop57 新增错误；更关键的是 `643` 个 current-best 错误与 Loop39 高置信冲突队列重合。这个量级本身已经远超 `F1 >= 99.9%` 的容错空间，因此下一阶段优先级应是人工/外部证据复核这些持久高置信冲突，而不是继续薄调同一类 sparse gate。Loop63 只用于目标可行性和复核排序，不允许作为训练、阈值选择或自动改标依据；若确认坏样本，仍必须 fresh same-label redraw，保持严格 `200000`。
+
+Loop63 A-lane `643` 条又复用了 Loop50 content/cache health audit：cache/source SHA、NPZ shape、active split、manifest、strict PE parse 均未发现客观可自动替换的问题，`objective_issue_row_count=0`，仅有 `5` 条重复 SHA 组需要按内容组复核。因此不能自动删除或改标这些样本；它们只能进入人工/外部证据判定，或者被记录为当前模型盲区。
+
+Loop64 进一步用 manifest/cache 的真实 `source_sha256` 审计完整 20w split，弥补 split CSV 不一定携带内容 SHA 的问题。结果是 `200000/200000` split 行都能匹配 manifest，存在 `6` 个同内容 SHA 重复组、`12` 行，全部为同 label `1` 且都在 test split；没有 cross-label、没有 cross-split 泄漏。Loop63 focus queue 中只有 `2` 个重复组、`4` 行命中。结论：重复内容组需要成组复核，但不能作为自动清洗或自动替换依据。
+
+Loop65 已把 Loop63 A-lane 转成一份小批量人工/外部证据复核表：输出 `62` 行，包含 severe persistent FN `20`、severe persistent FP `20`、重复内容组专项 `2`、以及其它模型曾修正的持久错误 `20`；FN/FP 为 `37/25`，人工判定字段全部为空。它只用于复核排序，不训练、不扫阈值、不改 split。重复内容组通过 Loop64 的 `manifest_source_sha256` 审计结果接入，真实命中 `4` 个 queue rows，本批选入前 `2` 行作为成组复核入口；这些身份字段只用于定位和审计，不作为模型证据。相关输出是 `reports/random_20w_split/loop65_A_lane_review_batch_summary.json` 和 `reports/random_20w_split/loop65_A_lane_review_batch.csv`。
+
+Loop66 又把注意力拉回 Val-only 内容盲区审计：只读 Loop57 Val 预测和 content PE v1 / overlay boundary sidecar cache，不训练、不扫阈值、不碰 Test。结果确认 Loop57 Val 的 `147` 个错误中只有 `5` 个是 gate 新增误伤，`142` 个是 base 和 Loop57 都错的持久错误；因此继续只打磨 overlay FP guard 的收益上限很窄。内容差异显示：剩余 FN 更偏 signed/overlay/export/exception/basereloc/import-shape 复杂 PE；FP 则 import/API/IAT 规模偏高，但 security/overlay/cert-like 证据弱于大量 TN。下一轮候选应围绕这些持久错误分层做 Val-only 假设，而不是从 full-test 归因里反推规则。相关记录见 `docs/phase3_loop66_val_blindspot_content_audit.md`。
+
+Loop67 把 Loop66 的内容分层直觉转成固定规则探针，仍然只跑 Val。结果没有形成足够 margin：最佳 `repair_signed_overlay_complex_c250_g80` 只把 Loop57 Val errors 从 `147` 降到 `145`，FN `55 -> 50`，但 FP `92 -> 95`，净改善只有 `2` 个样本，按 `>=10` errors 的 Test-10k 进入门槛拒绝。几个低置信 unsigned/import-heavy/payload-like rollback 规则全部明显变差，最多把 errors 推高到 `182`。结论：手工内容阈值规则已经不值得继续拧；下一步若做模型侧候选，必须转向严格 OOF 学习协议或更强外部/人工噪声证据。相关记录见 `docs/phase3_loop67_val_content_strata_rule_probe.md`。
+
+Loop68 把“还能不能继续叠第三层残差模型”做成只读协议审计。结果是 `Loop57`、`Loop61`、`Loop62` 三个候选都被阻断：它们的二层实验本身使用了 base/candidate train OOF 分数，报告和 payload 的 feature names 也没有发现身份字段泄漏；但现有产物没有导出“整条已选流水线”的训练集逐行最终 OOF 预测。因此不能再拿同一批 train 行训练第三层纠错器，否则会把二层 gate/override 在训练集上的拟合痕迹当成泛化信号。真实审计输出 `ready_candidate_count=0`，`overall_decision=third_layer_residual_training_blocked`。下一步若仍要做第三层学习，必须先实现 nested OOF export：每个 train 样本的 final prob/prediction 都必须来自没有见过该样本的完整 Loop57/61 风格流水线。否则优先继续噪声复核和新独立内容证据。相关记录见 `docs/phase3_loop68_residual_oof_readiness.md`。
+
+Loop69 已实现并运行 Loop61-style override pipeline 的 train-only nested OOF 物化。它不训练第三层、不跑 Val 选择、不碰 Test，只在 train 内用外层 fold 生成每行 `base_oof_prob_malicious`、`candidate_oof_prob_malicious`、`allow_oof_prob`、`final_oof_prob_malicious`、`final_oof_prediction`、`oof_override_flag` 和 `oof_fold`。400 行 smoke 与完整 `20000/20000` train 都已通过 Loop68 readiness gate：`third_layer_residual_training_allowed`。完整产物黑白各 `10000`，5 folds 各 `4000`，缺失分数 `0`；train OOF F1 `0.9874489491`、errors `252`、FP/FN `165/87`，possible overrides `120`，actual overrides `36`。这份 CSV 现在是第三层 residual learner 的合格 train 输入，但它仍不是 Val/Test 候选。相关记录见 `docs/phase3_loop69_nested_oof_materialization.md`。
+
+Loop70 用 Loop69 的合格 nested OOF 输入训练第三层 meta layer，并在完整 Val 上验证。协议上它比直接复用 Loop61 Val 预测更干净：meta 只吃 train OOF 分数训练，上游 base/candidate/override 在全 train 拟合后冻结生成 Val 分数，Val 只用于选择 meta model 和阈值，不触碰 Test。结果没有通过：最佳 `meta_logreg_balanced_c0.1` 为 Val F1 `0.9917173935`、`166` errors、FP/FN `104/62`，比 Loop57 reference 的 `147` errors 多 `19`，因此拒绝 Test-10k。结论是：即便修正了第三层 OOF 协议，继续堆同一组 base/candidate/allow/final 分数也不能突破当前 best；下一步应停止同路线 stack/gate，转向新独立内容证据或人工/外部噪声复核。相关记录见 `docs/phase3_loop70_nested_oof_meta.md`。
+
+Loop71 把目标缺口量化成了硬数字：当前 best Loop57 full-test F1 `0.9883629658`，仍有 `1868` 个错误，FP/FN 为 `1195/673`；要达到 `F1 >= 0.999`，即使按最有利情况优先修复 FN，也至少需要修复 `1708` 个错误，占当前错误的 `91.43%`，最后只允许约 `160` 个 FP 且 `0` 个 FN。现有复核队列覆盖不了这个缺口：Loop65 的 `62` 行即使全部确认并修复，best-case 也只有 F1 `0.9887535495`；Loop63 A-lane 的 `643` 行即使全部确认并修复，best-case 也只有 F1 `0.9923990941`。Loop50/Loop64 这类客观自动审计又只找到 `0` 个 objective issue row 和 `4` 个 focus duplicate detail rows，不能支撑自动大规模改标。结论是：99.9% 不是继续拧阈值或重排同一路线分数能解决的目标；下一步必须扩大人工/外部证据复核，或引入真正独立的新检测视角。相关记录见 `docs/phase3_loop71_target_gap_noise_roi.md`。
+
+Loop72 已把 `1868` 个 current-best full-test 错误全部生成 review wave plan，按 `200` 行一波分成 `10` 波，并把重复内容组保持在同一复核波次。若每个复核错误都能被确认并修复，按当前顺序到第 `9` 波才理论达到 `0.999` F1；前 `8` 波 best-case 仍只有 `0.9983278009`。这进一步证明目标缺口需要接近全量错误级别的证据处理。Loop72 仍然不训练、不调阈值、不改 split、不自动改标；空 manual verdict no-op 复验为 `review_rows=1868`、`planned_rows=0`、`duplicate_review_rows=0`、`training_policy_rows=0`。本轮还修复了人工复核应用阶段的同 SHA 重复行问题：`apply_manual_review_verdicts.py` 现在优先用 `sample_index` 保留行级身份，避免同内容重复样本被折叠导致“少处理行”。`sample_index` 仍只是复核/对齐字段，不是模型证据。相关记录见 `docs/phase3_loop72_review_wave_plan.md`。
+
+Loop73 尝试了一个真正不同的信息源：Windows Authenticode 签名/信任状态。它只在 Loop57 Val 上运行，只对 `prediction=1` 的 `10037` 行读取签名状态，路径只用于打开文件，不执行样本，不碰 Test。结果显示：预测恶意行中 `Valid` 签名只有 `69` 行；如果全部降级为良性，能修复 `20` 个 FP，但会新增 `49` 个 FN，Val 错误从 `147` 升到 `176`。加入 Val 分数阈值后最佳规则是 `Valid and final_prob <= 0.65 -> benign`，错误降到 `143`，只净少 `4` 个，低于进入 Test-10k 的 `10` 错误门槛。因此 Authenticode 只能作为人工复核上下文，不适合作为自动 FP guard 或模型特征。相关记录见 `docs/phase3_loop73_authenticode_val_probe.md`。
+
+Loop74 已补上 Loop72 full-error review wave plan 和 split adjustment plan 之间的严格外部 verdict 导入闸门。新增 `scripts/import_loop72_external_verdicts.py` 会验证 `1868` 行 Loop72 复核表、`sample_index` 行级对齐、严格 `200000 = 20000/20000/160000` split、verdict/action 合法性、manual note 留痕、target-gap coverage 和 test-held-out training policy。真实空 verdict no-op 复验为 `import_ready=true`、`sample_index_match_count=1868`、`invalid_rows=0`、`training_policy_rows=0`、`decision=ready_noop_no_actionable_verdicts`。Loop72 严格口径下，确认 `label_wrong`、`feature_broken` 或 `out_of_scope` 都只能触发 fresh same-original-label redraw；`corrected_label` 是目标可行性证据，不是把 full-test verdict 直接喂给训练或阈值选择的许可。相关记录见 `docs/phase3_loop74_external_verdict_import.md`。
+
+Loop75 继续把 `manual_verdict_note` 从“非空”升级为“不能是伪证据”：如果 note 只引用文件名、路径、目录、后缀、hash、`sample_index`、split、review rank、Loop57/Loop28 分数、模型概率或阈值，strict importer 会阻断导入；只有包含内容证据或外部证据摘要的 actionable verdict 才能进入后续 replacement plan。这个改动不训练模型、不改变 test 指标，但能防止噪声清洗阶段把命名或模型后验当成事实证据，从而保护后续 fresh redraw 和 Val-first 复验的可信度。
+
+Loop76 已把 strict import、adjustment plan、fresh same-original-label redraw、replacement integrity、cache readiness 和 Val-first 漏斗串成只读 orchestration gate。真实 Loop75 空 verdict no-op 复验输出 `decision=await_external_verdicts`、`replacement_required=0`、`training_policy_rows=0`、`ready_for.train_val_only=false`、`ready_for.test10k=false`、`ready_for.full_test=false`。这说明当前没有外部证据时不会误触发重抽或训练。Loop76 还把最终 replacement/cache audit 命令默认升级为 `--enforce-label-balance`，防止 20w split 形状正确但类别平衡悄悄漂移。相关记录见 `docs/phase3_loop76_redraw_readiness.md`。
+
+Loop77 已把“任何重操作前先检查内存泄漏/资源风险”固化为 `scripts/pre_run_resource_leak_guard.py`。它只读系统资源和目标脚本文本，不加载模型、不用 CUDA、不读 NPZ、不扫 raw data；会检查系统内存、Python 进程、GPU Python compute app，以及 `torch/cuda/np.load/DataLoader/worker pool/while True` 等静态风险。自检结果为 `guard_ready=true`、静态 findings `0`、heavy Python processes `0`、Python GPU compute apps `0`；单测 `7 passed`。后续训练、评估、cache recovery 和 corrected split 复验前应先生成 Loop77 guard JSON。相关记录见 `docs/phase3_loop77_pre_run_guard.md`。
+
+Loop78 已把 20w cache 的 1% 抽样完整性审计落成脚本 `scripts/audit_loop78_cache_sample_integrity.py`。本轮使用 Loop77 guard 显式允许 `npz_array_load` 后，对 `reports/random_20w_split/loop27_corrected_split.csv` 和 `data/.cache/manifest_38672ba0.json` 以 seed `7801` 抽样 `2000` 行，分布为 train/val/test `200/200/1600`、label `0/1=1000/1000`。结果 `2000/2000` sampled cache 通过，字段完整、shape 正确、label/source SHA 一致、数值 finite，`audit_ready=true`。这证明 sampled cache 内部完整性，但不替代全量 coverage：历史 fixed-v2 manifest 仍是 `199870/200000`，剩余 `130` 行来自严格 PE 提取失败；训练或 corrected split 前仍必须跑全量 cache readiness gate。相关记录见 `docs/phase3_loop78_cache_sample_integrity.md`。
+
+Loop79 已把当前 20w 状态收敛成一个只读门禁 `scripts/build_loop79_current_state_gate.py`。它明确区分历史失败和当前可训练状态：历史 `199870/200000` 是旧 fixed-v2 strict PE 提取失败证据；当前可信证据是 `random_20w_8192_replace_130_bad_features.json`、`random_20w_8192_replacement_130_strict.csv`、`random_20w_8192_uncompressed_cache_coverage_audit_replaced_130.json` 以及本轮新鲜复验。Loop79 验证 130 个坏特征槽位已按同 label fresh redraw 整批重抽，`selection_status=strict_extracted` 为 `130/130`，自我替换 `0`，替换后 split 和 manifest 均为 `200000`。本轮又重新跑了当前 `loop27_corrected_split.csv` 的全量 cache readiness 和 coverage：`200000/200000` 覆盖、missing `0`，train/val/test 严格为 `20000/20000/160000` 且每个 split 黑白平衡；换 seed `7901` 的 1% NPZ 抽样 `2000/2000` 通过。概率校准仍是可用候选：Val F1 delta `+0.03789303556617796`，Test-10k delta errors `-412`，且 no-test training 与 missing-cache `0` 均通过；GA feature mask 仍只作为高安全候选，不默认启用，因为高价值白样本 FP 增加 `34`。相关记录见 `docs/phase3_loop79_current_state_gate.md`。
+
+Loop80 按漏斗规则把这个概率校准器推进到 16 万 full-test：使用 train-split logistic calibrator、Val 选定阈值 `0.44`、Test-10k 只作确认，full-test 输入为 `random_20w_8192_replaced_test_predictions.csv`，`160000/160000` 行全部保留，missing cache `0`。结果相对 8192 baseline 明显改善：F1 `0.9283588516 -> 0.9686442786`，错误 `11314 -> 5042`，FP/FN 从 `4620/6694` 降到 `2921/2121`。但它不能替代当前全局 best Loop57：Loop57 full-test F1 `0.9883629658`、errors `1868`，比 Loop80 少 `3174` 个错误。按 `F1 >= 0.999` 的最有利 FP-only 容错约 `160` 错误估算，Loop80 还至少要再消掉 `4882` 个错误。因此结论是：概率校准器是有价值的内容/概率修正证据，但不是最终方案；下一步应做 Val-first 融合或新内容证据，不能在 test 上继续调阈值。相关记录见 `docs/phase3_loop80_calibrator_fulltest.md`。
+
+Loop82 已解除 Loop81 暴露的预测文件对齐 blocker：从同一个 corrected 20w Val 输入重新导出 Loop57 和概率校准器预测，`source_sha256` 仅用于审计对齐，严格结果为 `20000/20000` 唯一对齐、重复键 `0`、缺失 `0`、标签不一致 `0`。同一 Val 口径下 Loop57 为 F1 `0.9926635724`、errors `147`，校准器为 F1 `0.9723470101`、errors `554`；oracle choose-correct-if-either 诊断为 F1 `0.9954597615`、errors `91`，说明校准器可补回 `56` 个 Loop57 错误，但也会破坏 `463` 个 Loop57 正确样本。因此当前只允许做保守 Val-only 融合 probe，不能直接替换、盲目混合、进入 Test-10k 或全量 Test。相关记录见 `docs/phase3_loop82_same_manifest_val_complementarity.md`。
+
+Loop83 对 Loop82 的 2 万 Val overlap 做了一个不训练模型的 rescue profile，只扫描 `abs_score_delta` 这一类非身份分数差规则。结论是负面的：最佳阈值 `0.90` 的错误数为 `181`，比 Loop57 的 `147` 多 `34`，并且捕获 `0/56` 个 calibrator-only-correct rescue rows；阈值降低后虽然能抓到少量 rescue rows，但会伤害更多 Loop57-only-correct rows。因此“校准器和 Loop57 分数差很大就信校准器”这条路停止，后续融合若继续，必须引入通过 identity guard 的 PE/stat/content 特征，而不是只看分数差或简单平均。相关记录见 `docs/phase3_loop83_calibrator_rescue_profile.md`。
+
+Loop84 继续验证“用非身份内容特征识别什么时候该信校准器”。本轮只在 Loop82 的 Val overlap 上对 `56` 个 calibrator-only-correct 与 `463` 个 Loop57-only-correct 做 5-fold 可分性诊断，使用 cache-backed PE/stat/lightweight/byte-summary/content-PE 特征，并显式丢弃 6 个概率特征。结果仍不足以进入融合训练：最佳 F1 模型 `logreg_balanced_c0.10` AUC `0.6822`、recall `0.4107`，会产生 `72` 个 regression FP；AUC 最高的 ExtraTrees AUC `0.7682`，但 recall 只有 `0.125`，只抓到 `7/56` 个 rescue。结论是：现有内容特征对 rescue/regression 有弱信号，但不足以支撑可靠 selector；不进入 Test-10k，近期停止校准器融合路线，转向噪声审计或新外部证据。相关记录见 `docs/phase3_loop84_content_rescue_separability.md`。
+
+Loop85 已把当前路线收敛成噪声策略门：Loop57 仍是当前 best full-test reference，16 万 test F1 `0.9883629658`、errors `1868`、FP/FN `1195/673`；要挑战 `0.999`，仍需大约减少 `1708` 个错误。Loop63 队列覆盖全部 `1868` 个错误，Loop65 已准备 `62` 行小批量人工/外部证据复核；Loop83/84 已拒绝当前校准器融合，不允许进入 Test-10k。下一阶段应先做 evidence-grade 噪声复核：确认 `label_wrong`、`feature_broken` 或 `out_of_scope` 后隔离坏行，并从锁定 manifest 的同原始标签池 fresh redraw；不能按文件名、路径、目录、扩展名、hash、`sample_index`、split 或行顺序选择替换样本，也不能把这些身份字段当模型证据。相关记录见 `docs/phase3_loop85_noise_strategy_gate.md`。
+
+Loop86 已把 Loop65 的 `62` 行高优先级复核批次扩展成内容证据包，输出 `reports/random_20w_split/loop86_review_evidence_package.csv` 和 summary JSON。资源 guard 首次拦截了脚本中的 `while True` 分块读取风险，已改为哨兵迭代后复跑通过；单测 `2 passed`。真实证据包结果：源文件存在 `62/62`、cache 存在 `62/62`、source SHA mismatch `0`、PE parse `ok=62`、manual fields 仍为空。内容标签中 `overlay_present=40`、`high_overlay_entropy=34`、`has_security_directory=29`、`overlay_after_security_present=14`。这些是人工/外部复核用的内容事实，不是自动改标证据；Loop86 明确禁止从该包训练、融合、调阈值、自动替换或进入 Test-10k。相关记录见 `docs/phase3_loop86_review_evidence_package.md`。
+
+Loop87 已补上 Loop86 证据包后的严格 verdict 导入闸门。它验证 `62` 行证据表、重复 `sample_index`/review rank、verdict/action 合法性，以及 `manual_verdict_note` 是否包含内容或外部证据；如果 note 只引用文件名、路径、目录、hash、`sample_index`、split、review rank、Loop57 分数、模型概率或阈值，就会阻断。真实导入当前为 no-op：`import_ready=true`、`decision=ready_noop_no_actionable_verdicts`、blank verdict `62`、invalid rows `0`、replacement required `0`、training policy rows `0`。因此当前仍不能重抽、不能构建 corrected split、不能训练，也不能进入 Test-10k；只有独立人工/外部 verdict 确认 `label_wrong/feature_broken/out_of_scope` 后，才允许生成非破坏性 fresh redraw 计划。相关记录见 `docs/phase3_loop87_review_evidence_verdict_import.md`。
+
+Loop88 把证据覆盖率量化到 full-error 级别：Loop63/Loop72 已覆盖同一批 `1868` 个 current-best 错误，唯一键 `1868/1868`，但 Loop86 首批证据包只覆盖 `62/1868 = 3.32%`，也只覆盖 best-case 目标缺口 `62/1708 = 3.63%`。Loop87 对这 `62` 行仍是空 verdict no-op，replacement required `0`。这说明当前瓶颈不是再调模型分数，而是证据覆盖规模；若要继续冲 `0.999`，至少还要把 Loop86-style 证据包扩展约 `1646` 行才覆盖 best-case 缺口，或扩展 `1806` 行覆盖全部 current-best 错误。相关记录见 `docs/phase3_loop88_full_error_evidence_coverage.md`。
+
+Loop89 已把证据包扩展到 Loop72 Wave1 的 `200` 行：source/cache 都存在 `200/200`，source SHA mismatch `0`，PE parse `ok=200`；FN/FP 为 `98/102`，其中 duplicate content group `4`、high-conflict persistent error `196`。Wave1 verdict import 仍是 no-op：blank verdict `200`、actionable rows `0`、replacement required `0`、training policy rows `0`。覆盖率从首批 `62/1868` 提升到 `200/1868 = 10.71%`，对 best-case 目标缺口覆盖 `200/1708 = 11.71%`；仍剩 `1508` 个 best-case 目标缺口行未打包证据。下一步可以继续打包 Loop72 Wave2，或把 Wave1 交给外部/人工证据系统并通过 Loop87 导入 verdict。相关记录见 `docs/phase3_loop89_wave1_evidence_expansion.md`。
+
+Loop90 已把证据覆盖从单波扩展到多波，并完成 Loop72 Wave2 的 `200` 行证据包。Wave2 source/cache `200/200`、source SHA mismatch `0`、PE parse `ok=200`，FN/FP 为 `102/98`，全部属于 high-conflict persistent error。Wave1+Wave2 合并后共 `400` 行，覆盖 current-best full-error queue `400/1868 = 21.41%`，覆盖 best-case 目标缺口 `400/1708 = 23.42%`；仍有 `1308` 个 best-case 目标缺口行未打包证据。两波 verdict 仍全部为空：blank verdict `400`、actionable rows `0`、replacement required `0`、training policy rows `0`。因此当前仍不能训练、不能替换、不能进 Test-10k；下一步只能继续打包 Wave3，或把 Waves1-2 交给独立人工/外部证据系统并通过 Loop87 导入。身份字段仍只允许定位、对齐、缓存审计和人工索引，不能作为判定依据或替换抽样依据。相关记录见 `docs/phase3_loop90_multiwave_evidence_expansion.md`。
+
+Loop91 已继续打包 Loop72 Wave3 的 `200` 行证据包。Wave3 source/cache `200/200`、source SHA mismatch `0`、PE parse `ok=200`，FN/FP 为 `27/173`，全部属于 high-conflict persistent error；这波偏 FP，补上了前两波之外的误报侧复核材料。Wave1+Wave2+Wave3 合并后共 `600` 行，覆盖 current-best full-error queue `600/1868 = 32.12%`，覆盖 best-case 目标缺口 `600/1708 = 35.13%`；仍有 `1108` 个 best-case 目标缺口行未打包证据。三波 verdict 仍全部为空：blank verdict `600`、actionable rows `0`、replacement required `0`、training policy rows `0`。因此当前仍不能训练、不能替换、不能进 Test-10k；下一步只能继续打包 Wave4，或把 Waves1-3 交给独立人工/外部证据系统并通过 Loop87 导入。manual note 必须引用内容或外部证据，单独引用文件名、路径、hash、`sample_index`、split、review rank 或模型分数会被阻断。相关记录见 `docs/phase3_loop91_wave3_evidence_expansion.md`。
+
+Loop92 已继续打包 Loop72 Wave4 的 `200` 行证据包。Wave4 source/cache `200/200`、source SHA mismatch `0`、PE parse `ok=200`，FN/FP 为 `157/43`，其中 persistent FN `157`、high-conflict persistent error `43`；这波偏漏报侧，是冲击 `0.999` 目标时必须重点复核的风险段。Wave1-4 合并后共 `800` 行，覆盖 current-best full-error queue `800/1868 = 42.83%`，覆盖 best-case 目标缺口 `800/1708 = 46.84%`；仍有 `908` 个 best-case 目标缺口行未打包证据。四波 verdict 仍全部为空：blank verdict `800`、actionable rows `0`、replacement required `0`、training policy rows `0`。因此当前仍不能训练、不能替换、不能进 Test-10k；下一步只能继续打包 Wave5，或把 Waves1-4 交给独立人工/外部证据系统并通过 Loop87 导入。确认坏行后也只能隔离并从同原始标签池 fresh redraw，坏行不能自我补位。相关记录见 `docs/phase3_loop92_wave4_evidence_expansion.md`。
+
+Loop93 一次性把 Loop72 Wave5-Wave9 的 `1000` 行继续打包成证据包，并合并 Waves1-9。五个新增波次 source/cache 均为 `200/200`，source SHA mismatch 均为 `0`，PE parse 均为 `ok=200`；Wave5-Wave9 的 FN/FP 分别为 `18/182`、`184/16`、`87/113`、`0/200`、`0/200`。合并后 Waves1-9 共 `1800` 行，覆盖 current-best full-error queue `1800/1868 = 96.36%`，覆盖 best-case 目标缺口 `1800/1708 = 105.39%`，只剩 Wave10 的 `68` 个 current-best 错误未打包证据。这是关键里程碑：复核材料覆盖已经超过理论达标所需的最小修复量；但它仍然不是修复结果。九波 verdict 仍全部为空：blank verdict `1800`、actionable rows `0`、replacement required `0`、training policy rows `0`。因此当前仍不能训练、不能替换、不能进 Test-10k；下一步应优先把 Waves1-9 交给独立人工/外部证据系统并通过 Loop87 导入 verdict，或继续打包 Wave10 完成全错误队列覆盖。相关记录见 `docs/phase3_loop93_waves5_9_evidence_expansion.md`。
+
+Loop94 已完成最后 Wave10 的 `68` 行证据包，并合并 Waves1-10。Wave10 source/cache `68/68`、source SHA mismatch `0`、PE parse `ok=68`，全部是 Loop57 new FP error。至此 current-best full-error queue 已实现证据材料全覆盖：`1868/1868 = 100%`，覆盖 best-case 目标缺口 `1868/1708 = 109.37%`，remaining queue rows `0`。但这仍是“复核材料完成”，不是“错误已修复”：十波 verdict 仍全部为空，blank verdict `1868`、actionable rows `0`、replacement required `0`、training policy rows `0`。因此当前仍不能训练、不能替换、不能进 Test-10k；下一步必须导入独立人工/外部 verdict，并继续由 Loop87 阻断身份字段或模型分数伪证据。相关记录见 `docs/phase3_loop94_wave10_full_queue_evidence.md`。
+
+Loop95 已把 Waves1-10 的证据包合并成一个全队列 verdict intake，并用 Loop87 做了 `1868` 行统一导入复验。合并门禁结果为 rows/expected/queue `1868/1868/1868`，十个波次与 Loop72 均 `0` 缺行、`0` 意外行，`duplicate_sample_index_rows=0`，因此没有折叠同 SHA 重复内容样本；仅保留 `2` 个重复 source SHA 组、`4` 行作为成组复核提示。Loop87 全量空 verdict 复验继续为 `ready_noop_no_actionable_verdicts`：blank verdict `1868`、invalid `0`、actionable `0`、replacement required `0`、training policy `0`。结论是：全错误队列现在可以一次性进入严格人工/外部 verdict 闸门，但仍不能训练、不能替换、不能 Test-10k；下一步必须在 `loop95_full_queue_review_evidence_intake.csv` 上填入独立内容/外部证据 verdict 后重新跑 Loop87。相关记录见 `docs/phase3_loop95_full_queue_verdict_intake.md`。
+
+Loop96 又把 Loop95 intake 转成盲化复核包，进一步落实“命名不是证据”。新的 reviewer-facing CSV 只保留 `blind_review_id`、当前标签、PE/content 事实、objective issue 和手填 verdict 字段；路径、文件名、目录、`source_sha256`、cache path、`sample_index`、split、review rank、wave id、Loop57/Loop39 分数和概率全部移入 private map，且 `content_evidence_fields` 里的 hash 项也被剔除。真实 build 为 `1868/1868` 行、blockers `0`、forbidden blinded columns `0`；空盲化表 unblind 后再经 Loop87 复验仍为 `ready_noop_no_actionable_verdicts`，blank verdict `1868`、actionable `0`、replacement `0`、training policy `0`。因此现在应在 `reports/random_20w_split/loop96_full_queue_blinded_review.csv` 上做独立内容/外部证据复核，再走 unblind -> Loop87。相关记录见 `docs/phase3_loop96_blinded_review_package.md`。
+
+Loop97 已把 SpeakeasyX P2 方向收敛成明确结论：它可以作为人工/外部复核上下文，但不能自动并入分类器或阈值覆盖。Loop97 没有重跑外部模拟器，而是只读既有 Val expanded、Test confirmation 和 random-Val sanity summary；原 Speakeasy runner 的 preflight guard 默认拦截 `np.load()` 风险，因此本轮没有绕过资源门禁。固定规则 `timeout_filter_score_lt_0.95` 在 Val expanded subset 上把错误 `36 -> 16`、FP `31 -> 10`，但 FN `5 -> 6`；在 confirmation subset 上把 FP `122 -> 0`，同时 FN `120 -> 168`，新增 `48` 个 baseline TP 变 FN，new-FN rate `6.857%`，且 timeout 命中真实恶意行 `20 + 6 + 27`。因此自动 merge / threshold override / training / Test-10k 全部阻断；Speakeasy 只允许作为 Loop96 盲化复核表中的动态行为证据补充。相关记录见 `docs/phase3_loop97_speakeasy_triage_decision.md`。
+
+## 2026-07-02 补充：命名不是证据，content PE v1 已产品化
+
+最新硬规则已经固定：文件名、路径、扩展名、目录名、`source_sha256`、`cache_path`、`sample_index`、`split` 和行顺序只能用于加载、缓存对齐、覆盖审计、去重和人工复核索引，不能作为模型特征、二阶段融合特征、阈值捷径、自动改标证据或上线推理依据。历史上可以用人工整理目录生成初始标签清单，但这是 locked split 形成前的 bootstrap 例外；当前 20w、redraw、verdict、训练、评估和生产推理都不能再按名字或路径推断标签。原因是实战文件命名和训练集命名完全不是同一个分布，且攻击者改名几乎没有成本；训练集目录只能说明人工当时把样本放进哪个标签桶，不能说明文件本身因名字而恶意或良性。
+
+当前 `docs/identity_feature_policy.md` 已把这条写成策略文档，`scripts/identity_feature_guard.py` 已接入 Stage-2 cache matrix 和 OOF stacker。后续如果新增类似 filename/path/extension/hash/split/row-id 的派生特征，训练脚本应直接失败，而不是让这类身份线索进入模型。
+
+Loop52 已把 Loop28 的 100 维 content PE metadata 从 Stage-2 临时脚本产品化为 `src/kvd_features/content_pe_v1.py`，并让 Stage-2 训练矩阵和 sidecar cache builder 都引用同一份稳定 schema。这个 schema 只从文件字节和 PE 结构中提取 header、data directory、import/export/resource、overlay、section 权限/熵等内容信号；路径参数只用于打开文件，不编码 filename、path、extension、directory、hash、split 或行号。新增测试要求同一内容在不同文件名下提取结果完全一致，并要求全部 feature names 通过 identity guard。32 条限量 smoke 必须显式使用 `--smoke --limit`，只验证 extractor/cache writer 链路，`feature_dim=100`、`created=32`、`zero_features=0`，不作为 Val 指标，也不触碰 Test-10k；正式 sidecar cache 报告必须满足 `"limit": null` 且 `"unique_rows" == "deduplicated_rows_before_limit"`。相关记录见 `docs/phase3_loop52_content_pe_v1_productization.md`。
+
+Loop53 已完成产品化回归复验。新的 cache builder 会打开已有 `.npz` 检查 100 维 shape 和 finite 数值，正式 Train/Val audit 为 `40000/40000`、`limit=null`、`smoke=false`、`refreshed_invalid=0`、`zero_features=0`。随后用产品化后的 `content_pe_v1` 复跑 Loop28 Val-only Stage-2，仍选中 `hgb_lr0.06_leaf31_l2_0__noise_none`，Val F1 `0.9919048571`、`162` errors、FP/FN `87/75`，`test=null`。这说明抽成稳定模块没有改变模型语义，也没有引入命名/路径/hash 泄漏。相关记录见 `docs/phase3_loop53_content_pe_v1_replay.md`。
+
+Loop54 复测了严格 OOF residual gate，并启用 `--gate-content-features` 让 gate 看到内容矩阵。结果没有超过 Loop28：最佳 `extra_trees_300_leaf1 + gate_logreg_balanced_c0.25` 只有 Val F1 `0.9917676994`、`165` errors、FP/FN `104/61`，比 Loop28 locked reference 的 `162` errors 还差 `3`，更远未达到浅 gate/blend 候选进入 Test-10k 所需的约 `<=152` errors。因此拒绝 Test-10k。结论是：继续围绕同一批 score/gate 参数做薄 margin 调参价值不高；下一步应转向 security directory 与真实 overlay payload 边界、DLL/export/exception/TLS 组合、signed/overlay 恶意 FN 与复杂正常 FP 的内容结构区分。相关记录见 `docs/phase3_loop54_content_aware_oof_gate.md`。
+
+Loop55 针对 security directory 与真实 overlay payload 边界做了窄内容特征探针。它正确处理 PE Security Directory 的文件偏移语义，从 overlay 中扣除证书 blob 后计算真实 payload segment、payload 熵、payload 是否在证书后、与最后 section 的间隙等 32 维特征。Train/Val sidecar cache 完整 `40000/40000`，`zero_features=43`；测试确认同一内容不同文件名输出一致，feature names 通过 identity guard。完整 Val-only 结果未过门槛：最佳 `hgb_lr0.06_leaf31_l2_0__noise_none` 为 F1 `0.9913208300`、`174` errors、FP/FN `111/63`，比 Loop28 多 `12` 个错误。它降低 FN 但明显增加 FP，因此拒绝 Test-10k。结论是：overlay/security boundary 信号合法但直接拼接会变成 FP/FN 交换；后续若复用，只适合作为残差分层或极保守 gate 的辅助信号。相关记录见 `docs/phase3_loop55_overlay_boundary_valonly.md`。
+
+Loop56 对 Loop55 做了只读错误交换审计，不训练、不调阈值、不触碰 Test。完整 Val `20000` 行中，Loop28 和 Loop55 都正确 `19795`，Loop28 错而 Loop55 对 `31`，Loop28 对而 Loop55 错 `43`，两者都错 `131`；净增 `12` 个错误，正好解释 Loop55 的 `174` errors 对 Loop28 的 `162` errors。迁移上，Loop55 修复 `20` 个 FN 和 `11` 个 FP，但新增 `35` 个 FP 和 `8` 个 FN。修复组的 `overlay_boundary_payload_log_size`、`overlay_boundary_overlay_log_size`、`overlay_boundary_gap_last_section_to_security_log` 明显更高，说明 overlay/security boundary 是真实内容信号；但它同时会误伤复杂正常 PE，因此不能 standalone 进入 Test-10k。后续若复用，只能做极保守 FN-specific residual gate 或残差分层，且身份字段仍只允许用于对齐和 cache lookup。相关记录见 `docs/phase3_loop56_loop55_overlay_exchange_audit.md`。
+
+Loop57 把 Loop56 的结论转成严格 FN-specific overlay gate：只允许 `0 -> 1`，即只在 Loop28 判白时尝试修复漏报，没有路径把 base 判黑改成白。它使用 5-fold OOF 训练 base/candidate/gate，Val 选择 `extra_trees_300_leaf1 + gate_logreg_balanced_c0.25`，candidate threshold `0.515`、gate threshold `0.88`。Val 从 Loop28 的 `162` errors 降到 `147`，Test-10k 从 `111` 降到 `102`，因此进入 16 万 full-test；full-test 从 Loop28 的 F1 `0.9878358558`、`1949` errors、FP/FN `1087/862` 改进到 F1 `0.9883629658`、`1868` errors、FP/FN `1195/673`，净少 `81` 个错误。结论：Loop57 是当前 best full-test reference，适合作为低漏报/安全偏置候选；但它通过增加 `108` 个 FP 换来减少 `189` 个 FN，仍远未达到 `F1 >= 99.9%`。下一步应重点削减 Loop57 新增 FP，同时保留大部分 FN repair。相关记录见 `docs/phase3_loop57_fn_overlay_gate.md`。
+
+Loop58 对 Loop57 做了只读 full-test exchange audit。完整 `160000` 行中，Loop57 修复 Loop28 错误 `189` 行，新增错误 `108` 行，两者全部来自 FN gate 的 `0 -> 1` 覆盖；没有隐藏的 `1 -> 0` 或其它预测变化。内容归因显示，新增 FP 的 `overlay_boundary_payload_log_size` 和 payload entropy 更高，但 `overlay_boundary_payload_after_cert_log_size` 与 `payload_after_security` 基本为零；修复 FN 更常带有 security/cert 后 payload 结构。结论是：Loop57 的问题不是 gate 方向错，而是缺少 FP guard；下一轮应回到 Train/Val 验证“高熵大 payload 且无 after-cert/after-security 证据”的二级过滤，不能直接从 full-test 审计里拿阈值。相关记录见 `docs/phase3_loop58_loop57_full_exchange_audit.md`。
+
+Loop59 按 Loop58 的方向做了 Val-only FP guard 快速探针。手工测试了 payload size、overlay size、payload entropy、security size、after-cert、after-security、last-section gap 及若干组合规则，只使用 content-derived overlay boundary features，不触碰 Test。最佳规则仅把 Loop57 Val 从 `147` errors 降到 `146`，只拒绝 `1` 个覆盖；其它规则要么不动，要么损伤 FN 修复。该 margin 太薄，按 Loop37 经验不允许进入 Test-10k。结论：不要继续手工拧 overlay 阈值；若要削减 Loop57 新增 FP，应训练 OOF 二级模型，并加入 import/resource/section 等正常软件结构信号。相关记录见 `docs/phase3_loop59_fp_guard_val_probe.md`。
+
+Loop60 将 Loop57 的 gate 扩展为 content-aware gate，新增 `--gate-content-features`，让二级 gate 除 score + overlay 外还能看到匿名化 content/cache 矩阵。默认 Loop57 兼容路径保持不变，新增 content aliases 通过 identity guard 检查。Val-only 结果没有超过 Loop57：最佳仍是 `147` errors，但 FP/FN 从 Loop57 的 `92/55` 变成 `95/52`，更偏低漏报但误报更多。因此拒绝 Test-10k。结论：泛化 content 矩阵直接喂给 gate 没有解决新增 FP；下一步应更明确地建模 benign-like import/resource/section 结构，或做 override-only classifier。相关记录见 `docs/phase3_loop60_content_aware_fn_gate.md`。
+
+Loop48 对 fresh seed43 current-split checkpoint 做了 Val-only 复验。它使用 `config/random_20w_8192_seed43.toml`，保持当前 `loop27_corrected_split.csv`、fixed-v2、8192-byte、PE 256、stat 49 的同一口径；split/cache 复审仍为 `200000/200000` 覆盖、missing `0`。1 epoch smoke Val F1 为 `0.8158`；完整训练保留的 `models/random_20w_8192_seed43/best_model.pt` 在 epoch `17` 的 best Val F1 只有 `0.9500494559841741`，且没有 final checkpoint。该结果远低于 Loop28 content PE metadata 的 Val F1 `0.9919048571`，因此 seed43 未进入 Test-10k，也不导出给 Stage-2 stacker 使用。相关记录见 `docs/phase3_loop48_fresh_seed43_valonly.md`。
+
+这个反例很关键：Loop47 说明现有 checkpoint 池不能安全直接 stack；Loop48 又说明“只换 seed 重训同款 8192 fixed-v2 神经底座”不是高价值路线。下一阶段不应继续盲目堆同款 seed，而应把 Loop28 content PE metadata 产品化为稳定 schema，同时训练真正多样化的 current-split base：不同输入长度或区域视角、不同模型结构、不同内容特征族，全部用 OOF 协议和 Val gate 验证。
+
+噪声问题仍然要作为主线处理。Loop38/Loop39 的高置信冲突队列不能靠命名猜标签，也不能自动改标；一旦人工确认样本 `feature_broken`、`out_of_scope` 或 `label_wrong`，必须从同标签候选池 fresh re-draw 替换，并重新生成完整 `20000 train / 20000 val / 160000 test` split 与 cache readiness。坏样本不补齐，坏样本只触发重新抽样。
+
+Loop49 又补了一次产品化前置审计：当前 fixed-v2 PE 主 schema 配置维度是 `256`，实际使用 `143` 维，保留位 `113` 维；Loop28 的 100 维 content PE 特征中只有 `20` 个能和 fixed-v2 形成已有/部分覆盖，仍有 `80` 个产品化缺口。高价值缺口集中在 data directory size/ratio、header flags、section permission combo、layout ratio、import shape、overlay 和 resource shape。结论是：Loop28 的收益不是命名泄漏，而是主 schema 尚未稳定吸收的内容侧 PE 结构信号。下一步应把这些信号迁入明确版本的稳定 schema，例如 `fixed_v3` 或 `content_pe_v1`，再进入 Train/Val 漏斗；不能悄悄复用 reserved 位让旧 checkpoint 语义变得模糊。相关记录见 `docs/phase3_loop49_content_pe_productization_audit.md`。
+
+Loop50 对 Loop39 的 `649` 条高置信冲突做了只读内容/缓存卫生审计：全部仍在 active `loop27_corrected_split.csv` 和当前 manifest 中，cache NPZ shape/dtype/finite、cache label/source SHA、源文件 SHA、strict PE parse 均未发现可直接支持 `feature_broken/out_of_scope` 的客观问题；`objective_issue_row_count=0`。仅有 `5` 行落入重复 SHA 组，需要人工按内容组复核。结论是：这些冲突不能自动改标或自动替换，必须继续依赖人工/外部证据；若未来确认坏样本，仍然按 fresh same-label re-draw 保持严格 `200000`。相关记录见 `docs/phase3_loop50_conflict_content_audit.md`。
+
+Loop51 已把“语义区域字节交给神经模型”推进到可训练状态：基于 PE/content-derived offsets 生成了 region-view byte cache，只覆盖 train/val，严格不生成 Test cache、不跑 Test-10k。结果为 `40000/40000` train/val rows，train `20000`、val `20000`、黑白各 `20000`，issue_counts `{}`。512/512 的 1 epoch neural smoke 能完整通过 Trainer，证明链路可用；随后完整 train/val 训练到 epoch `3` 后 best Val F1 只有 `0.9448912132`，明显低于 Loop28 的 `0.9919048571`，因此提前停止且不进入 Test-10k。结论是：region-view neural 不能作为 standalone 替代主线；后续若复用，只能作为真正多样化 OOF 辅助视角，并且必须先证明残差互补。相关记录见 `docs/phase3_loop51_region_view_cache_and_smoke.md`。
+
+## 2026-07-01 补充：20w 严格漏斗实验后的最新判断
+
+在 20 万完整 split 上，当前最强可复现实验是 Loop28 的 Stage-2 content PE metadata 模型。它严格保持 `20000 train / 20000 val / 160000 test`，每个 split 内黑白样本平衡不变，fixed-v2 uncompressed cache 覆盖 `200000/200000`。Val 只用于选模型和阈值；Test-10k 只做确认；full-test 只做一次冻结评估。Loop28 新增的 100 维 PE metadata 只来自文件内容和 PE 结构，不包含 filename、extension、目录名或路径文本。
+
+补充硬规则：文件名、路径、扩展名、目录名、`source_sha256`、`sample_index`、`split` 和行顺序只能用于装载、对齐、审计、去重和人工复核索引，不能作为模型特征或调参依据。历史上可以用人工整理目录生成初始标签清单，但这是 locked split 形成前的 bootstrap 例外；当前 20w、redraw、verdict、训练、评估和生产推理都不能再按名字或路径推断标签。原因很简单：实战文件名和训练集命名通常完全不同，而且攻击者可以随时改名。训练集目录最多表示“人工把这批样本放在哪个标签桶里”，不是“这个文件因为叫某个名字所以恶意/良性”的证据。本轮已新增 `scripts/identity_feature_guard.py`，并接入 Stage-2 cache matrix 与 OOF stacker，后续训练矩阵若出现路径/命名/扩展名/hash/split/row-id 派生特征会直接失败。
+
+最新结果如下：
+
+| 方案 | Val F1 | Test-10k F1 | Full-test F1 | Full-test errors | FP / FN |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Loop24 blend | 0.98820 | 0.98423 | 0.98323 | 2685 | 1379 / 1306 |
+| Loop26 blend | 0.98886 | 0.98558 | 0.98397 | 2571 | 1493 / 1078 |
+| Loop27 blend | 0.98891 | 未进入 | 未进入 | 未进入 | 未进入 |
+| Loop28 content PE | 0.99190 | 0.98887 | 0.98784 | 1949 | 1087 / 862 |
+
+Loop26 是有效改进：full-test 错误从 `2685` 降到 `2571`，少了 `114` 个错误。Loop27 只替换了 2 个高置信 Val 噪声样本，Val 只少 1 个错误，F1 提升约 `0.005` 个百分点，未达到“明显提升”门槛，因此没有进入 Test-10k。Loop28 证明“补内容侧 PE metadata”是当前最有效方向：full-test 错误从 Loop26 的 `2571` 降到 `1949`，少了 `622` 个错误；Test-10k 也从 Loop26 blend 的 `144` errors 降到 `111` errors。Loop28 同时复验了 content PE + OOF kNN，但 Val 最优为 `165` errors，低于 content-only 的 `162` errors，因此不采用 kNN 叠加。
+
+要达到 `F1 >= 99.9%`，16 万 full-test 上大致只能容忍百级错误；当前 Loop28 仍有 `1949` 个错误，量级差距仍然很大。这个差距不能靠阈值微调解决，因为 Loop28 full-test AUC 已达 `0.99898`，但 FP/FN 仍然都有明显存量。换句话说，模型不是“分数刻度差一点”，而是在一批文件上真的看错了。
+
+错误集中形态也很清楚：
+
+| 维度 | Loop26 full-test 错误集中点 |
+| --- | --- |
+| 当前数据中表现为无扩展名的白样本 | `<none>` 扩展错误 `1261`，其中 FP `1234` |
+| 恶意 exe | `.exe` 错误 `987`，其中 FN `729` |
+| 恶意 DLL | `.dll` 错误 `306`，其中 FN `305` |
+| 月份热点 | `2026-03`、`2020-11`、`2021-09`、`2026-02` 等恶意 FN 热点明显 |
+
+Loop28 已经压低这些热点，但没有消灭：full-test 剩余错误中 `<none>` 仍有 `887` 个错误（FP `849`），`.exe` 有 `831` 个错误（FN `594`），`.dll` 有 `218` 个错误（FN `217`）。这些切片只能用于错误归因和采样审计，不能作为生产模型输入，也不能拿来做阈值或融合权重的捷径。
+
+Loop29/Loop30/Loop31 复验说明几条近路暂时不成立：Loop28 + Loop27 的三路浅融合在 Val 上从 `162` errors 降到 `147`，但冻结 Test-10k 为 `112` errors，未超过 Loop28 content-only 的 `111` errors；宽泛二进制字符串/关键词特征在 Val 最好 `167` errors；Authenticode certificate blob 特征在 Val 最好 `168` errors，也弱于 Loop28。因此下一步不应继续堆浅融合、粗粒度字符串关键词或浅证书 blob 指标，而应围绕 Loop28 残差做更有针对性的内容 schema。
+
+2026-07-01 又补充了 Loop32/Loop33。Loop32 先新增 `scripts/analyze_stage2_residual_content.py`，只读取冻结预测和 content sidecar cache 做残差归因，不训练、不扫阈值、不使用 filename/path/extension 作为模型输入。归因显示：Loop28 的 FN 在 signed/security directory、overlay、export、DLL、exception/debug、非 32-bit/large-address-aware 结构上更集中；FP 在 system DLL ratio、import count、section entropy、RW section 和大文件上更集中。随后新增 `182` 维 content PE v2 sidecar，覆盖更细的 import DLL/API、export、resource tree、section/entrypoint 结构。Train/Val v2 cache 覆盖 `40000/40000`，零特征 `0`。但 Val 结果没有通过门槛：Loop32 `content PE v1 + v2` 最好 `170` errors，Loop33 `v2 only` 最好 `192` errors，均弱于 Loop28 的 `162` errors，因此二者都没有进入 Test-10k。结论是：残差信号真实存在，但“宽撒式继续堆 PE 细特征”当前会引入冗余和噪声；下一轮应做更窄的特征组选择、OOF stacking 或更高质量 PE/证书解析，而不是简单增加维度。
+
+同时做了后向兼容复验：新增 v2 代码后，旧 Loop28 冻结模型在锁定 Test-10k 上仍为 F1 `0.9888677164`、`111` errors、FP/FN `61/50`，说明旧模型 replay 没有被新代码破坏。相关文档见 `docs/phase3_loop32_33_residual_and_content_pe_v2.md`。
+
+随后 Loop34/Loop35 对 v2 做了子组选择，新增 `--content-pe-v2-groups`，分别测试 `import_dll`、`api`、`imports`、`export`、`resource`、`section` 以及若干组合。第一轮 9 个组合全部使用完整 `20000 train / 20000 val`，但只限制候选模型范围；最好的 `imports`、`export`、`export,section` 都是 `164` Val errors。第二轮对这三个近门槛组合跑完整默认候选矩阵和全部现有 noise modes，最佳仍然停在 `164` errors，未打过 Loop28 的 `162`。因此 Loop34/35 也没有进入 Test-10k。这个结果进一步收窄结论：不是 v2 太宽才失败，当前 v2 子组本身也没有形成可验证收益。相关文档见 `docs/phase3_loop34_35_content_pe_v2_group_selection.md`。
+
+2026-07-02 又补了 Loop36 严格 OOF stacker。这个实验用 5 折 train 内 OOF 预测训练 meta model，并启用 `--drop-base-prob-features`，去掉 Stage-2 矩阵前 6 个非 OOF 的导出概率特征，避免 train 内概率泄漏。base learners 是 3 个 HGB 变体，meta candidates 包含 logistic 和小 HGB。最佳 Val 为 F1 `0.9917594766`、`165` errors、FP/FN `94/71`，仍弱于 Loop28 的 `162` errors，因此没有进入 Test-10k。结论是：OOF stacking 协议本身正确，但只堆同一矩阵上的几个相似 HGB base learner 不够；下一次 stacking 必须引入真正多样的 base 预测，比如不同神经 checkpoint/seed、不同字节长度或独立特征族。相关文档见 `docs/phase3_loop36_oof_stacker.md`。
+
+同日又做了 Loop37 byte n-gram 融合。byte n-gram 是内容侧弱模型，单独 Val 为 `1250` errors，但和 Loop28 错误重合低。Val-only 融合 `0.8 * Loop28 + 0.2 * byte_ngram`、阈值 `0.48` 从 `162` errors 降到 `159` errors；冻结 Test-10k 也从 `111` errors 降到 `110` errors。但 16 万 full-test 反转为 `1960` errors，差于 Loop28 的 `1949` errors，因此拒绝。这个实验的价值是证明：1-3 个样本级别的 Val/Test-10k 改善太薄，很容易是抽样波动；后续候选必须争取更宽的 Val/Test-10k margin，或者全量通过后才算真正改进。相关文档见 `docs/phase3_loop37_byte_ngram_blend.md`。
+
+随后 Loop38 对 Loop28 full-test 残差做了噪声和多模型重合审计，不训练、不调阈值。Loop28 的 `1949` 个 full-test 错误中，`910` 个落入高置信冲突或近阈值可疑桶，`649` 个属于 severe/high confidence conflict。另一方面，`921` 个 Loop28 错误至少被 Loop37、byte-ngram 或 Loop26 blend 中的一个纠正，其中 FP `385`、FN `536`。这说明可学习残差和噪声/边界上限同时存在：有一批错误可以被其它视角修复，但还有大量高置信冲突不是当前候选能解决的。相关文档见 `docs/phase3_loop38_residual_noise_strata.md`。
+
+Loop39 已把这 `649` 个 severe/high confidence conflict 转成手工复核队列：FP `416`、FN `233`；其中 `501` 条没有被任何对比模型修正，`148` 条至少被一个候选模型修正。队列中的人工结论和推荐动作字段全部留空，不做自动改标。队列还显式标出 `2` 个重复 SHA 内容组、`2` 条额外重复行，复核时必须按内容组处理。若人工确认 `feature_broken`、`out_of_scope` 或 `label_wrong`，不能用这些样本“补齐”，只能从同标签候选池重新抽取新样本替换，并保持总量严格 `200000`。相关文档见 `docs/phase3_loop39_conflict_adjudication_queue.md`。
+
+Loop40 为 Loop39 队列补了只读 replacement preflight。真实队列复验显示当前 split 仍严格满足 `200000 = 20000/20000/160000` 和各 split 黑白平衡，但 `649/649` 条 manual verdict/action 仍为空，因此 `preflight_status=blocked_no_verdicts`、`preflight_ok=false`。这正是期望行为：没有人工证据时不能重抽、不能替换、不能构建 corrected split；一旦人工确认坏样本，必须先用 fresh same-label candidate pool 通过预检，再进入 corrected split 和 cache readiness。相关文档见 `docs/phase3_loop40_loop39_replacement_preflight.md`。
+
+Loop41 继续做了不触碰 Test 的 stronger byte n-gram Val-only 复验。更大 hash 空间、更密 stride、更多 epoch 和多 alpha 后，byte n-gram 独立 Val 错误从 Loop37 的 `1250` 降到 `944`，说明这条内容弱模型确实能变强；但和 Loop28 做细粒度 Val-only 融合时最好仍是 `159` errors，只比 Loop28 的 `161/162` errors 少 `2-3` 个，margin 太薄。基于 Loop37 已经证明小样本改善会在 full-test 反转，本轮不进入 Test-10k。相关文档见 `docs/phase3_loop41_stronger_byte_ngram_valonly.md`。
+
+Loop42 按 Loop38 的建议实现了严格 OOF residual gate：base/candidate 在 train 内产生 OOF 分数，gate 只用 train OOF 信号训练，Val 只选 gate model 和阈值，Test-10k/full-test 都没有使用。最佳结果是 `extra_trees_300_leaf1 + gate_logreg_balanced_c0.25`，Val `160` errors、FP/FN `98/62`，比 Loop42 内部 base 的 `180` errors 少 `20`，说明受控覆盖方向确有信号；但相比官方 Loop28 锁定 Val `162` errors 只少 `2` 个，未达到浅融合/覆盖类候选进入 Test-10k 的 `<=152` errors 门槛，因此拒绝 Test-10k。相关文档见 `docs/phase3_loop42_oof_residual_gate.md`。
+
+Loop43 继续验证内容侧更窄交叉特征，而不是再宽泛堆 v2。它基于已有 content PE v1/v2 cache 追加 `66` 个内容派生交叉特征，覆盖 DLL/driver、security/overlay、section/entropy、import/API、resource/export 等残差主题。fast Val probe 最好 `176` errors；完整候选矩阵和 noise modes 后最好 `172` errors、FP/FN `107/65`，仍比 Loop28 多 `10` 个错误，因此拒绝 Test-10k。结论是：手工乘法式内容交叉没有形成收益，下一步应转向真实 Authenticode/签名覆盖解析、regionized byte n-gram 或 parser-quality 改进。相关文档见 `docs/phase3_loop43_content_cross.md`。
+
+Loop44 已验证 regionized byte n-gram。它不再只看缓存前缀，而是从 PE 内容中定位 head/tail、entrypoint、resource/import/export/security directory、first exec section、last section、max-entropy section 和排除证书 blob 后的 overlay payload，再对这些区域做带 region salt 的 hashed n-gram。路径、文件名、扩展名、目录、hash、sample index、split 和行顺序仍只用于打开文件、对齐和审计，不作为模型特征。完整 `20000 train / 20000 val` Val-only 结果显示：standalone Val `596` errors、F1 `0.97031`，比 Loop41 stronger prefix byte n-gram 的 `944` errors 明显更强；但和 Loop28 做 Val-only 融合时最佳仍只有 `161` errors，和 Loop28 在同一扫描里的 `161` errors 持平，未形成 margin。因此 Loop44 拒绝 Test-10k。结论是：语义区域字节确有互补信息，但浅 SGD 弱模型不足以修复 Loop28；若复用这条信号，应优先做严格 OOF residual gate 或更高质量 parser 特征，而不是直接扩大 hash 空间。相关文档见 `docs/phase3_loop44_region_byte_ngram_valonly.md`。
+
+Loop45 已把 Loop44 的 regionized byte n-gram 放进严格 OOF residual gate：base 与 region candidate 的 train 分数都使用 5 折 OOF，gate 只在 train OOF 上学习“candidate 何时能纠正 base”，Val 只选择 gate 模型和阈值。完整 `20000 train / 20000 val`、cache miss `0`。最佳 `region_byte_ngram_sgd + gate_logreg_balanced_c0.25` 的 Val 为 F1 `0.9905113863`、`190` errors、FP/FN `107/83`，比 gate 内部 base 少 `3` 个错误，但仍比 Loop28 锁定参考多 `28` 个错误；train OOF 中 beneficial overrides 只有 `92`，harmful overrides 有 `676`，说明这条弱模型信号不够干净。Loop45 因此拒绝 Test-10k，立即的 region n-gram OOF gate 分支也应暂停。相关文档见 `docs/phase3_loop45_oof_region_gate.md`。
+
+Loop46 按策略重审建议转向新信息源：真实一点的 Authenticode/ASN.1 结构解析。它只读取 PE Security Directory 的 WIN_CERTIFICATE/PKCS#7 内容，新增 ASN.1 parse 成功/异常、sequence/set/context/OID/time/string 聚合、标准 OID presence 等 `63` 维结构特征，不使用 filename/path/extension/hash/id/split。完整 `20000 train / 20000 val`、cache miss `0`，签名结构覆盖 train `6815`、val `6936`。最佳 `hgb_lr0.08_leaf31_l2_1e-3__noise_none` 为 Val F1 `0.9909891870`、`180` errors、FP/FN `78/102`，比 Loop28 多 `18` 个错误，也弱于 Loop31 浅证书 blob 的 `168` errors，因此拒绝 Test-10k。结论是：证书结构解析本身没有解决 signed-file residual，除非接入真实信任链/吊销/时间戳验证或人工证据，否则不建议继续做小幅证书字段变体。相关文档见 `docs/phase3_loop46_cert_structure_valonly.md`。
+
+Loop41-46 已触发停滞熔断和策略重审：连续多轮没有候选达到 `<=152` Val errors 的 Test-10k 门槛，最好也只是 Loop41 的 `159` errors，只有 `2-3` 个错误级别的改善。应暂停继续围绕 prefix/region byte n-gram、浅融合、同款 OOF gate、手工内容交叉、浅/结构证书追加做微调。后续必须换成真正不同的信息源、真实多 checkpoint/多 seed OOF、多字节长度神经模型，或带人工证据的数据清洗，而不是再扩大 hash 空间、调 stride/alpha/epoch 或重复堆 gate。
+
+Loop47 对现有 `models/` 做了 checkpoint provenance 审计，用来判断是否能直接进入“多 checkpoint / 多 seed OOF stacking”。结论是否定的：共扫描 `177` 个 `.pt` checkpoint，只有 `1` 个能明确归属当前 `loop27_corrected_split.csv`、fixed-v2、8192-byte random 20w 口径，即 `models/random_20w_8192/best_model.pt`；其余为 `provenance_mismatch=2`、`incompatible=40`、`unknown=134`。因此，当前仓库没有可安全直接 stack 的多 checkpoint 池。若要做真正多样化 OOF stacking，必须重新训练当前 split 的新 seed / 新 byte length checkpoint，不能拿旧 group-isolated、comparison-cache、hard replay 或未知来源 checkpoint 混入当前 Val/Test 漏斗。相关文档见 `docs/phase3_loop47_checkpoint_provenance_audit.md`。
+
+因此，下一阶段 P1 不应继续把主要时间花在“再替换少量 Val 噪声样本”上，而应转为三个方向：
+
+1. **把 Loop28 content PE metadata 正式产品化，但不要继续在当前 v2 上排列组合。** 当前大量白样本在数据集中表现为 SHA 文件名或无扩展名，但实战文件名可被任意改写，所以 filename/extension 只能作为错误分析切片，不能作为生产模型输入。Loop28 已证明 PE 内容侧信号有效；Loop32-35 又证明“直接追加一大包细特征”以及“把这包细特征拆子组”都不够稳。下一步应把 Loop28 的 100 维内容特征并入稳定 schema，同时转向 OOF stacking 或更高质量解析，而不是继续消耗轮次在 v2 group permutation 上。
+2. **补 DLL/sys 恶意召回特征，但必须窄口径验证。** DLL 和 sys 的恶意 FN 表明当前 PE/stat/8192 字节头部特征对库文件、驱动类样本仍不够敏感。建议继续研究 exports、subsystem、service/driver hints、section 权限组合、TLS、relocation、import category 和 driver/service 相关 API 特征，但每次只引入一个明确子组，先过 Val 的 `162` errors 门槛，再进入 Test-10k。
+3. **从 Stage-2 过渡到真正多样化的 OOF stacking。** Loop36 已经证明“协议正确但 base learner 太相似”的 OOF stacker不够。下一步若继续 stacking，应训练多 seed/多视角 base 模型，使用 out-of-fold 预测训练校准器/stacker，避免单模型盲区被 Stage-2 继承；不要再只堆同一 cache matrix 上的 HGB 小变体。
+4. **建立高置信冲突人工复核/替换队列。** Loop38 显示 severe/high confidence conflict 足够多，已经影响 `99.9%` 目标的可行性。这里不能自动改标签，也不能用文件名猜标签；只能生成人工判定队列。若确认为坏标签或坏文件，必须按同标签候选池重新抽样替换，保持总量严格 `200000`。
+
+当前科学判断：`99.9%` 不是短期阈值、浅融合或小清洗能达到的指标。Loop28 把 full-test F1 推到 `0.98784`，说明内容特征方向正确，但距离 `0.999` 仍有约 `1900` 个错误的缺口。Loop38 又显示 `649` 个错误是 severe/high confidence conflict，不能假设全都可由模型无监督学掉。合理阶段目标应先定为 `99.0%+` full-test F1，并把 FP/FN 分业务成本分别设门槛。继续挑战 `99.9%` 可以保留为长期目标，但需要把“数据标签可信度”“PE/DLL/sys 内容覆盖”和“真正多样化 OOF stacking”作为前置工程。
+
+## 先给结论
+
+Axon 现在最值得优先改进的地方，不是马上把模型做得更复杂，而是把“模型到底好不好”的判断流程固定下来。当前项目已经有很多有价值的能力：DSRA 字节分支、PE 结构特征、stat 统计特征、相似族群隔离切分、小族群加权、阈值扫描、hard-example 微调、GA 特征筛选、错误分析、概率校准脚本。问题在于这些能力目前像一套工具箱，工具很多，但每次评估时使用的样本口径、阈值、checkpoint、hard holdout 和报告格式并不完全统一。对产品决策来说，这会带来一个风险：某个实验看起来 F1 更高，但可能只是换了更容易的测试口径，或者它减少了漏报，却悄悄增加了很多误报。
+
+用业务语言说，下一阶段的核心目标应该是：让每个候选模型都经过同一套“考试”。这套考试要同时看总体测试集、相似族群隔离后的泛化能力、hard false negative 样本、hard false positive 样本、阈值选择，以及不同历史数据来源分层或家族代理上的表现。这里的历史数据来源分层只用于报告切片、泄漏审计和人工复核索引，不是模型输入、verdict 证据、阈值依据、feature mask 依据或 replacement sampling 依据。只有这样，我们才知道一个模型是真的更稳，还是只是对某一批样本背得更熟。
+
+我建议把改进优先级分成三层：
+
+1. **P1：先把评估链路和产品闸门固定住。** GA 特征掩码的定位已经明确为“高安全模式候选，不默认启用”；hard-example replay 当前配方已经严格复验证明不实用。近期 P1 不应继续重复这些重实验，而应优先解决大样本评估吞吐、阈值/校准流程固化、以及 cache 覆盖审计自动化。
+2. **P2：再考虑更重的模型和数据升级。** 包括更长字节序列、SpeakeasyX 动态行为特征、家族级分类器、主动学习式样本采集。
+
+已完成并从待办建议中移除：原 P0“统一模型评审闸门”。本轮已新增 `scripts/build_model_review_report.py`、`tests/test_build_model_review_report.py`，并生成 `reports/model_review/final_model_selection/model_review_summary.md` 与 `model_review_report.json`；真实 artifact 评审状态为 `usable`，核心 gate 均 PASS。当前统一报告已经覆盖最终模型选择、val-selected threshold、错误分析、group evaluation、概率校准正式全量 test 结果、完整 hard-FN/hard-error/high-value benign 结果，以及 GA 特征掩码的 20k 阈值、历史数据来源分层 trade-off、完整 hard-holdout 和高价值白样本证据。历史数据来源分层只用于报告切片、泄漏审计和人工复核索引，不是模型输入、verdict 证据、阈值依据、feature mask 依据或 replacement sampling 依据。
+
+## 本轮执行状态台账
+
+| 建议项 | 当前状态 | 处理方式 |
+| --- | --- | --- |
+| 统一模型评审闸门 | 已完成 | 已从待办建议中移除，只保留完成记录和复用入口 |
+| fixed-v2 20w 未压缩 cache 覆盖 | 已完成 | 旧重建曾暴露 `130` 条 strict PE 失败；已按“坏文件不补齐、整批同标签重抽”替换为 `strict_extracted=130/130`，当前 `loop27_corrected_split.csv` 复验为 `200000/200000` 覆盖、missing `0` |
+| 概率校准 | 已完成 full-test，但不是最终最优；融合路线近期停止 | 相对 8192 baseline 大幅改善，16 万 test F1 `0.9686442786`、errors `5042`；但低于 Loop57 的 F1 `0.9883629658`、errors `1868`。Loop82 证明它有 `56` 个 Val rescue，但会破坏 `463` 个 Loop57 正确样本；Loop83/84 证明分数差和现有内容 selector 都不够可靠，暂不进入 Test-10k |
+| RL 主线扩大 | 实验确认当前不实用 | 显眼保留为“不建议近期主推”，除非奖励设计有新证据 |
+| SWA / EMA / all combined | 实验确认当前不实用 | 显眼保留为“不建议一次性叠加训练技巧” |
+| GA 特征掩码 | 已确认低漏报方向实用，但不适合默认启用 | 保留为高安全模式候选；现有 20k、完整 hard-holdout 和高价值白样本证据都已补齐，白样本 FP 成本仍高 |
+| byte noise / near-threshold weighting | ⚠️ 实验验证：不实用 | 显眼保留为负面记录；三 seed cache-covered group-isolated 复验中 test F1 均值低于 baseline，FN 均值更高，不建议默认启用 |
+| gated / residual fusion | 实验确认当前不适合作为近期 P1 | 显眼保留为“不建议继续同路线投入”；除非有新约束设计，否则不再优先训练 |
+| hard-example replay | ⚠️ 实验验证：不实用 | 严格 source-group 隔离复验显示，FN holdout 从 39→15 正确（阈值 0.63），净增益仅 +4/423；不同阈值下 FP/FN 交换，无单一阈值同时改善两类错误 |
+| SpeakeasyX 动态行为特征 | 已做边界验证，当前不适合主线合并 | 保留为 P2 二阶段复核信号；不作为直接替代/覆盖主分类器 |
+
+机器可读状态审计已生成到 `reports/model_review/final_model_selection/ml_recommendation_status.json`。当前审计结论是：`3` 项已完成并从待办移除，`5` 项已实验确认不实用并显眼保留，`2` 项仍开放。这里的“仍开放”不是指 A/B 还没跑完，而是指 GA 特征掩码仍只适合做高安全模式候选、SpeakeasyX 仍只适合做 P2 二阶段复核研究。所有列入审计的证据路径当前都存在。2026-06-29 完成了 D 组 hard-example replay 的严格 source-group 隔离复验，确认当前配方不实用，已更新为负面记录。
+
+cache 覆盖审计已生成到 `reports/model_review/final_model_selection/cache_coverage_audit.json`。2026-06-29 的 A/B 严格复验把 official test、hard-FN、hard-error、高价值白样本、GA hard-holdout 的 full/mask 导出都纳入同一张审计表，`10/10` 个检查面均为 `missing=0`。专项报告在 `reports/model_review/final_model_selection/ab_strict_reverification_report.md` 和 `ab_strict_reverification_report.json`，后续判断 A/B 状态应以这两份报告和当前 cache audit 为准。
+
+2026-06-28 的不重建、不删除 cache 恢复计划仍保留为历史施工记录：`reports/model_review/final_model_selection/cache_recovery_plan.md` 和 `cache_recovery_plan.json`。它当时把 cache 缺口拆成三个恢复目标：official test 缺 `15,624` 行，hard-FN 缺 `162` 行，hard-error 缺 `162` 行。2026-06-29 已按 fixed-v2 cache 口径补齐并复验；这份计划现在不再是阻塞项，只用于说明当时的恢复边界和“禁止清空 `data/.cache`、不要把 64/8192 脚本当作 fixed-v2 修复入口”的护栏。
+
+同日又补充了高价值白样本清单：`reports/model_review/final_model_selection/high_value_benign_manifest.csv` 和 `high_value_benign_manifest_summary.json`。这份清单把 official test 缺失 cache、hard-error 缺失 cache、以及当前 hard-error 可评估子集里的白名单良性样本合并去重，共 `8,127` 条，全部来自 `data\待加入白名单`。其中 `84` 条当前 cache 可读，`7,962` 条来自 official test 缺失 cache，`81` 条来自 hard-error 缺失 cache。它已经被用来直接评估概率校准和 GA 特征掩码的高价值白样本误报成本。
+
+授权前完整性检查也已经生成到 `reports/model_review/final_model_selection/ml_authorization_preflight.json`。它只读授权计划和状态，不做任何重操作；A/B 完成后，preflight 只把未完成包当作待授权对象。A/B 本身的完成状态看 `ab_strict_reverification_report.*`。
+
+剩余开放项的执行计划仍写在 `docs/ml_experiment_authorization_plan.md`，机器可读清单在 `reports/model_review/final_model_selection/ml_experiment_authorization_plan.json`。A/B 两个重操作包已经完成严格复验并移出待办；这份计划现在主要覆盖仍开放的实验项和负面记录。
+
+## 2026-06-30 补充：fixed-v2 20w 未压缩 cache 已重建完成
+
+这次按授权清空了 `data\.cache`，然后用 `reports/random_20w_split/random_20w_split.csv` 和 `models/random_20w_8192/best_model.pt` 对应配置，重建了 random 20w、8192 字节、fixed-v2 PE256 的未压缩特征 cache。这里的“未压缩”可以理解成把每个样本的特征文件存成更直接可读的格式，少做一层现场解压；它主要解决的是读取时的存储格式疑虑，不等于模型本身会立刻变快。
+
+重建报告是 `reports/random_20w_split/random_20w_8192_uncompressed_cache_rebuild_full_current_split.json`。结果是：输入 `200000` 行，已有命中 `2998` 行，新提取 `196872` 行，严格 PE 特征提取失败 `130` 行，最终 manifest 为 `data/.cache/manifest_38672ba0.json`，样本数 `199870`，`cache_storage_format=uncompressed`。抽查 NPZ 文件的 zip 压缩类型为 `ZIP_STORED`，确认不是压缩 NPZ。
+
+覆盖审计报告是 `reports/random_20w_split/random_20w_8192_uncompressed_cache_coverage_audit.json`，缺失明细在 `reports/random_20w_split/random_20w_8192_uncompressed_missing_cache.csv`。审计结论：`199870/200000 = 99.935%` 已覆盖，剩余 `130` 行不是路径匹配失败，也不是 cache 物流没补齐，而是严格 PE 特征提取失败。缺失标签分布为白样本 `125`、黑样本 `5`；split 分布为 train `12`、val `19`、test `99`。
+
+这说明 fixed-v2 cache 覆盖问题已经基本收口。下一步不要继续靠“再清一次 cache”解决评估问题；真正瓶颈已经转移到模型评估路径本身。
+
+### 评估吞吐结论
+
+未压缩 cache 重建后，最初的 `scripts/evaluate_split_from_cache.py` 评估仍然很慢：`10000` 行评估在 30 分钟内没有完成，`1000` 行评估在 10 分钟内也没有完成。随后做了一个小 profile，发现最大慢点不是 NPZ 读取，也不是单批模型 forward，而是 manifest lookup 构建时对大量路径做了偏重的解析；这个步骤一度需要约 `75.7` 秒。
+
+已修正 `scripts/evaluate_split_from_cache.py` 的路径索引逻辑，改成不触碰文件系统的字符串归一化。修正后，同一个 manifest lookup 从约 `75.7` 秒降到约 `4.4` 秒；`1000` 行 test 评估可以在约半分钟内完成，`10000` 行 test 评估可以在约 `3` 分 `42` 秒内完成。
+
+新的 10k test 评估报告是 `reports/random_20w_split/random_20w_8192_uncompressed_test10k_after_lookup_opt_eval.json`。口径是 checkpoint `models/random_20w_8192/best_model.pt`，split `reports/random_20w_split/random_20w_split.csv`，manifest `data/.cache/manifest_38672ba0.json`，device `cuda`，batch size `64`，未使用概率校准器，未使用 GA feature mask。`10000` 行 raw test 中 `9994` 行成功预测，`6` 行 missing cache；missing 原因与全量覆盖审计一致，来自那 `130` 条严格 PE 提取失败。
+
+10k 默认阈值 `0.50` 结果：Accuracy `0.9315`，Precision `0.9441`，Recall `0.9166`，F1 `0.9302`，AUC `0.9782`，FP `270`，FN `415`，FPR 约 `5.38%`，FNR 约 `8.34%`。阈值扫描显示 `0.45` 的 F1 略高，为 `0.9320`，FP/FN 为 `330/346`；阈值升到 `0.65` 时 FP 降到 `146`，但 FN 升到 `746`。这再次说明阈值只是 FP/FN 取舍，不是接近 `99.9%` F1 的根本解法。
+
+因此，random 20w 模型在当前证据下没有达到 `F1 >= 99.9%`。这不是因为 cache 覆盖缺口太大：10k 口径只缺 `6/10000`，全量覆盖也有 `99.935%`。更关键的是，这个 10k slice 来自固定 test split；在已扫阈值里错误最少的是 threshold `0.45`，也已经有 `676` 个错误。即使假设剩余约 150k test 样本全部预测正确，完整 test 在这个阈值下的理论 F1 上界也只有约 `0.9958`，达不到 `0.999`。主要瓶颈是模型能力和当前训练/特征路线本身还不够，表现为 FP 和 FN 都仍然明显存在，其中 10k 默认阈值下 FN `415` 高于 FP `270`。如果未来要得到完整 160k test 精确指标，可以继续用修正后的评估脚本跑全量，但按 10k 耗时线性估算仍可能接近一小时；效率更高的路线仍是进一步做批量 tensor 或 memmap 评估。不要用 test set 反复挑阈值，阈值选择仍应只使用 val，test 只做最终确认。
+
+## 当前机器学习链路的真实现状
+
+当前主配置已经不是早期文档里的 PE1500 + 65536 字节大输入路线，而是 `config/default_config.toml` 里的 fixed_v2 PE256 主线：`max_byte_length=512`、`pe_feature_dim=256`、`dsra_dim=160`、`dsra_slots=160`、`fusion_type="concat"`、`decision_threshold=0.50`。这说明项目已经从“尽量塞更多原始信息”转向“用更短、更稳定的固定特征协议做可复现实验”。
+
+模型本体也已经不是简单的二路拼接。`src/model.py` 中 `AxonMalwareModel` 会把三类信息合起来：第一类是文件开头字节序列，经 ByteEmbedding 和 DSRA 编码；第二类是 PE 结构特征，经 PE projector 投影；第三类是 stat 统计特征，经 stat projector 投影。融合方式目前支持 `concat`、`add`、`attention`、`gated`、`residual_stat_gate`、`residual_channel_gate`。这意味着改进空间已经从“有没有某个分支”升级为“什么时候应该相信哪个分支，以及如何防止某个分支在特定样本上误导模型”。
+
+训练器也已经具备比较完整的机器学习实验能力。`src/trainer.py` 支持 label smoothing、focal loss、DSRA diversity loss、小族群样本加权、near-threshold weighting、SWA、EMA、阈值扫描、FP/FN/FPR/FNR 指标。这里的重点不是缺少训练技巧，而是要避免同时打开太多技巧导致无法判断到底是谁产生了收益。
+
+数据层已经支持更严格的泛化检查。`src/dataset.py` 里有 `create_split_from_file()`，可以使用 `reports/raw_group_diagnostics/group_isolated_split.csv` 这类外部 CSV，把同一个相似族群固定放进 train、val、test 的其中一个集合，避免近亲样本同时出现在训练和测试里。这个能力非常重要，因为恶意软件样本经常有大量相似变种；如果近亲样本同时出现在训练集和测试集，模型分数会看起来很好，但上线遇到真正新家族时可能掉得很快。
+
+## 关键证据
+
+### 1. DSRA 分支不是摆设
+
+`reports/hard_family_finetune/experiment_journal.md` 里的 DSRA 消融诊断显示，在 balanced test subset 上，完整模型 F1 为 `0.9565`；去掉 DSRA 后，F1 降到 `0.8476`，FP 从 `20` 增到 `88`，并出现 `74` 个预测翻转。hard-holdout 上完整模型是 `37/37`，去掉 DSRA 后变成 `30/37`。
+
+这说明 byte/DSRA 分支确实在抓一些 PE/stat 分支抓不到的信息。后续不建议为了简化而删除 DSRA；如果要优化，应优先考虑让 DSRA、PE、stat 更好地融合。
+
+### 2. stat 分支不是纯噪声，但会影响误报
+
+同一份 journal 里的 stat full ablation 显示，直接在推理时关闭 stat 分支会减少 FP，但会明显增加 FN。例如 threshold `0.55` 下，full 模型 FP 为 `821`、FN 为 `726`、F1 为 `0.9513`；no_stat 模式 FP 降到 `698`，但 FN 升到 `1096`，F1 降到 `0.9427`。
+
+这说明 stat 分支像一个“敏感但有点吵的报警器”。它会制造一些误报，但也能帮模型抓住更多恶意样本。早期判断是训练 gated 或 residual gate 来动态调节 stat 权重；后续实验已经证明当前这些 gate 设计没有形成可用收益，因此近期不再优先沿同一门控路线继续投入。
+
+### 3. hard-example 微调有效，但会带来新的取舍
+
+journal 记录显示，hard-example fine-tune 曾把 hard-holdout 37 条恶意样本从 baseline 的 `7/37` 提升到 `37/37`，但 limited overall eval 中 FP 从 `377` 增加到 `471`。后续最终模型选择文件 `reports/hard_family_finetune/model_selection_final/final_model_selection_summary.md` 又显示，`hard_fn_candidate@0.63` 在 original hard-family test 上比 previous candidate@0.55 更好：FP 从 `821` 降到 `680`，FN 从 `725` 降到 `720`，F1 从 `0.9514` 升到 `0.9558`。
+
+但 `final_model_selection_report.json` 也显示，这个候选在 hard_error_holdout 上仍然很弱，且 hard_fn_holdout 也不是零错误。这说明 hard-example 微调是有效药，但不是万能药。下一步必须把 hard-FN 和 hard-FP 同时放进模型选择闸门，避免修好一类错误时扩大另一类错误。
+
+### 4. 阈值选择本身就是一个产品策略
+
+项目已经有阈值扫描能力，且结果说明阈值不是小事。比如 previous candidate 在 original hard-family test 上，threshold `0.55` 时 FP/FN 是 `821/725`；提高到 `0.63` 会变成 `648/919`，误报减少但漏报增加。hard_fn_candidate 在 threshold `0.63` 时达到当前最终推荐，但它在不同 holdout 上的表现并不完全一致。
+
+通俗地说，阈值就是“报警器灵敏度旋钮”。旋得低，恶意更容易被抓到，但白文件更容易被误报；旋得高，白文件更安全，但恶意漏掉的风险上升。这个旋钮不应该只靠一次 test 集最大 F1 决定，而应该由产品策略决定：我们更怕误报打扰用户，还是更怕漏报放过恶意文件。
+
+### 5. GA 特征掩码有价值，但不能直接默认上线
+
+`docs/feature_subset_ga_report.md` 显示，`config/feature_masks/ga_recall_guard_2000.json` 从 192 个有效 PE/stat 特征中保留了 125 个。在 20,000 样本评估中，GA 掩码 @ `0.525` 的总错误数为 `1210`，比完整特征 @ `0.50` 的 `1340` 少 `130` 个；FN 从 `958` 降到 `670`，但 FP 从 `382` 升到 `540`。
+
+这说明 GA 掩码更像“减少漏报”的候选方案，不是无成本提升。它值得继续验证，尤其是在 group-isolated split、时间切分或真实家族标签切分上验证，但不建议没有闸门就变成默认推理开关。
+
+### 6. 一些训练技巧已经有负面证据，不能盲目叠加
+
+`models/comparison_experiments_from_cache/summary.md` 显示，在 20,000 样本 cache 抽样版实验中，baseline F1 为 `0.9287`，byte noise 为 `0.9263`，SWA 为 `0.8882`，EMA 为 `0.9132`，near-threshold 为 `0.9255`，all combined 为 `0.8549`。这说明“把所有增强都打开”反而明显变差。
+
+但 `models/generalization_group_isolated/summary.md` 又显示，在单 seed group-isolated 泛化对比里，baseline test F1 为 `0.8869`，byte noise 为 `0.8893`，near-threshold 为 `0.8899`。这曾经提示 byte noise 和 near-threshold 可能有小幅价值，但 2026-06-29 的三 seed 复验证明这个方向不稳定：`models/generalization_group_isolated_seed_confirm/summary.md` 中 baseline test F1 均值为 `0.9444`，byte noise 为 `0.9260`，near-threshold 为 `0.9200`。更关键的是，byte noise 的 test FN 均值从 baseline 的 `623.7` 升到 `851.7`，near-threshold 升到 `958.7`。这说明单次小涨更像随机波动或种子敏感，不足以改默认配置。
+
+### 7. RL 路线目前不是主线优先项
+
+`reports/pro_runs/fixed_pe256_2k_summary.json` 显示，3 个 seed 下 CE baseline 的平均 F1 为 `0.8910`，RL 的平均 F1 为 `0.8427`，并且 `continue_to_larger_scale=false`。除非后续有新的奖励设计和同协议反证，否则不建议把 Pro RL 当成近期主线。
+
+### 8. 512 字节输入目前有经验优势，但仍需统一协议复验
+
+`models/length_tests/results.json` 显示，在那轮输入长度实验中，`max_byte_length=512` 的 F1 为 `0.9588`，高于 1024、2048、256、128、64。这个结果支持继续把 512 作为主线输入长度，但因为历史实验口径不一定和最新 group-isolated 主线完全一致，不能据此断言“512 永远最优”。更稳妥的做法是把 512 作为默认，把 1024/2048 作为 P2 复验，不要现在盲目加长。
+
+## 已完成：把阈值和概率校准正式产品化
+
+**实验状态：已确认实用且已彻底完成。**
+
+历史正式全量报告 `reports/hard_family_finetune/clean_hyperparam_search/train_calibrator_no_metadata_test_confirmation_scripted.json` 显示，在完整 `31,816` 条 test 样本上，校准器相对同 CSV baseline：
+
+- F1：`0.9514 -> 0.9720`，提升 `+0.0206`
+- 错误数：`1549 -> 898`，减少 `651`
+- FP：`872 -> 645`，减少 `227`
+- FN：`677 -> 253`，减少 `424`
+
+历史上曾先跑过 `scripts/evaluate_probability_calibrator.py --allow-missing-cache` 的诊断子集，随后又补齐严格模式的完整评审；这些步骤现在都只是过程记录。最终已经确认，校准器在完整 test、hard-FN、hard-error 和高价值白样本四个口径上都有效。
+
+2026-06-29 又做了一次 A/B 专项严格复验，报告位于 `reports/model_review/final_model_selection/ab_strict_reverification_report.md`。这次复验确认校准器训练协议是 train split 训练、val split 选模型和阈值、test 不参与训练；四个严格评估口径全部 `kept=total` 且 `skipped_missing_cache=0`。
+
+### 完成内容
+
+把阈值选择从“训练配置里的固定 `0.50`”升级成“每个模型都有自己的推荐阈值和业务阈值区间”。同时把 `scripts/train_probability_calibrator.py` 和 `scripts/evaluate_probability_calibrator.py` 纳入标准流程，验证 Logistic Regression calibrator 或 temperature scaling 是否能在不重训主模型的情况下减少错误。
+
+这里的“概率校准”可以理解成给模型的分数表重新校准刻度。模型说 `0.8` 不一定真的代表 80% 风险，校准器的作用是用验证集把分数刻度调得更可靠。它不是重新训练主模型，更像是给温度计重新标定。
+
+### 结果总结
+
+项目已经有阈值扫描和校准脚本，严格复验后，校准器把完整 test 错误从 `1549` 降到 `898`，hard-FN 从 `20` 降到 `6`，hard-error 从 `300` 降到 `132`，高价值白样本 FP 从 `604` 降到 `406`。这说明“只调分数刻度”是实用的低成本改进。
+
+### 结论
+
+校准器已经完成，保留为标准流程的一部分，不再占用 P1 待办。
+
+## P1 建议：gated/residual fusion 暂停作为近期主线
+
+**实验状态：当前路线已验证不实用，保留记录，不从文档移除。**
+
+已经验证过 `gated`、`residual_stat_gate`、`residual_channel_gate` 三类融合方式。原始想法是对的：不要直接删除 stat 分支，而是让模型学会什么时候少信 stat、什么时候多信 DSRA/PE。但现有实验结果说明，当前这些 gate 设计没有把“音量旋钮”学好，反而带来了更差的整体结果。
+
+### 关键证据
+
+- `reports/hard_family_finetune/gated_full_threshold_sweep.json`：gated fusion 最佳 F1 约 `0.9411`，FP/FN 为 `1254/648`，总错误 `1902`。当前 concat 主线推荐候选在 original hard-family test 上 F1 为 `0.9558`，FP/FN 为 `680/720`，总错误 `1400`。
+- `reports/hard_family_finetune/residual_stat_gate_full_threshold_sweep.json`：residual_stat_gate 最佳 F1 约 `0.9395`，FP/FN 为 `911/1002`，总错误 `1913`。
+- `reports/hard_family_finetune/clean_hyperparam_search/f1_probe_residual_channel_gate_val_sweep.json`：residual_channel_gate 小验证 probe 最佳 F1 约 `0.9247`，只比同预算 concat baseline 略高，但低于已知 scheduler-free probe；journal 已记录“不 seed-confirm 或 full-train”。
+
+### 当前判断
+
+这条路线不是“理论上永远不行”，而是“当前实现和当前数据下不值得继续作为近期 P1”。如果未来要重启，必须先有新的约束设计，例如 gate 只能在很小范围内调节 stat，或者只在特定误报风险区间启用；否则不要再重复训练同类 gated/residual 模型。
+
+### 仍然保留的原因
+
+stat 分支的双刃剑问题仍然存在，只是当前 gate 不是好解法。这个记录要保留，避免后续重复投入同一条已经失败的架构路线。
+
+## ⚠️ 实验验证：不实用 - hard-example balanced replay 当前配方不建议投入
+
+**实验状态：⚠️ 实验验证：不实用。当前配方（4 epoch、1e-5 LR、FP/FN weight 4x）在严格 source-group 隔离下未实现 balance improvement，保留为负面记录，不移除。**
+
+### 要做什么
+
+继续做 hard-example fine-tune，但不要只喂当前漏报样本。每轮 hard-example 包应该同时包含：
+
+- hard FN：模型漏掉的恶意样本。
+- hard FP：模型误报的白样本。
+- clean replay：普通 train/val 中的稳定样本，用来防止模型忘掉原有能力。
+- family/group 限制：避免某一个历史数据来源分层或相似族群占比过高；这些分层只用于报告切片、泄漏审计和人工复核索引，不是模型输入、verdict 证据、阈值依据、feature mask 依据或 replacement sampling 依据。
+
+### 为什么值得做
+
+现有 hard-example fine-tune 能显著修复目标 hard-FN，但也出现过误报增加和另一个 holdout 表现变差的问题。这类似给员工突击训练某一类题，如果只练这一类题，他可能在另一类题上退步。反向回放就是每次专项训练时保留一部分旧题，防止模型“偏科”。
+
+已有正向证据很强：`reports/hard_family_finetune/hard_error_finetune_threshold055/hard_error_finetuned_full_threshold_sweep.json` 显示 hard-error fine-tune 在该 split 的 threshold `0.55` 下达到 F1 `0.9776`，FP/FN 为 `329/355`；同一 hard-error holdout 上，旧模型错误从 `309` 降到 `219`。但后续 hard-FN targeted candidate 虽然提高 original hard-family test F1 到 `0.9558`，hard-error holdout errors 仍为 `229`，比上一轮 hard-error holdout `219` 更差。这说明 hard-example 是有效药，但“只追一种错题”会让另一类错题回潮，反向回放还没有完成。
+
+2026-06-28 已完成一个不训练的准备步骤：使用当前推荐候选 `hard_fn_candidate@0.63` 的错题分析，生成 `reports/hard_family_finetune/balanced_replay_from_current_candidate_threshold063/`。这个包同时包含当前候选在 original hard-family test 上的 `680` 个 FP 和 `720` 个 FN，并按 `source_group_id` 做 group 级 train/val/holdout 分配：hard train `859` 行、hard val `291` 行、hard holdout `415` 行，其中 `840` 个 hard train 样本带显式权重。它还保留 base train/val/test 行作为 clean replay 背景。注意，这一步只是把“错题本”整理好，没有启动微调训练，也没有证明 replay 配方有效。
+
+### 建议实验
+
+每轮 hard-example 包都要写清楚：
+
+- 样本来自哪些错误类型。
+- 每类样本数量。
+- 是否按 group 去重。
+- 是否包含 clean replay。
+- 与上一轮模型相比，FP/FN 各自变化多少。
+
+只有当 original test、hard-FN holdout、hard-error holdout 三者综合改善，才进入下一轮。
+
+但 2026-06-29 的严格 source-group 隔离复验显示，当前 replay 配方不能满足这个标准。
+
+#### 复验结果
+
+在 strict source-group 隔离的 replay 包（`reports/hard_family_finetune/balanced_replay_strict_source_group_threshold063/`）上训练后，同一 hard-error holdout 的 baseline 对比：
+
+| 角色 | Baseline correct（阈值 0.63） | Replay correct（阈值 0.63） | 变化 |
+| --- | ---: | ---: | ---: |
+| hard-error FN holdout（n=144） | 39（27.1%） | 15（10.4%） | **-24** |
+| hard-error FP holdout（n=136） | 41（30.1%） | 79（58.1%） | **+38** |
+| context holdout（n=143） | 143（100%） | 133（93.0%） | -10 |
+| **合计（423）** | **223（52.7%）** | **227（53.7%）** | **+4** |
+
+在阈值 0.50 时，交换反转：FN holdout 从 51→78 正确，FP holdout 从 16→7 正确。这说明 replay 训练使模型整体更“激进”（得分更高），但牺牲了 FN vs FP 的平衡。当前业务优先级（误报比漏报更严重）下，FN 退化不可接受。
+
+#### 为什么不建议继续
+
+- 净值太小：423 条 holdout 上仅多修复 4 条（+0.9%）。
+- 方向不平衡：同一配方下，FP 改善以 FN 退化为代价。
+- 复验是严格 source-group 隔离的，不是“保留近亲样本”的宽松口径；这个结果比历史宽松实验更有参考价值。
+
+建议后续如果尝试不同 replay 配方（如更长训练、更小 LR、不同权重），必须先用本包的严格隔离口径预验，不能跳过。但以当前证据，不推荐将此列为 P1。
+
+
+
+## P1 建议：GA 特征掩码继续验证，但先不要默认启用
+
+**实验状态：已确认“减少漏报”方向实用，但高价值白样本误报仍偏高，因此继续保留在 P1，不能默认启用。**
+
+### 要做什么
+
+保留 `config/feature_masks/ga_recall_guard_2000.json` 作为候选特征子集，在统一评审闸门下复验。本轮已经把 20,000 样本阈值评估、历史数据来源分层 trade-off、完整 hard-holdout，以及高价值白样本评估都补齐了；现在的重点不是继续证明“它能不能减少漏报”，而是把它的业务定位说清楚。历史数据来源分层只用于报告切片、泄漏审计和人工复核索引，不是模型输入、verdict 证据、阈值依据、feature mask 依据或 replacement sampling 依据。
+
+### 为什么值得做
+
+GA 掩码确实展示出减少总错误和减少 FN 的潜力。20,000 样本评估中，GA mask @ `0.525` 相对完整特征 baseline @ `0.50`，F1 从 `0.9310` 到 `0.9391`，总错误从 `1340` 到 `1210`，FN 从 `958` 降到 `670`。按历史数据来源分层切片时，三个恶意来源分层的 FN 也都下降，所以它不是无效想法；这个切片只用于评估分层和泄漏审计，不进入模型、verdict、阈值、feature mask 或 replacement sampling。
+
+### 补齐后的复验结果
+
+`ga_feature_mask_full_holdout_summary.json` 里，完整 hard-FN 上 full baseline 从 `19` 个错误到 mask 的 `18` 个错误，完整 hard-error 上从 `288` 个错误到 `286` 个错误，确实继续减少了漏报。
+
+但高价值白样本的结果更关键：`high_value_benign_baseline_analysis/prediction_error_summary.json` 显示 full baseline FP 为 `604`，`high_value_benign_ga_mask_analysis/prediction_error_summary.json` 显示 GA mask FP 为 `638`，多了 `34` 个误报。也就是说，它对误报最贵的正常文件不划算。
+
+2026-06-29 的专项复验还确认，GA 相关导出在 fixed-v2 cache 上没有缺口：20k 评估、hard-FN/hard-error full 与 mask、高价值白样本 full 与 mask 都已经纳入 `cache_coverage_audit.json`，相关检查面全部 `missing=0`。
+
+### 结论
+
+GA 掩码保留为高安全模式候选，不默认启用，也不从文档中移除。它的价值在于“更少漏报”，代价是“更多白样本误报”，业务上要明确把它放到更保守的场景里。
+
+## ⚠️ 实验验证：不实用 - byte noise 和 near-threshold weighting 不建议默认启用
+
+### 做了什么
+
+在 group-isolated split 下，已经完成 byte noise 和 near-threshold weighting 的三 seed 小规模复验。实验没有和 SWA、EMA、GA 掩码、门控融合一次性全叠加，而是只比较 baseline、byte_noise、near_threshold 三个变量，避免结果解释不清。
+
+2026-06-29 先修正了 `scripts/run_generalization_group_split.py`：新增 `--cache-manifest`，并补了 manifest 规格校验，防止用 64-byte 或 8192-byte cache 去跑 512-byte 主线配置；同时把转换后的 split 主键改回原始文件路径，保证训练时 `FeatureCacheDataset` 能正确匹配。最终复验固定使用 `data/.cache/manifest_ee122d6c.json`，也就是 512-byte fixed-v2 cache。这个 cache 覆盖 `20,000/40,000` 条 raw group-isolated rows，因此本轮结论的准确名字是“cache-covered group-isolated subset 多 seed 复验”，不是完整 40k raw split。
+
+### 结果
+
+`models/generalization_group_isolated_seed_confirm/summary.md` 的三 seed 汇总如下：
+
+- baseline：test F1 mean `0.9444`，std `0.0047`，FP mean `271.0`，FN mean `623.7`。
+- byte noise：test F1 mean `0.9260`，std `0.0555`，相对 baseline `-0.0184`；FP mean `293.3`，FN mean `851.7`。
+- near-threshold：test F1 mean `0.9200`，std `0.0515`，相对 baseline `-0.0244`；FP mean `275.3`，FN mean `958.7`。
+
+最有解释力的是 seed43：byte noise 的 test F1 比同 seed baseline 低 `0.0793`，FN 多 `1105`；near-threshold 的 test F1 低 `0.0808`，FN 多 `1164`。如果上线场景重视漏报风险，这种不稳定性不能接受。
+
+### 不建议做什么
+
+不建议直接启用 all combined，也不建议近期继续把 SWA 或 EMA 当作主线训练技巧。已有 cache 抽样实验里 all combined 明显低于 baseline，SWA 和 EMA 也明显退化，说明训练技巧不是越多越好。现在 byte noise 和 near-threshold 也已经有多 seed 负面证据，不应进入默认配置。
+
+### 结论
+
+⚠️ 实验验证：不实用。byte noise 和 near-threshold weighting 保留为负面记录，不从文档中删除，避免以后因为单 seed 小涨再次重复投入。除非未来更换数据规模、训练预算或设计出新的约束方式，否则不要把它们作为默认训练技巧。
+
+## P2 建议：输入长度暂时保持 512，长序列只做受控实验
+
+### 要做什么
+
+主线继续保持 `max_byte_length=512`。如果要验证 1024 或 2048，必须使用相同 split、相同训练预算、相同模型选择闸门。
+
+### 为什么
+
+历史输入长度实验里 512 表现最好，而且训练更快。对恶意软件检测来说，文件开头通常包含 PE header、section table、import 等很多高价值线索；更长输入不一定更好，因为它会增加训练成本，也可能引入更多噪声。
+
+### 什么时候值得加长
+
+只有在错误分析发现大量 FN 的关键恶意行为线索出现在 512 字节之后，才值得把长序列作为主线候选。
+
+## P2 建议：SpeakeasyX 动态行为特征只作为二阶段复核候选
+
+### 要做什么
+
+SpeakeasyX 这类动态行为特征不要直接大规模加入训练，也不要直接替代当前概率校准器。现有验证显示，它更适合做“二阶段复核”：当主模型已经判定某个样本可疑时，用 SpeakeasyX 的运行状态、timeout、unsupported、是否产生 trace 等信号辅助判断这个告警是不是可能误报。
+
+### 为什么
+
+动态行为特征像是在沙盒里观察程序运行动作，理论上很有价值，但成本高、失败率高、环境敏感。现有 `reports/hard_family_finetune/clean_hyperparam_search/speakeasy_feasibility_report.md` 已经做了边界验证：SpeakeasyX 对校准器残差样本确实有强信号，尤其能识别一批 false positive；但固定 timeout filter 在 test confirmation 子集上虽然把 FP 从 `122` 降到 `0`，也把 FN 从 `120` 增到 `168`，新增 `48` 个漏报。对安全产品来说，这个代价不能直接并入主分类器。
+
+Ordered API sequence 方向也还没有证明“API 顺序本身”能提升 F1。严格 API-order-only DSRA 控制里，sequence-only 结果退化到 F1 `0.5000`；真正有用的信号更多来自“是否快速产生 trace / timeout / unsupported”这类执行可达性状态。换句话说，当前 SpeakeasyX 更像一个人工复核用的体检指标，不是已经成熟的主模型新器官。
+
+### 建议闸门
+
+只有当动态行为特征在固定 holdout 上同时减少误报、且新增漏报受控，才允许进入 P1 或主线融合。下一步如果继续做，优先验证更保守的 FP 复核规则，例如降低 downgrade 的触发范围、把 `.NET unsupported` 明确设为“不要降级”的恶意侧风险信号，或者训练一个只用于复核的 held-out 小校准器。不要先做全量 Speakeasy 抽取，也不要直接把 timeout 规则接进生产推理。
+
+## P2 建议：家族分类器用于解释和分流，不要替代二分类主模型
+
+### 要做什么
+
+继续保留 `scripts/export_family_classifier.py` 这类 family classifier 能力，但定位应是：
+
+- 帮助解释“这个恶意样本像哪个已知相似族群”。
+- 辅助错误分析和报表。
+- 作为二阶段风险分流信号。
+
+不要把它当成替代二分类模型的主检测器。
+
+### 为什么
+
+家族分类依赖已有相似族群中心点。它擅长认“见过的家族附近的样本”，但遇到新家族时容易没有合适归属。二分类模型负责先判断恶意风险，家族分类器负责进一步解释和归类，这两个角色不要混淆。
+
+## 暂不建议优先投入的方向
+
+1. **【实验确认当前不实用，保留记录】不建议近期主推 RL。** 当前 3 seed 结果显示 RL 明显落后 CE baseline，除非奖励函数有新设计，否则继续扩大训练成本不划算。
+2. **不建议盲目加长字节输入。** 512 在已有实验中表现最好，长输入会增加成本和噪声。
+3. **不建议直接删除 stat 分支。** 它能减少漏报，问题应通过门控解决。
+4. **【实验确认当前不实用，保留记录】不建议继续同路线投入 gated/residual fusion。** full gated、residual_stat_gate 和 residual_channel_gate probe 都没有形成可用收益；除非先设计新约束，否则不要重复训练。
+5. **不建议直接默认启用 GA 掩码。** 它减少 FN，但增加 FP，需要按产品策略决定。
+6. **【实验确认当前不实用，保留记录】不建议一次性叠加所有训练技巧，也不建议近期主推 SWA/EMA、byte noise 或 near-threshold weighting。** 现有 all combined 结果已经提示这种做法可能显著退化；cache 抽样实验中 SWA、EMA 和 all combined 均明显低于 baseline。byte noise 和 near-threshold 虽然在单 seed group-isolated 口径有过小幅 test F1 收益，但三 seed 复验 test F1 均值低于 baseline，FN 均值更高，因此保留为负面记录。
+
+## 失败实验复盘闸门
+
+下面这一节专门回答“为什么失败、失败排除了什么、下一步从哪里来”。它不是为了否定所有新想法，而是避免把已经被证据排除的旧配方再跑一遍。对非技术视角来说，可以把它理解成实验复盘表：不是只说这条路没通，而是写清楚它撞到的是哪堵墙。
+
+### RL 主线扩大
+
+- 失败观察：3 个 seed 下，CE baseline 平均 F1 为 `0.8910`，RL 平均 F1 为 `0.8427`；RL 平均 reward、accuracy、precision、recall、F1 都低于 CE，`continue_to_larger_scale=false`。
+- 推理出的可能原因：当前 RL 分支把二分类模型包装成一阶 bandit 奖励环境，但奖励设计没有比交叉熵训练提供更稳定的学习信号。它有时会改变 FP/FN 取舍，但不是稳定提升识别能力。
+- 证据强度：强证据。证据来自 `reports/pro_runs/fixed_pe256_2k_summary.json` 的 3 seed 对照。
+- 因此不建议继续：不建议扩大 RL 训练规模，也不建议把 Pro RL 当成主分类器训练路线。
+- 因此建议下一步：只有在奖励函数有明确新设计，并且先通过小规模多 seed 同协议对照后，才允许重启。
+- 最小验证实验：固定同一 split、同一模型容量、同一阈值选择协议，比较新 reward RL vs CE baseline，至少 3 seed。
+- 成功标准：RL 的平均 F1、FN、FP 不能只改善一个方向，必须整体不低于 CE，且方差不明显更大。
+- 失败后如何停止：若 3 seed 平均 F1 仍低于 CE，或只是以大幅增加 FP/FN 之一换取另一项改善，继续保留负面记录。
+
+### SWA / EMA / all combined
+
+- 失败观察：20k cache 抽样实验中，baseline F1 `0.9287`；SWA `0.8882`，EMA `0.9132`，all combined `0.8549`，都明显低于 baseline。
+- 推理出的可能原因：这些技巧本身不是坏技术，但当前数据和训练预算下同时或直接套用，会改变模型收敛轨迹，反而削弱已经有效的 DSRA + PE + stat 表示。all combined 尤其像一次把多个旋钮都拧了，结果无法分辨哪个旋钮造成退化。
+- 证据强度：中到强证据。SWA/EMA/all combined 在 20k cache 抽样对照里退化明显；但它们没有必要再做 P1 full-scale，因为退化幅度已经足以否决近期默认路线。
+- 因此不建议继续：不建议近期主推 SWA、EMA 或“所有训练技巧全开”。
+- 因此建议下一步：如果未来重启，只能一个变量一个变量做小规模诊断，不能组合上车。
+- 最小验证实验：单独开启一个技巧，固定 split、seed 组和阈值协议，先跑小样本多 seed。
+- 成功标准：多 seed 平均 F1 高于 baseline，同时 FP/FN 没有单侧显著恶化。
+- 失败后如何停止：只要收益来自单 seed，或平均 FN/FP 明显恶化，就不进入全量训练。
+
+### byte noise / near-threshold weighting
+
+- 失败观察：单 seed group-isolated 实验曾有小幅 test F1 提升，但三 seed cache-covered group-isolated 复验反转。baseline test F1 mean `0.9444`；byte noise `0.9260`，near-threshold `0.9200`。byte noise 的 FN mean 从 `623.7` 升到 `851.7`，near-threshold 升到 `958.7`。
+- 推理出的可能原因：这是典型的训练不稳定和 seed 敏感。byte noise 原本想让模型别死记字节位置，near-threshold 原本想让模型多学边界样本；但实际结果像是在给已经脆弱的边界加噪声，恶意漏报变多。
+- 证据强度：强证据。证据来自 `models/generalization_group_isolated_seed_confirm/summary.md` 和 `reports/model_review/final_model_selection/training_trick_summary.json` 的多 seed 复验。
+- 因此不建议继续：不建议默认启用 byte noise 或 near-threshold weighting，也不建议把单 seed 小涨当成产品依据。
+- 因此建议下一步：除非换成更保守的增强策略，否则不要再做同配方训练；如果要重启，先做最小诊断，观察 FN 是否受控。
+- 最小验证实验：只改变扰动强度或 near-threshold 权重之一，3 seed，小样本，固定 group-isolated split。
+- 成功标准：平均 test F1 高于 baseline，且 FN mean 不能高于 baseline。
+- 失败后如何停止：只要 FN mean 上升或 std 明显扩大，立即停止，不进默认配置。
+
+### gated / residual fusion
+
+- 失败观察：gated fusion 最佳 F1 约 `0.9411`，总错误 `1902`；residual_stat_gate 最佳 F1 约 `0.9395`，总错误 `1913`；residual_channel_gate 小验证 probe 也未超过已知更强 baseline。
+- 推理出的可能原因：原始假设是对的：stat 分支像一个有用但有噪声的报警器，模型应该学会什么时候少信它。但当前 gate/residual 设计没有学到可靠的“谁该被信任”，反而增加了结构复杂度和训练难度。
+- 证据强度：强证据。已有 full sweep 和 probe 证据，且都没有形成可用收益。
+- 因此不建议继续：不建议重复训练同类 gated/residual 结构。
+- 因此建议下一步：如果未来重启，必须先提出新的约束机制，例如 gate 只能小幅调节、只在高误报风险区间生效，或先做可解释 gate 分布诊断。
+- 最小验证实验：先在 val 上验证 gate 权重是否与已知 FP/FN 风险相关，而不是直接 full train。
+- 成功标准：gate 权重有可解释分布，并在 val/hard holdout 上同时减少错误。
+- 失败后如何停止：如果 gate 权重不可解释，或只是转移 FP/FN，就停止架构路线。
+
+### hard-example replay
+
+- 失败观察：严格 source-group 隔离 replay 后，阈值 `0.63` 下 hard-error FN holdout 正确数从 `39` 降到 `15`，FP holdout 从 `41` 升到 `79`，合计只净增 `+4/423`。阈值 `0.50` 时取舍反向变化，没有单一阈值同时改善 FP/FN。
+- 推理出的可能原因：当前 replay 配方把模型整体推得更激进或更保守，而不是学到了更稳的恶意/良性边界。它修一类错题时会伤另一类错题，是 hard-example 过拟合和阈值 trade-off 的混合问题。
+- 证据强度：强证据。证据来自严格 source-group 隔离包、baseline vs replay holdout 对比和阈值对照。
+- 因此不建议继续：不建议重复当前 `4 epoch + 1e-5 LR + FP/FN 4x` 配方。
+- 因此建议下一步：如果要继续 hard-example，只能先改协议：更严格的 source-group 隔离、clean replay 比例、双向 FP/FN holdout、val-only 阈值选择必须同时存在。
+- 最小验证实验：在当前严格隔离 replay 包上做小学习率或短训练诊断，并只看 val/hard holdout，不碰 test 调参。
+- 成功标准：hard-FN、hard-FP、context holdout 三者同时不退化，净改善不能只靠牺牲其中一类。
+- 失败后如何停止：如果任一 hard holdout 明显退化，或净收益小于人工复核价值，就停止，不再进入 P1。
+
+### GA 特征掩码
+
+- 失败观察：它不是失败实验，而是“有收益但有业务代价”的候选。20k 评估中总错误 `1340 -> 1210`，FN `958 -> 670`，但 FP `382 -> 540`；高价值白样本 FP `604 -> 638`。
+- 推理出的可能原因：GA 掩码减少了一些会造成漏报的噪声特征或保留了更偏召回的信号，但也削弱了识别白样本的证据，所以误报增加。
+- 证据强度：强证据。证据来自 20k、hard-holdout、高价值白样本和 cache 覆盖审计。
+- 因此不建议继续：不建议默认启用 GA mask，也不建议把它包装成无成本 F1 提升。
+- 因此建议下一步：把它定义为高安全模式候选，只在“少漏报比少误报更重要”的业务场景使用。
+- 最小验证实验：如需上线前再验，只在 val 上选阈值，然后固定到高价值白样本和 hard holdout 做确认。
+- 成功标准：高安全模式下 FN 明显下降，同时 FP 增量在产品可接受范围内。
+- 失败后如何停止：如果高价值白样本 FP 超过产品容忍线，就不进入自动模式，只保留为分析工具。
+
+### SpeakeasyX 动态行为特征
+
+- 失败观察：SpeakeasyX 在残差样本上有强信号，但固定 timeout filter 在 test confirmation 子集上把 FP 从 `122` 降到 `0` 的同时，把 FN 从 `120` 增到 `168`。
+- 推理出的可能原因：动态行为信号能识别一批误报，但 timeout/unsupported 不是纯良性信号，一些真实恶意也会 timeout 或不受支持。直接自动降级会把恶意样本误放过去。
+- 证据强度：中到强证据。残差和 test confirmation 都支持“有信号但有代价”；但它还不是全量动态特征主线实验。
+- 因此不建议继续：不建议直接合入主分类器，也不建议用 timeout 规则自动覆盖概率校准器。
+- 因此建议下一步：只作为二阶段 FP 复核或人工调查信号，先做更保守的 val-first 小实验。
+- 最小验证实验：只对主模型已报恶意且置信度不极高的样本做 FP triage，`.NET unsupported` 不得简单降级。
+- 成功标准：减少 FP 的同时，新增 FN 接近 0，并且规则完全由 val 选出。
+- 失败后如何停止：只要新增 FN 超过产品可接受线，就不能进入自动降级，只能作为解释特征。
+
+### Loop81 Val 互补性对齐审计
+
+- 失败观察：Loop81 试图只在 Val 上审计 Loop57 与概率校准器的错误互补性。按 `sample_index` 对齐时出现 `9830` 个标签不一致，说明两份预测 CSV 的样本编号不可比较；改用 `source_sha256` 仅做审计对齐后，20k Val 只能唯一对齐 `19906` 行，校准器文件有 `2` 个重复哈希，其中一个同一文件内容同时出现标签 `0` 和 `1`。
+- 推理出的可能原因：两份 Val 预测并非来自完全一致且可唯一对齐的 corrected 20w manifest；同时数据集中存在重复内容和跨标签噪声。此时直接看互补性会把样本错配和标签噪声混进融合判断。
+- 证据强度：强证据。Loop77 guard 通过，Loop81 脚本单测 `5 passed`，真实审计严格失败并输出 blocker：Val overlap 不是 `20000`、校准器有重复 `source_sha256`、共同键存在歧义、两份文件覆盖集合不同。
+- 因此不建议继续：不建议用当前两份 Val 预测训练融合器、选阈值、进入 Test-10k 或全量 Test。
+- 因此建议下一步：从同一个 Loop79-ready corrected 20w manifest 重新导出 Loop57 和校准器 Val 预测；先保证 `20000/20000` 唯一对齐，再做 Val-only 互补性分析。
+- 最小验证实验：重新导出后先跑 `scripts/analyze_loop81_val_complementarity.py --join-key source_sha256 --strict`，要求 `common_rows=20000`、重复键为 `0`、缺失为 `0`、标签不一致为 `0`。
+- 成功标准：只有在对齐审计完全通过、且校准器能稳定补回足够多 Loop57 错误时，才允许进入 Val-only 融合 probe；仍然不能直接碰 Test/Test-10k。
+- 失败后如何停止：如果同一 manifest 导出后仍出现重复内容或跨标签冲突，先进入 Data-Agent 噪声隔离和重新抽样，不继续做融合。
+
+### Loop82 同 manifest 互补性复验
+
+- 通过观察：Loop82 从同一个 corrected Val manifest 重新导出 Loop57 和校准器预测，严格审计通过：`20000/20000` 唯一 `source_sha256` 对齐，缺失 `0`、重复键 `0`、标签不一致 `0`、split 不一致 `0`。
+- 推理出的含义：Loop81 的 blocker 来自旧预测文件集合不一致，不代表校准器和 Loop57 完全不可比较；只要从同一 corrected manifest 重新导出，Val-only 互补性可以被干净审计。
+- 证据强度：强证据。导出前两个输入 CSV 均为 `20000` 行、黑白各 `10000`、unique SHA `20000`、cache missing `0`，SHA 集合完全一致；导出和审计前均跑 Loop77 guard。
+- 当前互补性：Loop57 Val errors `147`，校准器 errors `554`，oracle choose-correct-if-either errors `91`；校准器能补回 `56` 个 Loop57 错误，但会破坏 `463` 个 Loop57 正确样本。
+- 因此不建议继续：不建议把校准器直接替换 Loop57，也不建议做简单平均/线性混合后进入 Test-10k。
+- 因此建议下一步：只允许做保守 Val-only 融合 probe，目标是识别那 `56` 个 calibrator-only-correct 场景，同时保护 `463` 个 Loop57-only-correct 场景。
+- 最小验证实验：训练/选择必须只用 Train/Val，不得用 Test；融合特征只能来自模型概率、经身份 guard 审计的 PE/stat/content 特征，不得使用 filename/path/directory/hash/sample_index/split/row order。
+- 成功标准：在完整 `20000` Val 上明显低于 Loop57 的 `147` 错误，并且 FP/FN 没有不可接受的单边退化，才允许进入 Test-10k。
+- 失败后如何停止：如果融合只减少少数错误但破坏大量 Loop57 正确样本，停止融合路线，转向噪声审计或新内容证据。
+
+### Loop83 分数差 rescue profile
+
+- 失败观察：只用 `abs_score_delta` 判断“什么时候信校准器”不能改善 Loop57。最佳阈值 `0.90` 下错误 `181`，比 Loop57 的 `147` 多 `34`，且捕获 `0/56` 个 calibrator-only-correct rows。
+- 推理出的可能原因：校准器 rescue 和 regression 都可能表现为大分数差。分数差只能说明两个模型意见不同，不能说明谁更可信。
+- 证据强度：中到强证据。它是完整 `20000` Val、Loop82 严格对齐后的只读诊断，脚本 guard 通过，单测 `2 passed`。
+- 因此不建议继续：不建议做简单 score delta 规则、简单平均、或“强分歧时信校准器”的 Test-10k。
+- 因此建议下一步：如继续融合，只能做带 PE/stat/content 特征的 Val-only selector，并且所有 feature names 必须通过 identity guard。
+- 最小验证实验：把 `56` 个 calibrator-only-correct 与 `463` 个 Loop57-only-correct 作为核心对比集，先看非身份内容特征是否有可解释分离。
+- 成功标准：完整 Val 错误显著低于 `147`，且不是靠牺牲大量 Loop57-only-correct 样本换来的。
+- 失败后如何停止：如果内容特征也无法分开 rescue/regression，停止校准器融合路线，转向噪声审计和新外部证据。
+
+### Loop84 内容特征 rescue separability
+
+- 失败观察：对 `56` 个 calibrator-only-correct 和 `463` 个 Loop57-only-correct 做 5-fold selector 诊断，现有 PE/stat/lightweight/byte-summary/content-PE 特征不足以可靠区分。最佳 F1 模型 AUC `0.6822`、recall `0.4107`，AUC 最高模型 AUC `0.7682` 但 recall 仅 `0.125`。
+- 推理出的可能原因：校准器 rescue 与 regression 不是由现有静态内容特征中一个清晰边界决定的；可分性有弱信号，但不足以把 selector 变成可靠融合器。
+- 证据强度：中到强证据。完整 Loop82 Val overlap，focus rows `519/519`，cache missing `0`，identity guard 通过，概率特征显式丢弃，脚本 guard 通过，单测 `6 passed`。
+- 因此不建议继续：不建议继续训练当前校准器融合 selector，也不进入 Test-10k。
+- 因此建议下一步：转向噪声审计、持久错误复核、或引入新的外部/动态证据，而不是继续叠同类融合。
+- 最小验证实验：若未来重启融合，必须先提出新证据源，并在 Val 上证明能同时保护 Loop57-only-correct 和捕获 calibrator-only-correct。
+- 成功标准：focus task 上 recall 和 precision 同时可用，并且完整 Val 错误显著低于 `147`。
+- 失败后如何停止：如果新证据仍只能给弱 AUC 或低 recall，继续停止融合，回到数据质量路线。
+
+### byte n-gram 融合
+
+- 失败观察：Loop37 的 byte n-gram SGD 与 Loop28 错误重合很低，Val 从 `162` 错降到 `159` 错，Test-10k 从 `111` 错降到 `110` 错；但 16 万全量测试反转为 `1960` 错，差于 Loop28 的 `1949` 错。
+- 推理出的可能原因：byte n-gram 确实带来一部分不同视角的内容信号，但独立模型太弱，融合收益只有几个样本，容易被抽样噪声吞掉。Test-10k 是漏斗，不是最终证明；当改善只有 1 个样本时，证据强度不足。
+- 证据强度：强证据。证据来自 Loop37 的 Val、冻结 Test-10k 和冻结 16 万 full-test 全流程，且预测表做了 `source_sha256`/label 对齐审计。
+- 因此不建议继续：不建议继续用同一个 byte n-gram SGD 与 Loop28 做小权重线性融合。
+- 因此建议下一步：如果重启 byte n-gram 路线，应先把它变成更强的独立基模型，或作为 OOF 多模型栈的一员，而不是直接做边际线性混合。
+- 最小验证实验：只在 Val 上验证更强 byte n-gram 配方是否把独立错误降到明显低于当前 `1250`，且融合至少减少 10 个以上 Val 错误后再进 Test-10k。
+- 成功标准：Val 和 Test-10k 都有足够宽的错误数改善，而不是 1-3 个样本级别的波动。
+- 失败后如何停止：若 Test-10k 只改善 1-2 个错误，必须视为边际候选，只有全量通过才保留；全量反转则停止该配方。
+
+### 禁止重复投入清单
+
+- 不重复跑当前 RL 奖励设计的大规模训练；除非先有新 reward 并通过 3 seed 小实验。
+- 不重复跑当前 SWA、EMA、all combined 默认配方；除非单变量、多 seed、小样本先过关。
+- 不重复跑当前 byte noise / near-threshold 配方；除非能证明 FN mean 不再上升。
+- 不重复跑当前 gated / residual fusion 设计；除非先提出并验证新的 gate 约束机制。
+- 不重复跑当前 hard-example replay 配方；除非改成更严格的 source-group、clean replay、双向 holdout 协议。
+- 不把 GA mask 默认启用；除非产品明确接受更高白样本误报。
+- 不把 SpeakeasyX timeout filter 直接接进生产自动降级；除非新增 FN 在 val 和固定 holdout 上都可控。
+- 不用当前 Loop57/校准器 Val 预测文件做融合；必须先从同一个 corrected 20w manifest 重新导出并通过唯一 `source_sha256` 对齐审计。
+- 不做 score-delta/simple-average 校准器融合；Loop83 已证明强分歧规则在 Val 上比 Loop57 更差。
+- 不继续当前 PE/stat/content selector 版校准器融合；Loop84 已证明现有内容特征可分性不足。
+- 不重复跑当前 byte n-gram SGD 小权重线性融合；除非先显著增强 byte n-gram 独立模型或改为严格 OOF 栈。
+
+## 推荐的下一阶段路线图
+
+### 第一步：优化大样本评估流水线
+
+目标：先把 random 20w / 160k test 这种大口径评估跑顺，再谈新模型。当前 cache 覆盖已经足够，继续重建 cache 的收益很低；真正该优化的是推理评估路径。
+
+建议顺序：
+
+1. 先做评估 profile，分清楚时间花在 NPZ 打开、CPU 到 GPU 搬运、DSRA forward，还是指标汇总。
+2. 把已覆盖 cache 预导出为批量 tensor 或 memmap，避免每次评估逐样本打开 NPZ。
+3. 在 val split 上选择阈值和 batch 配置，再用 test split 做一次最终确认。
+
+### 第二步：固化产品模式
+
+GA 掩码和概率校准不需要继续重跑来证明方向。当前应该把它们固化成产品策略：
+
+- 普通模式：默认使用完整特征 + 概率校准。
+- 高安全模式候选：允许使用 GA 掩码，但必须明确它会增加高价值白样本误报。
+- hard-example replay：当前配方作为负面记录保留，不进入默认训练。
+
+### 第三步：停止当前校准器融合，回到噪声和新证据
+
+Loop81 证明旧 Val 预测文件之间存在集合不一致、重复内容和跨标签噪声；Loop82 已从同一个 corrected 20w Val manifest 重新导出并通过 `20000/20000` 唯一对齐。随后 Loop83/84 证明当前分数差和现有内容特征都不能可靠选择“什么时候信校准器”。因此下一步不再继续同类融合：
+
+1. 不跑校准器融合 Test-10k。
+2. 回到 Loop57 持久错误和同哈希/相似内容噪声审计。
+3. 对可疑坏特征/坏标签样本执行隔离和同原始标签池 fresh redraw，不用坏样本补齐。
+4. 如果要重启融合，必须先有新证据源，而不是复用现有分数差或同一组静态内容特征。
+
+### 第四步：决定产品策略阈值
+
+这一步需要产品负责人参与，因为它不是纯技术问题。我们要明确：
+
+- 如果误报一个白文件，产品成本有多大？
+- 如果漏报一个恶意文件，安全成本有多大？
+- 是否需要“普通模式”和“高安全模式”两个阈值？
+- 是否允许高风险样本进入二阶段复核，而不是直接拦截？
+
+## 建议的复现命令模板
+
+下面这些命令不要求现在立刻运行，它们是后续验证时的标准入口。
+
+### 使用虚拟环境运行单个评估
+
+```powershell
+cd "E:\Project\python\Axon_v2.6Exp"; & "E:\Project\python\Axon_v2.6Exp\vnev\Scripts\python.exe" scripts\main.py eval --checkpoint "models\group_isolated_rare_weighted_ft_rebuilt_cache\best_model.pt" --data-dir "data" --split-file "reports\raw_group_diagnostics\group_isolated_split.csv" --split test --batch-size 32 --device cuda --sweep-thresholds "0.50,0.53,0.55,0.60,0.63,0.65" --output "reports\model_review\baseline_eval.json"
+```
+
+### 评估 GA 特征掩码
+
+```powershell
+cd "E:\Project\python\Axon_v2.6Exp"; & "E:\Project\python\Axon_v2.6Exp\vnev\Scripts\python.exe" scripts\evaluate_feature_mask.py --checkpoint "models\best_model.pt" --data-dir "data" --feature-mask "config\feature_masks\ga_recall_guard_2000.json" --samples-per-class 10000 --batch-size 256 --device cuda --thresholds "0.45,0.50,0.525,0.55,0.60,0.65" --baseline-threshold 0.50 --output-json "reports\model_review\ga_feature_mask_eval.json"
+```
+
+### 生成错误分析
+
+```powershell
+cd "E:\Project\python\Axon_v2.6Exp"; & "E:\Project\python\Axon_v2.6Exp\vnev\Scripts\python.exe" scripts\analyze_prediction_errors.py --predictions "reports\hard_family_finetune\finetuned_test_predictions_threshold055.csv" --threshold 0.55 --output-dir "reports\model_review\error_analysis"
+```
+
+## 最终建议
+
+统一模型评审闸门已经落地，下一步不要再回到零散对比。后续每一次训练、阈值、特征掩码和 hard-example 微调，都应进入 `scripts/build_model_review_report.py` 生成的同一类报告，再判断它到底是在减少误报、减少漏报，还是只是换了口径后看起来更好。已经失败的 gated/residual 融合路线不要重复投入；如果未来有新约束设计，也必须作为全新候选重新进入统一报告。
+
+## 2026-07-12 补充：Loop164 whole-file residual expert proposal
+
+Loop28 native decode-compat 已暂停，F1 科研预算重新对准 Loop151。当前冠军仍是 Val/Test-10k/legacy full-test `162/78/1466` errors，legacy full-test `F1=0.9908541911`、`FP/FN=879/587`；`0.9997` point target 只允许约 `47-48` 个错误，至少还需净消除 `1418` 个。
+
+三条方向完成重新排序：Loop157/158 独立 annotations 是必须并行推进的数据治理，但当前返回仍为 `0`，且 reviewer verdict 不是部署时特征；time-causal certificate/reputation 和 Nebula-style behavior 长期上限高，但 as-of provider、trace coverage、failure semantics 与成本合同均未就绪；近期最高价值候选是 Loop164 MalConv2-style whole-file GCG byte expert，因为它能读取 Loop151 8192-byte 前缀之外的内容，并提供不同于 MHDSRA、PE/content selector、byte n-gram 微融合和 signer rule 的归纳偏置。
+
+Loop164 已完成 proposal、官方 source pin、A1 static-only authorization 和 aggregate-only preflight。预注册 program gate 比 Loop161 底线更严格：Val errors `<=152` 且 `FP/FN<=105/57`，三 seed 同向；冻结后 Test-10k errors `<=73` 且 `FP/FN<=49/29`。Val disagreements 必须 `>=100`、至少修复 `30` 个 Loop151 错误、accepted override precision `>=0.80`。任何 identity、future evidence、group、family、source 或 temporal leakage 都直接杀停。
+
+当前 decision 为 `static_preflight_ready_execution_blocked_missing_prerequisites`。执行阻塞是 A2 metadata isolation authorization、repo 外 key-pinned A2 v2 training authorization、whole-file implementation manifest、Loop151 Train OOF、Loop164 nested OOF execution receipt、full-pool group/time manifest、通过该 manifest 的 aggregate-only isolation receipt、custodian fold scope plan 及其独立 validation receipt、train-only input bundle、以及 fresh resource guard 均缺失；晋级阻塞只剩 Val-A 与 Val-B。Loop157/158 annotations 是并行数据治理，不再被错误地当成 Loop164 的 promotion blocker。`champion_registry_missing` 已消除：机器注册表明确 research=`Loop151`、native_offline=`Loop28`、connected_system=`none`，并把 Loop28 标为 parity-blocked native reference，而不是质量冠军。因此没有安装依赖、读取 raw/checkpoint/逐行预测、训练、拟合、阈值选择或 heldout 评估，也不能宣称 Loop164 已提升 F1。
+
+新增的 `scripts/validate_loop164_isolation_contract.py` 是 A1 代码与合成测试，不是已经生成的真实数据回执。普通 CLI 的 A2 metadata v3 authority 必须由 repo 外、固定 key 的 trust anchor 证明，并逐字绑定 canonical argv、当前 Python、validator 与 `pre_run_resource_leak_guard` source closure、fresh guard、contract/rows/output、custodian metadata root 和稳定 issuer+lease-id consumption id；其 scope 还必须精确为 metadata-only、`operation=metadata_isolation_only` 且 `grants=[]`。已存在 output、路径/symlink、runtime/source/binding/scope 漂移或不确定 marker 写入都会 fail closed，且 marker 不回滚。lease 只在以上检查再次通过后以 `O_EXCL + fsync` 消费，随后才从同一受控 descriptor 解析 JSONL 并重验 rows SHA/文件指纹。数据合同还固定 full pool 最少 `200000` rows、五折/三 seed、30 天 embargo、每类 fit/holdout 支持下限 `1000/100` 和 six-column residual fusion allowlist。任何 path-derived source/time、unknown group、identity alias、component 跨 role/fold、重复 SHA、exact-cluster label conflict、未纳入分母的样本或 placeholder future artifact 都 fail closed。真实 manifest/receipt 仍须由未来独立 A2 scope 生成并验证。
+
+下一步只有在单独 A2 授权后，才允许先完成 full-pool isolation contract、custodian-attested fold scope plan 及其由 `scripts/validate_loop164_fold_scope_plan.py` 写出的 canonical aggregate-only validation receipt、资源 probe、项目原生 whole-file implementation review 和三 seed Train-OOF。isolation receipt 的 `pass` 仅冻结 scope，且必须携带可验证的 metadata authorization provenance；未来 controller 必须在读取训练输入前用 `scripts/validate_loop164_training_authority.py` 在同进程内重新绑定它、repo 外 fixed key、当前 runtime/argv、resource guard 和 train-only input bundle，并先原子烧掉 final lease。升级后的 `scripts/validate_loop164_nested_oof_execution_receipt.py` 会拒绝未 attested 的 isolation receipt，并后验复核 v2 marker/consumption id、input bundle、`3 × 5` outer/inner 训练、Loop151/whole-file/fusion OOF provenance、六列输入 allowlist、缺失进入分母、heldout 零访问、A2 authority 与 final lease 回链。回执 pass 也不会自动打开 Val、Test-10k 或 legacy full-test。Loop157/158 annotations 继续是并行数据治理，不是 Loop164 promotion blocker。完整提案见 `docs/phase3_loop164_whole_file_residual_expert_proposal.md`；机器 artifacts 位于 `manifests/roadmap_9997/loop164_whole_file_residual_expert/`。
+
+## 2026-07-12 补充：Loop164 v2 whole-file implementation contract
+
+只读架构审查否决了复用当前 MHDSRA、缓存 dataset、通用 `main.py` 或 `AxonTrainer` 的想法：它们会发生前缀截断、授权前导入或任意输入路径暴露。新增的 `scripts/validate_loop164_whole_file_implementation.py` 只接受未来独立 whole-file 路径的 v2 静态 manifest；它锁定 source/config/runtime closure、257-token 或显式长度语义、all-bytes chunk streaming、exact independent-region pooling、two-pass memory ceiling、zero identity feature 和五类 missingness。
+
+训练 authority、resource guard 和 nested OOF receipt 现在都必须回链该合同；whole-file fit artifact 不能替换 code/config/input bundle，且每外折必须满足 `success + missing = denominator`、五类 reason 合计等于 missing。该工作仅用临时合成 source/JSON 验证，真实 implementation manifest、资源 guard、输入 bundle、A2 authority、lease、训练、Val/Test-10k/full-test 仍全部未创建或未授权。Loop151 继续是唯一 research champion，F1 未变化。
+
+补充的 `tests/test_loop164_whole_file_gcg.py` 以小型内存张量验证 dense/reference 与 independent-region chunk pooling 的值、梯度、winner position、tail、全负 activation、PAD/EOF、two-pass GCG toy 和 noncontiguous concat 反例；preflight 已 source-bind 该测试。它只降低未来实现的算法歧义，不能被描述为对真实 whole-file model、真实数据或 `99.97%` 目标的验证。
+
+## 2026-07-12 补充：Loop164 metadata isolation v3 和精确点目标
+
+Loop164 的 full-pool contract 已升级为 v2，isolation receipt 为 v3。metadata 阶段只绑定 six-column residual feature semantics，并强制 `implementation_binding_phase=deferred_to_a2_training_authority`；旧式 `implementation_manifest_sha256` placeholder 被 isolation、fold-scope、training-authority 和 nested-OOF 四层合成回归共同拒绝。真实 whole-file manifest 只能在 isolation pass 后的独立 static review 中产生，并由训练 A2 authority、resource guard、final lease 和 nested receipt 回链。这个修复没有创建 A2 authority、读取 metadata row、训练或评估；metadata pass 仍不能打开训练或 heldout。
+
+## 2026-07-12 补充：Loop164 metadata authority scope v3
+
+A2 metadata authorization 现为 v3，isolation receipt 为 v4、provenance 为 v2。它们固定同一个精确 scope：`tier=A2`、`operation=metadata_isolation_only`、`protected_input_scope=metadata_only`、`grants=[]`。因此即使 receipt 的 `decision=pass` 被复制或篡改为带训练 grant，training-authority 与 nested-OOF 两个下游 gate 也会拒绝；scope 不再只是文档解释。此变更仍是 A1 代码、文档与合成测试，不创建 A2/A3 权限或任何受保护数据结果。
+
+紧邻的 A2 申请材料也不再只是人工 checklist：`scripts/validate_loop164_a2_request.py` 仅接受 `custodian_request_not_authorization`。metadata 模板必须是 `draft`，training 模板必须保持 `blocked_pending_metadata_and_static_review`，两者都固定 `authorization_granted=false`，并拒绝 allow decision、时窗、runtime binding、lease 或 scope 扩权。现有 metadata authority gate 还会在任何 rows/lease 前拒绝被放进 canonical authorization 路径的 request 模板。因此这只缩短保管人审查准备，不授予 A2，也不允许训练或评测。
+
+`0.9997` 的 legacy 平衡开发参考不再用“约 47-48”表达：精确条件为 `10003*FN + 9997*FP <= 480000`。`<=47` 个错误任意分配都通过；48 个错误只有 `FN<=24` 通过；49 个错误必败。preflight 从 TP/TN/FP/FN 自证 denominator、error 和 F1 一致性，并显式标记该 point geometry 不是两 future sealed window、预注册 grouped bootstrap 95% lower bound 或 certification power analysis 的替代品。
+
+## 2026-07-12 补充：Loop164 双 sealed-window 认证预注册
+
+Loop164 已把认证设计冻结为 proposal 内的 A1 静态协议：W1 certification 与 W2 later replication 必须时间有序、各用独立 A3 authorization/lease、`evaluation_generation=1`，任何失败窗口都会烧毁该 lineage，不能补样、换窗、重阈值或用 W1 改候选。为了让“双窗都通过”保持 family-wise 95% 含义，每窗使用单侧 `97.5%` 的 relationship-component bootstrap LCB，固定 `200,000` 次、calendar-block 分层、SHA-derived seed 和 conservative guard；同时报告单窗 95% LCB。legacy 48-error point geometry 不可复用到未来窗口。
+
+认证前仍缺所有运行时证据：hash-bound aggregate-only 功效模拟（至少 `50,000` 次、联合功效 `>=0.90`）、两窗 manifest/receipt、frozen bundle 和 statistics runner hashes、以及产品负责人冻结的 FPR/FNR/coverage/latency/cost/slice 阈值。preflight 因此仅将设计从 `missing` 升为 `static_protocol_preregistered_runtime_evidence_missing`，`ready_for.certification` 继续为 false。
+
+## 2026-07-13 补充：Loop164 本地 OOF 负结果与主线降级
+
+在用户明确的 local-custody 授权下，Loop164 完成了 canonical Train 前 `20,000` 行、one-seed、five-fold、one-epoch 的 content-group OOF diagnostic。该授权不需要 public key，但也不授予 A2、Val/Test/full、checkpoint、阈值选择或晋级权限。运行全程固定 FP32 和 threshold `0.5`，没有访问 heldout。
+
+结果为 supported `19,540/20,000`、coverage `0.977`、F1 `0.9620420177`、errors `748`、FP/FN `488/260`；将 missing 全部计错时 F1 为 `0.9400971933`。五折 F1 范围 `0.9496402878..0.9709694142`。Posthoc descriptive AUC 虽为 `0.9894106709`，但已有 `311` 个 score `>=0.9` 的 FP 和 `137` 个 score `<=0.1` 的 FN，说明这不是轻微阈值偏移。supported denominator 达到 `0.9997` 最多只能有 `5` 个错误，当前至少还需净减少 `743` 个。
+
+因此 Loop164 不再作为 standalone 扩展主线：禁止继续增加 seed、epoch、threshold search 或 heldout run。已有 OOF score/uncertainty/missingness 仅保留给未来的一次 complementarity audit。先重建 decision-aligned Loop151 Train OOF，再预注册 cross-fitted repair/break gate；若 whole-file 信号不能以足够精度修复 Loop151 错误，就关闭 Loop164。Loop151 仍是唯一 research champion，legacy development full-test F1 `0.9908541911`；`>=0.9997` 目标未达成。
+
+## 2026-07-13 补充：Loop165 代理互补性成本熔断
+
+Loop69 x Loop164 的 SHA-bound Train-only 代理审计已完成。两个快照共同 SHA 为 `19,996/20,000`，索引 `1..4` 是四个真实替换；共同样本 supported/missing 为 `19,540/456`。在 supported rows 上有 `670` 个 hard-decision changes，其中 repairs/breaks 为 `75/595`，blind-switch precision `0.1119402985`、net error reduction `-520`。五个 Loop164 diagnostic folds 的 repairs/breaks 分别为 `13/130`、`11/101`、`15/116`、`13/84`、`23/164`，全部净负。
+
+该结果只属于 `surrogate_negative_supporting_evidence`。Loop69 是旧 Loop61-style lineage，random folds 与 Loop164 content-component folds 不共享 partition；`356/393` 个 non-singleton components 跨 Loop69 folds。因此正式 Loop151 complementarity gate 没有运行，状态是 `blocked_wrong_base_lineage_and_fold_scope`，不得把本轮写成正式 Loop151 gate failure。
+
+成本决策仍然明确：当前 Loop164 recipe 进入 parked，不再增加 seed、epoch、threshold、heldout，也不为它单独启动至少 `90` 个链级 scope 的 Loop151 exact OOF 重建。Loop151 保持唯一 research champion。下一研发组合转向独立 label-quality 上界、time/family/source contract、MalwarePT-style foundation、EMBER-v3 structural/DSRA controls 和 Nebula/Speakeasy-style behavior tail cascade；只有多个更强专家在相同 outer partition 上证明稳定纠错后，才建设共享 decision-aligned router。完整报告见 `docs/phase3_loop165_loop69_loop164_surrogate_complementarity.md`，机器 artifact SHA-256 为 `d0aa06074f0123ba5a9ad89a31e3912dfde261eca71d97ed0f2df7d73b5c92ec`。
+
+## 2026-07-13 补充：Loop166 code-section foundation Phase A
+
+下一主实验已经从方向名落到可执行合同：MalwarePT-inspired code-section BPE/MLM scaled diagnostic。论文 arXiv:2605.16455 支持 code-section、BPE-1024、MLM 和结构模型互补，但完整配置约 86M 参数、每 vocabulary 约 81 GPU-hours on 8xL40S，且没有公开代码/权重。Axon 因此冻结 6-layer/384-hidden、sequence-512 的约 10-15M 本机配方，不能声称复现论文。
+
+256-row Train-only extractor gate 已通过：`251` success、`5` explicit no-executable-section missing、coverage `0.98046875`、silent drop `0`；读取并校验 `191000679` raw bytes，观察 `104869232` code bytes 但不落盘；耗时 `1.2943352s`、峰值 RSS `48603136` bytes。没有训练、F1、threshold、heldout 或 public-key 依赖。
+
+Loop166 现在是唯一 next research candidate，但不是 champion。下一步只跑一个 outer-fit-only tiny-MLM resource cell；tokenizer/MLM 不得看 outer holdout bytes。资源门失败就转 EMBER-v3 novel-delta control，不靠增加模型或查看 heldout 续命。详细合同和报告见 `docs/phase3_loop166_code_section_foundation_proposal.md`、`docs/phase3_loop166_code_section_extractor_probe.md`。
+
+## 2026-07-13 补充：Loop166 Phase B1 nonfinite 关闭
+
+Loop166 v2 已完成唯一授权的 Train outer-fit raw scan，但没有完成 B1。append-only ledger 为 `32,002` lines、`16,000` terminal records，raw opens/successes `15,988/15,988`，读取 `19,239,582,561` bytes，outer holdout raw access `0/0`；ledger SHA-256 为 `14a2f2a11ac157e27d13cf24aae37e310ad91ea3735fea4169c0c8570e1e5a2c`，hash chain 完整。
+
+训练留下一个只到 step `8192/28768`、cursor `32768/115072` 的原子 checkpoint，SHA-256 `9077217b48c062733c5f505bbd3668f5f9ab5031e61285fbaa13208906301704`。它通过 weights-only 结构/有限值和 fresh restore synthetic-logit bit-exact 取证检查，但随后训练在下一个 checkpoint 前触发 `B1FatalError: B1 training produced a non-finite gradient norm`。成功 report 与 final verify receipt 均不存在并禁止回填，所以该 checkpoint 只能作为事故证据，不能称为可恢复 B1 结果。
+
+决策：永久关闭当前 `BPE-1024 + MLM + AMP` recipe。v2 lease 已消费，同 marker/ledger/checkpoint/output 路径禁止 retry、resume、rescan、覆盖、删除或复用；也不能事后降 scaler、切 FP32、换 optimizer/LR/schedule、调 threshold 或查看 heldout 来续同一 lineage。Raw pass 口径固定为 physical `2..3`、charged `3`。Loop151 继续是唯一冠军，legacy full-test F1 仍为 `0.9908541911`；`>=0.9997` 未达成。完整事故与决策见 `docs/phase3_loop166_phase_b1_nonfinite_closure.md`。
+
+## 2026-07-13 补充：Loop167 EMBER-v3 novel-delta 预注册
+
+按 Loop166 已冻结的 nonfinite fallback，下一候选改为独立 Loop167，而不是回到 Loop28 或修补 MLM。外部来源固定 EMBER2024 commit `0ef753e81d98bf209f71b03cd331dfc190b5b54d`；官方 `features.py` 与 warnings 文件 SHA-256 分别为 `58a085e9ad307aa2c52e165985ff80db8fd5b763891c0cba2d1758a4825f7273`、`a23a9d0a7a938b19390a75fe0eb024dbc9bad7a134bb1511a2913f365a52e5fb`。官方 v3 `2568` 维必须先逐列分成 exact overlap、partial overlap、genuinely novel、forbidden/unstable；Authenticode 和 data directories 只作 overlap controls，不能冒充新增信号。
+
+Phase B 已预注册五臂三 seed Train-only OOF：Axon structural baseline、EMBER overlap-only、baseline+novel、novel-only、baseline+shuffled-novel counterfactual。固定 seeds `41/42/43`、threshold `0.5`、HGB spec、最多 `75` fits。每 seed 同时要求净减错 `>=max(30,10%)`、repairs `>=50`、override precision `>=0.80`、至少 `4/5` 折净正、component bootstrap 单侧 95% LCB `>0`、FP/FN 相对回归各不超过 `5%`，且真实 novel 相对 shuffled control 多净减至少 `30`。任一门失败即关闭，不补 threshold/features/model/seed。
+
+当前只授权 raw-opens `0` 的 Phase A static mapping、项目原生实现和 synthetic tests。Phase B 必须等 mapping、extractor、controller、去重 baseline allowlist、runtime、argv、tests 和 resource guard 全部 source-bound 后，另发 one-shot run authorization；在此之前不打开 raw、不训练。未来预算固定一个 Train raw pass、`<=20,000` opens、`<=25 GiB`、总 wall `<=8h`、GPU `0`。本地 Train-only 工作不需要 public key，且仍不授权 Val/Test/full/promotion。完整合同见 `docs/phase3_loop167_ember_v3_novel_delta_proposal.md`。
+
+## 2026-07-13 补充：Loop167 Phase A source closure 已完成
+
+Loop167 已完成 raw-free Phase A。真实源码顺序已冻结为 Header `[696,770)`、Section `[770,994)`、Imports `[994,2276)`、Exports `[2276,2405)`；逐列分类为 exact `49`、partial `487`、novel `292`、forbidden `1740`。新增原生 bytes-only extractor 只实现 292 个 novel 标量/向量，并用 synthetic cases 锁住空输入、PE parse failure、byte-entropy 窗口边界、Header/DOS 位置、Rich pair count、exports sentinel 和 data-directory dead pair。572 个现有 Axon 结构列已名称级登记，仅去除 1 个证明 bit-equivalent 的重复列，B0 allowlist 为 571 列。
+
+验证为 `11 passed`、Ruff、`py_compile`、mapping/allowlist/addendum/source-closure 检查全部通过；raw/checkpoint/prediction opens、training、fitting、heldout access 全为 `0`。这不改变 Loop151 champion 或任何 F1。Phase B 仍阻塞于 one-pass raw context/overlap extractor、pinned Authenticode contract、不可复用 lease、runtime/resource closure、HGB 三 seed 的独立性修订以及新的 run authorization。详细证据见 `docs/phase3_loop167_phase_a_source_closure.md` 与 `manifests/roadmap_9997/loop167_ember_v3_novel_delta/phase_a_static_decision.json`。
+
+## 2026-07-14 补充：Loop167 Phase-B v6 Windows Job ABI 静态闭环
+
+v5 在 lease 前 Windows Job ABI 边界失败后已封存；v6 是独立的新 ABI remediation 链，不能重试或复用 v5 lease、guard、authorization 或输出。v6 已新建并自校验 parent-v5 prelease attestation、execution contract、runtime lock 和 source closure；supervisor/controller static preflight 均通过且 `raw_open_attempts=0`，zero-input suspended-child probe 也证明了 `create suspended -> assign -> verify -> resume` 路径。相关 v6 suite 结果为 `53 passed, 5 skipped`，Ruff 和编译检查通过；proof 动态加载期替换的 post-load SHA 回归已纳入覆盖。
+
+这仍是启动前工程证据，不是 Train-only OOF，更不是 F1 证据。2026-07-14T05:24:41Z 的 Windows 实测可用物理内存为 `6.16 GiB`，低于 sealed `12 GiB` floor，因此 resource guard、authorization、lease、raw、fit、Val、Test-10k、legacy Full-test 与 promotion 均保持 fail-closed。public key 不是本地研发依赖，也不应成为恢复条件。恢复只能在重新确认资源达到门槛后，以全新 guard -> authorization -> contained execute 的顺序继续；完整证据见 `docs/phase3_loop167_phase_b_v6_windows_job_abi_remediation.md`。
+
+## 2026-07-14 补充：Loop168 capability semantic expert 后备预注册
+
+对 Loop151 的 `160000` 行 legacy reference，`F1 >= 0.9997` 最多只允许约 `48` 个错误，当前 `1466` 个错误至少需净减 `1418` 个。Loop157/158 的 `162` 行 Val 盲审包仍没有独立 verdict，历史噪声上界也表明小规则、阈值或自动清洗没有足够量级。因此 Loop167 仍是第一优先的静态因果诊断；它只有在 Windows fresh `12 GiB` resource guard 通过后才可执行。
+
+同时预注册 Loop168 作为 Loop167 关闭后的正交 fallback：固定 Mandiant capa binary/ruleset 的 capability 语义，以 B0、capability-only、B0+capability 和 fit-fold capability 置乱反事实验证，而不是重开已关闭的 Loop164/166 recipe。本机未安装 capa，本轮不下载、不执行工具也不打开样本；未来必须先做独立 SHA-bound Train-only coverage/missingness gate，再申请新的 resource/lease 合同。任何正结果仍只是一条 Train-only 专家证据，后续还必须与 provenance、time/family/source 隔离和至少另一正交专家共同通过 decision-aligned OOF。合同见 `docs/phase3_loop168_capability_semantic_expert_proposal.md`。

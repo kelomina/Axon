@@ -1,0 +1,89 @@
+{
+  "schema": "axon_loop28_pytorch_native_package_reissue_authorization_v1",
+  "loop_id": "p0_loop28_pytorch_native_feasibility_001",
+  "created_at_utc": "2026-07-11T23:49:19Z",
+  "reissue_id": "p0_loop28_pytorch_native_feasibility_001_package_reissue_001",
+  "lineage": {
+    "implementation_manifest": {
+      "path": "manifests/roadmap_9997/p0_loop28_pytorch_native_feasibility/implementation_manifest.json",
+      "sha256": "45d38299623ab32e701d6bf1408a509caa19513287c239b3866532cd405bd3f4"
+    },
+    "cpp_build_receipt": {
+      "path": "reports/roadmap_9997/p0_loop28_pytorch_native_feasibility/cpp_build_receipt.final.json",
+      "sha256": "2ef9fc018cf72c0552902d4e9cca2190b4c5e983bdd15d4917dd5d926043dc77",
+      "decision": "lean_aten_and_aoti_hosts_built_package_requires_authorization"
+    },
+    "failed_package_authorization": {
+      "path": "manifests/roadmap_9997/p0_loop28_pytorch_native_feasibility/package_authorization.failed_001.final.json",
+      "sha256": "ea806ec705eff319c28e2da9c7c68aeec779a3eca257785b4a66245ca8bc4a56"
+    },
+    "failed_consumed_package_lease": {
+      "path": "manifests/roadmap_9997/p0_loop28_pytorch_native_feasibility/package_lease.failed_001.final.json",
+      "sha256": "735da54c78f44b06cbea5b77d230c01f0010004abd59dae71a0595586a738b78"
+    },
+    "failed_package_receipt": {
+      "path": "reports/roadmap_9997/p0_loop28_pytorch_native_feasibility/package_failure.failed_001.final.json",
+      "sha256": "f207c946707df56124da721b99afd690edf9feb92f000bf0e1abf5bf04c0f17a"
+    },
+    "failure_diagnostic": {
+      "path": "reports/roadmap_9997/p0_loop28_pytorch_native_feasibility/package_attempt_001_diagnostic.final.json",
+      "sha256": "590099120d81d6da31f1e2c301817301336750f618afecaa162c1742d07c296d",
+      "decision": "administrative_pre_model_failure_eligible_for_single_package_reissue"
+    }
+  },
+  "reissue_basis": {
+    "failure_class": "administrative_pre_model_pre_export",
+    "protected_scientific_call_count": 0,
+    "model_or_package_load_count": 0,
+    "quality_metric_count": 0,
+    "original_scientific_budget_remains_unspent": true
+  },
+  "authorized_delta": [
+    "add one versioned package controller without modifying any implementation-manifest-bound file",
+    "replace only the failed vcvars subprocess invocation at runtime with a work-root-confined activation .cmd",
+    "machine-verify the package authorization, ready lease, frozen build receipt, binaries, and absence gates before delegating to the frozen package function",
+    "machine-verify CUDA state, call counters, output size, archive member paths, Windows collisions, symlink flags, compression limits, and exactly one precompiled .pyd after generation",
+    "add focused controller tests and a frozen controller manifest"
+  ],
+  "new_files_allowed": [
+    "scripts/run_loop28_pytorch_native_package_controller.py",
+    "tests/test_run_loop28_pytorch_native_package_controller.py",
+    "reports/roadmap_9997/p0_loop28_pytorch_native_feasibility/package_controller_validation.final.json",
+    "manifests/roadmap_9997/p0_loop28_pytorch_native_feasibility/package_controller_manifest.json",
+    "manifests/roadmap_9997/p0_loop28_pytorch_native_feasibility/package_authorization.json",
+    "manifests/roadmap_9997/p0_loop28_pytorch_native_feasibility/package_lease.json",
+    "manifests/roadmap_9997/p0_loop28_pytorch_native_feasibility/package_lease.final.json",
+    "reports/roadmap_9997/p0_loop28_pytorch_native_feasibility/package_controller_receipt.final.json",
+    "reports/roadmap_9997/p0_loop28_pytorch_native_feasibility/package_controller_failure.final.json",
+    "artifacts/roadmap_9997/p0_loop28_pytorch_native_feasibility/tiny_v1/**",
+    "reports/roadmap_9997/p0_loop28_pytorch_native_feasibility/work/**"
+  ],
+  "immutable_files": [
+    "scripts/run_loop28_pytorch_native_feasibility.py",
+    "scripts/build_loop28_pytorch_native_feasibility_manifest.py",
+    "tests/test_run_loop28_pytorch_native_feasibility.py",
+    "tests/test_build_loop28_pytorch_native_feasibility_manifest.py",
+    "tools/axon_tiny_pytorch_native/**",
+    "manifests/roadmap_9997/p0_loop28_pytorch_native_feasibility/implementation_manifest.json",
+    "reports/roadmap_9997/p0_loop28_pytorch_native_feasibility/cpp_build_receipt.final.json"
+  ],
+  "preserved_budget": {
+    "tiny_model_constructions": 1,
+    "torch_export_calls": 1,
+    "aoti_compile_and_package_calls": 1,
+    "torchscript_export_calls": 1,
+    "package_load_calls": 0,
+    "native_probe_execution_count": 0,
+    "gpu_execution_count": 0,
+    "network_request_count": 0,
+    "max_retained_output_bytes": 536870912
+  },
+  "execution_boundary": {
+    "package_generation_allowed_after_new_manifest_authorization_and_lease": true,
+    "package_load_allowed": false,
+    "runtime_lane_execution_allowed": false,
+    "execution_authorization_allowed": false,
+    "known_execution_controller_blockers_must_be_fixed_separately": true
+  },
+  "decision": "authorize_versioned_package_controller_after_pre_model_administrative_failure"
+}

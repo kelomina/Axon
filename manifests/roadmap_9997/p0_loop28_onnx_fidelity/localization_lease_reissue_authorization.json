@@ -1,0 +1,50 @@
+{
+  "schema": "axon_loop28_onnx_fidelity_administrative_lease_reissue_v1",
+  "loop_id": "p0_loop28_onnx_fidelity_001",
+  "attempt_id": "p0_loop28_onnx_fidelity_001_attempt_001",
+  "issued_at_utc": "2026-07-11T22:07:42Z",
+  "basis": "The first lease was correctly consumed, but execution stopped before fixture generation and before any PyTorch forward or ONNX Runtime session because the immutable fixture-contract import required the project root on PYTHONPATH.",
+  "implementation_manifest": {
+    "path": "manifests/roadmap_9997/p0_loop28_onnx_fidelity/implementation_manifest.json",
+    "sha256": "bd448172e6556d30a31219e7decba0872a956d1ea20de67b3314b803388e6f7d"
+  },
+  "localization_authorization": {
+    "path": "manifests/roadmap_9997/p0_loop28_onnx_fidelity/localization_authorization.json",
+    "sha256": "96748cb281529886a3c15da9a8d2d1db361d97e5eb2ca2a5a2240bdfe8659bf5"
+  },
+  "failed_consumed_lease": {
+    "path": "manifests/roadmap_9997/p0_loop28_onnx_fidelity/localization_lease.failed_001.final.json",
+    "sha256": "3d7509ccf8071d1e8d2545c5b883d9dcc4456c95f04ea189a00397e0fd8b1ab7"
+  },
+  "failure_receipt": {
+    "path": "reports/roadmap_9997/p0_loop28_onnx_fidelity/localization_attempt_001_failure.json",
+    "sha256": "a7c6d26d58a608cc534b5a044bd542e8b3ccc09b4915ca7d8a0e790d16e1c222",
+    "decision": "administrative_pre_inference_failure_frozen_no_scientific_claim"
+  },
+  "authorized_environment_delta": {
+    "name": "PYTHONPATH",
+    "value": ".",
+    "purpose": "Expose the immutable project-root src package to the frozen synthetic fixture contract.",
+    "source_or_artifact_mutation_allowed": false
+  },
+  "budget_accounting": {
+    "previous_pytorch_forward_executions": 0,
+    "previous_onnxruntime_session_executions": 0,
+    "previous_native_subprocess_executions": 0,
+    "previous_fixture_count": 0,
+    "scientific_localization_budget_consumed": false,
+    "administrative_reissue_count": 1,
+    "further_reissue_allowed": false
+  },
+  "reissue_scope": {
+    "same_implementation_required": true,
+    "same_fixture_matrix_required": true,
+    "same_runtime_and_tolerance_required": true,
+    "new_ready_lease_required": true,
+    "failed_lease_must_remain_archived": true,
+    "raw_split_heldout_access_allowed": false,
+    "training_or_fitting_allowed": false,
+    "quality_metric_allowed": false
+  },
+  "decision": "authorize_single_environment_only_lease_reissue"
+}

@@ -1,0 +1,110 @@
+{
+  "schema": "axon_loop28_parity_diagnostic_proposal_v1",
+  "loop_id": "p0_loop28_parity_diagnostic_001",
+  "parent_reference": {
+    "truth_manifest": {
+      "path": "manifests/roadmap_9997/p0_truth_freeze/loop151_truth_manifest.json",
+      "sha256": "174861be850a681025a7040798c59b7157cc67ab5503437088359692dad5659d"
+    },
+    "train_smoke_receipt": {
+      "path": "manifests/roadmap_9997/p0_raw_replay/train_smoke_receipt.json",
+      "sha256": "3fbbd597dc14cf67a082203e680e83c1f521972e1bf1f36282ef847d9d4d2309"
+    },
+    "native_parity_receipt": {
+      "path": "manifests/roadmap_9997/p0_raw_replay/native_parity_receipt.json",
+      "sha256": "abeaeb0dd28060a09b7b23fbf0300b2ba6616ef040c4c4958f870aa5d13436b8"
+    },
+    "complete_replay_verify_receipt": {
+      "path": "manifests/roadmap_9997/p0_raw_replay/verify_receipt.json",
+      "sha256": "fc39b4a0289d4fc21955030157a8fb4beb437eba78d28dec6f5a665bcf0a5c94"
+    }
+  },
+  "objective": "Localize the earliest reproducible divergence between the guarded Python Loop28 path and the native Loop28 path on one frozen train sample.",
+  "hypothesis": "Keyed HMAC whole-component and bounded block comparisons will distinguish extraction drift from base-runtime drift and Stage-2 evaluator drift without persisting tensors, opening heldout raw/prediction/metric payloads, or changing any model artifact.",
+  "failure_observation": {
+    "frozen_probability_tolerance": 0.000001,
+    "decision_match": true,
+    "python_base_prob_malicious": 0.059677254408597946,
+    "native_base_prob_malicious": 0.05981189,
+    "base_probability_delta": 0.00013463559140205333,
+    "python_stage2_prob_malicious": 0.00008279336255813035,
+    "native_stage2_prob_malicious": 0.00008765,
+    "stage2_probability_delta": 0.000004856637441869656,
+    "parent_parity_decision": "native_loop28_parity_blocked"
+  },
+  "frozen_sample": {
+    "split": "train",
+    "sample_index": 0,
+    "source_sha256": "09b6b8c80bc31846312bd6958e1d4bf1bcd72d25450d7f7dec2bce6ba81798cc",
+    "size_bytes": 4218880
+  },
+  "ordered_diagnostic_stages": [
+    "verified_private_raw_snapshot",
+    "byte_sequence_tensor",
+    "pe_feature_tensor",
+    "stat_feature_tensor",
+    "base_model_logits_and_probability",
+    "stage2_feature_vector",
+    "stage2_probability"
+  ],
+  "static_candidate_ranking": [
+    {
+      "rank": 1,
+      "candidate": "feature_extraction_or_tensor_marshalling_drift",
+      "rationale": "Both runtimes consume the same SHA-verified bytes, while the native path independently reimplements the Python byte, PE, and statistical feature pipeline; keyed component HMACs directly discriminate this boundary."
+    },
+    {
+      "rank": 2,
+      "candidate": "base_model_serialization_or_runtime_drift",
+      "rationale": "If all upstream feature HMACs match, base-logit and probability HMACs isolate checkpoint-versus-ONNX runtime drift without transferring raw tensors."
+    },
+    {
+      "rank": 3,
+      "candidate": "stage2_feature_vector_or_hgb_numeric_drift",
+      "rationale": "The Python pickle and native JSON use independent Stage-2 evaluators, so Stage-2 feature HMACs and the frozen probability tolerance separately test assembly and tree arithmetic."
+    }
+  ],
+  "budget": {
+    "max_diagnostic_generations": 1,
+    "max_verified_raw_snapshots": 1,
+    "max_python_executions": 6,
+    "max_native_executions": 6,
+    "max_crossfeed_executions": 4,
+    "per_execution_timeout_seconds": 120,
+    "total_wall_clock_seconds": 1200,
+    "cpu_only": true,
+    "gpu_executions": 0,
+    "network_requests": 0,
+    "max_output_bytes": 67108864
+  },
+  "success_gate": "Identify and record the first stage whose Python/native keyed comparison violates the frozen contract, with every preceding stage still proven identical.",
+  "non_success_conditions": [
+    "A matching final decision without localization is not success.",
+    "Passing or failing the existing 1e-6 parity gate alone is not success.",
+    "Any F1 or product-readiness claim is outside this diagnostic."
+  ],
+  "stop_condition": "Stop on parent-evidence drift, sample identity drift, unauthorized split access, budget exhaustion, output overflow, timeout, mutation attempt, or the first conclusively localized divergence.",
+  "expected_artifacts": [
+    "manifests/roadmap_9997/p0_loop28_parity_diagnostic/proposal.json",
+    "manifests/roadmap_9997/p0_loop28_parity_diagnostic/authorization.json",
+    "manifests/roadmap_9997/p0_loop28_parity_diagnostic/preflight.json",
+    "scripts/diagnose_loop28_parity.py",
+    "tests/test_diagnose_loop28_parity.py",
+    "scripts/build_loop28_parity_diagnostic_manifest.py",
+    "tests/test_build_loop28_parity_diagnostic_manifest.py",
+    "manifests/roadmap_9997/p0_loop28_parity_diagnostic/implementation_manifest.json",
+    "tools/axon_onnx_dll/CMakeLists.txt",
+    "tools/axon_onnx_dll/include/axon_onnx_predict.h",
+    "tools/axon_onnx_dll/src/axon_onnx_predict.cpp",
+    "tools/axon_onnx_dll/examples/axon_onnx_selftest.cpp"
+  ],
+  "run_output_exclusions": [
+    "manifests/roadmap_9997/p0_loop28_parity_diagnostic/run_authorization.json",
+    "manifests/roadmap_9997/p0_loop28_parity_diagnostic/run_attempt.final.json",
+    "reports/roadmap_9997/p0_loop28_parity_diagnostic/diagnostic_receipt.provisional.json",
+    "reports/roadmap_9997/p0_loop28_parity_diagnostic/diagnostic_receipt.final.json",
+    "manifests/roadmap_9997/p0_loop28_parity_diagnostic/post_diagnostic_manifest.json"
+  ],
+  "authorization_level": "A1_scoped_diagnostic_preregistration",
+  "decision": "propose_bounded_train_only_first_divergence_diagnostic"
+}

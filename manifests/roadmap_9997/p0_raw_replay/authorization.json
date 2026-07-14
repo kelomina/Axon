@@ -1,0 +1,40 @@
+{
+  "schema": "axon_roadmap_9997_authorization_v1",
+  "loop_id": "p0_raw_replay_001",
+  "authorization_level": "A1_scoped_change",
+  "basis": "The user explicitly asked to continue the active long-term execution goal.",
+  "allowed": [
+    "add the fail-closed raw replay CLI and targeted synthetic tests",
+    "hash existing model, policy, code, and split artifacts",
+    "scan the existing split CSV for identity integrity",
+    "verify at most eight existing train raw files under the exact logical data root and authorized canonical roots by SHA-256",
+    "run at most two train-only native Loop28 smoke predictions",
+    "attempt train-only Python/native parity only after pickle SHA and metadata gates pass",
+    "write P0 receipts and append the durable experiment journal"
+  ],
+  "not_authorized": [
+    "training or fitting",
+    "large feature extraction or cache rebuild",
+    "Val, Test-10k, full-test, confirmation, or certification inference",
+    "threshold, rule, trusted signer term, or model selection",
+    "loading any pickle absent from the frozen SHA allowlist",
+    "loading a pickle without a SHA-bound metadata sidecar",
+    "split, label, cache, model, or raw-data mutation",
+    "deployment, git commit, or push"
+  ],
+  "allowed_splits": [
+    "train"
+  ],
+  "allowed_logical_raw_root": "data",
+  "allowed_resolved_raw_roots": [
+    "E:\\Project\\python\\KoloVirusDetector_ML_V2-main\\benign_samples\\待加入白名单",
+    "E:\\Project\\python\\KoloVirusDetector_ML_V2-main\\malicious_samples\\待拉黑"
+  ],
+  "max_raw_files": 8,
+  "max_native_predictions": 2,
+  "allow_train_identity_smoke": true,
+  "allow_native_loop28_smoke": true,
+  "allow_python_native_loop28_parity": true,
+  "allow_complete_loop151_raw_replay": false,
+  "decision": "allow_train_only_raw_replay_infrastructure_and_bounded_smoke"
+}

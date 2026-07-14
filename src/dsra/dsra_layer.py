@@ -7,10 +7,72 @@ from typing import Optional, Tuple
 import torch
 import torch.nn as nn
 
-from .application import StreamingAttentionUnitOfWork
 from .domain import AttentionLayerSpec
-from .infrastructure import PagedMemoryRepository
+from .dsra_model import select_mhdsra2_heads
 from .mhdsra2.improved_dsra_mha import MHDSRA2Config, MHDSRA2State, MultiHeadDSRA2
+from .mhdsra2.paged_exact_memory import PagedExactMemory
+
+try:
+    from ..config import DSRAArchitectureConfig
+except ImportError:
+    from config import DSRAArchitectureConfig
+
+
+class PagedMemoryRepository:
+    def __init__(
+        self,
+        enabled: bool = True,
+        dtype: torch.dtype = torch.float32,
+        page_size: Optional[int] = None,
+        max_pages: Optional[int] = None,
+        dsra_arch_config: DSRAArchitectureConfig | None = None,
+    ) -> None:
+        self.enabled = enabled
+        self.memory = PagedExactMemory(
+            page_size=page_size,
+            dtype=dtype,
+            dsra_arch_config=dsra_arch_config,
+            max_pages=max_pages,
+        )
+
+    def clear(self, *, reset_position: bool = True) -> None:
+        self.memory.clear(reset_position=reset_position)
+
+    def append(self, key: torch.Tensor, value: torch.Tensor) -> None:
+        if not self.enabled:
+            return
+        try:
+            self.memory.append(key, value)
+        except ValueError:
+            return
+
+    def retrieve(self, query: torch.Tensor, device: torch.device):
+        if not self.enabled or len(self.memory) == 0:
+            return None, None
+        key, value, _ = self.memory.retrieve(query, device=device)
+        return key, value
+
+
+class StreamingAttentionUnitOfWork:
+    def __init__(self, state, kv_cache, time_state, memory_repository) -> None:
+        self.state = state
+        self.kv_cache = kv_cache
+        self.time_state = time_state
+        self.memory_repository = memory_repository
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        return False
+
+    def retrieve(self, query: torch.Tensor, device: torch.device):
+        return self.memory_repository.retrieve(query, device)
+
+    def commit_forward(self, state, kv_cache, time_state) -> None:
+        self.state = state
+        self.kv_cache = kv_cache
+        self.time_state = time_state
 
 
 def apply_rotary_pos_emb(x: torch.Tensor, offset: int = 0) -> torch.Tensor:
@@ -125,10 +187,7 @@ def _select_heads(dim: int) -> int:
     - 关键词 / Keywords:
       heads|select|compat|mhdsra2|dim|divisible|multihead|adapter|dsra|头数
     """
-    for heads in range(min(8, max(1, dim // 16)), 0, -1):
-        if dim % heads == 0:
-            return heads
-    return 1
+    return select_mhdsra2_heads(dim)
 
 
 class _QKVProjectionView(nn.Module):
@@ -206,13 +265,14 @@ class DSRA_Chunk_Layer(nn.Module):
     def __init__(
         self,
         dim: int,
-        K: int = 512,
-        kr: int = 16,
-        eta: float = 0.1,
-        decay_lambda: float = 0.01,
+        K: int = None,
+        kr: int = None,
+        eta: float = None,
+        decay_lambda: float = None,
         use_orthogonal_update: bool = True,
         use_bypass: bool = True,
         pe_mode: str = "none",
+        dsra_arch_config: DSRAArchitectureConfig | None = None,
     ) -> None:
         """Create a DSRA-compatible layer backed by `MultiHeadDSRA2`.
 
@@ -230,6 +290,18 @@ class DSRA_Chunk_Layer(nn.Module):
           dsra|mhdsra2|compat|layer|paged_memory|slots|local|forward|adapter|替换
         """
         super().__init__()
+        if K is None:
+            K = dsra_arch_config.compat_K if dsra_arch_config else 512
+        if kr is None:
+            kr = dsra_arch_config.compat_kr if dsra_arch_config else 16
+        if eta is None:
+            eta = dsra_arch_config.compat_eta if dsra_arch_config else 0.1
+        if decay_lambda is None:
+            decay_lambda = dsra_arch_config.compat_decay_lambda if dsra_arch_config else 0.01
+        time_decay_alpha = dsra_arch_config.compat_time_decay_alpha if dsra_arch_config else 0.01
+        confidence_init = dsra_arch_config.init_confidence if dsra_arch_config else 0.01
+        page_size = dsra_arch_config.paged_memory_page_size if dsra_arch_config else 1024
+        max_pages = dsra_arch_config.paged_memory_max_pages if dsra_arch_config else None
         self.dim = dim
         self.K = K
         self.kr = kr
@@ -238,10 +310,10 @@ class DSRA_Chunk_Layer(nn.Module):
         self.use_orthogonal_update = use_orthogonal_update
         self.use_bypass = use_bypass
         self.pe_mode = pe_mode
-        self.time_decay_alpha = 0.01
+        self.time_decay_alpha = time_decay_alpha
         self.read_temperature = nn.Parameter(torch.tensor(1.0))
 
-        heads = _select_heads(dim)
+        heads = select_mhdsra2_heads(dim)
         self.spec = AttentionLayerSpec(
             dim=dim,
             slots=K,
@@ -258,10 +330,10 @@ class DSRA_Chunk_Layer(nn.Module):
             write_topk=self.spec.write_topk,
             local_window=self.spec.local_window,
             use_local=use_bypass,
-            use_retrieval=True,
+            use_retrieval=dsra_arch_config.use_retrieval if dsra_arch_config else True,
             eta=max(float(eta), 1e-6),
             forget_base=max(float(decay_lambda), 0.0),
-            detach_state=False,
+            detach_state=bool(getattr(dsra_arch_config, "detach_state", True)),
         )
         self.core = MultiHeadDSRA2(cfg)
         self.S_init = nn.Parameter(torch.randn(K, dim) / (dim**0.5))
@@ -269,8 +341,19 @@ class DSRA_Chunk_Layer(nn.Module):
         self.W_v = _QKVProjectionView(self.core.qkv, 2 * dim, 3 * dim)
         self.W_n = nn.Linear(dim + 1, K)
         self.W_m = nn.Linear(dim, 1)
-        self.memory_repository = PagedMemoryRepository(enabled=True, dtype=torch.float32)
+        self.memory_repository = PagedMemoryRepository(
+            enabled=True,
+            dtype=torch.float32,
+            page_size=page_size,
+            max_pages=max_pages,
+            dsra_arch_config=dsra_arch_config,
+        )
         self.last_V_orth = torch.empty(0)
+        self._confidence_init = confidence_init
+
+    def reset_memory(self):
+        """Reset the paged memory repository, clearing cross-sample data."""
+        self.memory_repository.clear(reset_position=True)
 
     def sparse_topk_distribution(self, logits: torch.Tensor) -> torch.Tensor:
         """Return the legacy sparse top-k distribution helper.
@@ -315,8 +398,9 @@ class DSRA_Chunk_Layer(nn.Module):
         slot_k = slot_k.unsqueeze(0).expand(batch_size, -1, -1, -1).contiguous()
         slot_v = slot_v.unsqueeze(0).expand(batch_size, -1, -1, -1).contiguous()
         zeros = torch.zeros(batch_size, heads, self.K, device=device, dtype=torch.float32)
-        confidence = torch.full_like(zeros, 0.5)
-        return MHDSRA2State(slot_k, slot_v, zeros, zeros.clone(), confidence)
+        confidence = torch.full_like(zeros, self._confidence_init)
+        slot_positions = torch.zeros(batch_size, heads, self.K, device=device, dtype=torch.long)
+        return MHDSRA2State(slot_k, slot_v, zeros, zeros.clone(), confidence, slot_positions=slot_positions)
 
     def _coerce_state(
         self,
@@ -349,13 +433,15 @@ class DSRA_Chunk_Layer(nn.Module):
         slot_view = state.to(device=device, dtype=dtype).view(batch_size, self.K, heads, d_head)
         slot_view = slot_view.permute(0, 2, 1, 3).contiguous()
         zeros = torch.zeros(batch_size, heads, self.K, device=device, dtype=torch.float32)
-        confidence = torch.full_like(zeros, 0.5)
+        confidence = torch.full_like(zeros, self._confidence_init)
+        slot_positions = torch.zeros(batch_size, heads, self.K, device=device, dtype=torch.long)
         return MHDSRA2State(
             torch.nn.functional.normalize(slot_view, dim=-1),
             slot_view,
             zeros,
             zeros.clone(),
             confidence,
+            slot_positions=slot_positions,
         )
 
     def _cache_to_heads(
@@ -491,6 +577,8 @@ class DSRA_Chunk_Layer(nn.Module):
         batch_size, chunk_tokens, dim = x.shape
         if dim != self.dim:
             raise ValueError(f"expected dim={self.dim}, got {dim}")
+        if S_prev is None:
+            self.reset_memory()
         state = self._coerce_state(S_prev, batch_size, x.device, x.dtype)
         head_cache = self._cache_to_heads(bypass_kv)
         if head_cache is not None:
@@ -514,6 +602,7 @@ class DSRA_Chunk_Layer(nn.Module):
                 state=unit_of_work.state,
                 retrieved_k=retrieved_k,
                 retrieved_v=retrieved_v,
+                _precomputed_qkv=qkv,
             )
             self._record_update_proxy(state, next_state)
             self.memory_repository.append(key_heads, value_heads)
@@ -548,11 +637,17 @@ class DSRA_Chunk_Layer(nn.Module):
         """
         if x_t.dim() != 3:
             raise ValueError(f"expected x_t rank=3, got shape={tuple(x_t.shape)}")
+        if S_prev is None:
+            self.reset_memory()
         state = self._coerce_state(S_prev, x_t.shape[0], x_t.device, x_t.dtype)
         head_cache = self._cache_to_heads(kv_cache)
         if head_cache is not None:
             state.local_k, state.local_v = head_cache
-        query = self.core._to_heads(self.core.qkv(x_t).chunk(3, dim=-1)[0])
+        qkv = self.core.qkv(x_t)
+        q, k, v = qkv.chunk(3, dim=-1)
+        query = self.core._to_heads(q)
+        key_heads = self.core._to_heads(k)
+        value_heads = self.core._to_heads(v)
         retrieved_k, retrieved_v = self.memory_repository.retrieve(query, x_t.device)
         out_t, next_state, _ = self.core.forward_step(
             x_t,
@@ -560,9 +655,8 @@ class DSRA_Chunk_Layer(nn.Module):
             kv_cache=head_cache,
             retrieved_k=retrieved_k,
             retrieved_v=retrieved_v,
+            _precomputed_qkv=qkv,
         )
-        key = self.core._to_heads(self.core.qkv(x_t).chunk(3, dim=-1)[1])
-        value = self.core._to_heads(self.core.qkv(x_t).chunk(3, dim=-1)[2])
-        self.memory_repository.append(key, value)
+        self.memory_repository.append(key_heads, value_heads)
         self._record_update_proxy(state, next_state)
         return out_t, next_state, self._cache_from_state(next_state)

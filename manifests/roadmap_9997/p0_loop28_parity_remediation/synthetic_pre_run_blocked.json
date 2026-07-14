@@ -1,0 +1,202 @@
+{
+  "schema": "axon_loop28_parity_remediation_synthetic_pre_run_blocked_v1",
+  "loop_id": "p0_loop28_parity_remediation_001",
+  "generated_at_utc": "2026-07-11T20:58:42Z",
+  "scope": {
+    "synthetic_pe_only": true,
+    "dataset_raw_accessed": false,
+    "split_metadata_accessed": false,
+    "heldout_raw_accessed": false,
+    "heldout_predictions_accessed": false,
+    "heldout_metrics_accessed": false,
+    "training_or_fitting_performed": false,
+    "f1_or_quality_metric_computed": false,
+    "frozen_model_artifacts_loaded_for_inference": true,
+    "implementation_manifest_generated": false,
+    "run_authorization_generated": false,
+    "attempt_lease_consumed": false,
+    "train_remediation_run_performed": false
+  },
+  "superseded_discovery": {
+    "path": "manifests/roadmap_9997/p0_loop28_parity_remediation/synthetic_discovery.json",
+    "reason": "The original resource fixture retained random NumberOfNamedEntries bytes, so both pefile and native parsing skipped that tree. After repairing the fixture and adding PE32, PE32+, named-resource, TLS-zero, relocation, invalid-RVA, and reduction-sensitive variants, valid PE32 inputs exposed input-dependent base-model drift despite exact input tensors.",
+    "previous_single_fixture_parity_is_sufficient": false,
+    "ort_disable_all_is_sufficient_for_cross_runtime_parity": false
+  },
+  "expanded_fixture_contract": {
+    "fixture_count": 4,
+    "pe32_fixture_count": 3,
+    "pe32_plus_fixture_count": 1,
+    "named_resource_covered": true,
+    "numeric_resource_covered": true,
+    "tls_callbacks_present_covered": true,
+    "tls_zero_callbacks_covered": true,
+    "resource_tree_really_parsed": true,
+    "relocation_directory_really_parsed": true,
+    "invalid_rva_fail_closed_covered": true,
+    "truncated_relocation_fail_closed_covered": true,
+    "number_of_rva_and_sizes_covered": true,
+    "numpy_pairwise_reduction_mutation_sensitive": true
+  },
+  "common_authenticated_results": {
+    "byte_seq_exact": true,
+    "pe_features_exact": true,
+    "stat_features_exact": true,
+    "stage2_features_indices_6_through_1519_exact": true,
+    "base_decisions_match": true,
+    "final_decisions_match": true,
+    "frozen_tolerance": 0.000001
+  },
+  "fixture_results": [
+    {
+      "name": "pe32_numeric_resource_tls_callbacks",
+      "pe_plus": false,
+      "named_resource": false,
+      "tls_callbacks": true,
+      "base_probability_absolute_delta": 0.0074248304705810675,
+      "stage2_probability_absolute_delta": 0.04110092303690749,
+      "stage2_mismatch_indices": [0, 1, 2, 3, 4, 5],
+      "base_probability_within_tolerance": false,
+      "stage2_probability_within_tolerance": false,
+      "gate_passed": false
+    },
+    {
+      "name": "pe32_named_resource_tls_callbacks",
+      "pe_plus": false,
+      "named_resource": true,
+      "tls_callbacks": true,
+      "base_probability_absolute_delta": 0.003849865531158403,
+      "stage2_probability_absolute_delta": 3.0369075032510295e-9,
+      "stage2_mismatch_indices": [0, 1, 2, 3, 4, 5],
+      "base_probability_within_tolerance": false,
+      "stage2_probability_within_tolerance": true,
+      "gate_passed": false
+    },
+    {
+      "name": "pe32_numeric_resource_zero_tls_callbacks",
+      "pe_plus": false,
+      "named_resource": false,
+      "tls_callbacks": false,
+      "base_probability_absolute_delta": 0.004712764657287649,
+      "stage2_probability_absolute_delta": 0.041100940333939406,
+      "stage2_mismatch_indices": [0, 1, 2, 3, 4, 5],
+      "base_probability_within_tolerance": false,
+      "stage2_probability_within_tolerance": false,
+      "gate_passed": false
+    },
+    {
+      "name": "pe32_plus_named_resource_zero_tls_callbacks",
+      "pe_plus": true,
+      "named_resource": true,
+      "tls_callbacks": false,
+      "base_probability_absolute_delta": 1.289367723700252e-9,
+      "stage2_probability_absolute_delta": 1.2860954523574719e-8,
+      "stage2_mismatch_indices": [],
+      "base_probability_within_tolerance": true,
+      "stage2_probability_within_tolerance": true,
+      "gate_passed": true
+    }
+  ],
+  "gate_summary": {
+    "fixture_count": 4,
+    "passed_fixture_count": 1,
+    "failed_fixture_count": 3,
+    "pe32_passed_fixture_count": 0,
+    "pe32_failed_fixture_count": 3,
+    "pe32_plus_passed_fixture_count": 1,
+    "base_probability_max_absolute_delta": 0.0074248304705810675,
+    "stage2_probability_max_absolute_delta": 0.041100940333939406,
+    "input_dependent_runtime_drift_observed": true,
+    "feature_remediation_passed": true,
+    "cross_runtime_base_model_parity_passed": false,
+    "one_train_sample_rerun_allowed": false
+  },
+  "verified_artifacts": {
+    "native_source": {
+      "path": "tools/axon_onnx_dll/src/axon_onnx_predict.cpp",
+      "sha256": "ba79f1cb07e29495b66aff3cd59082e8812c1209de146912f3db8cf1cad204ed"
+    },
+    "synthetic_tests": {
+      "path": "tests/test_native_loop28_parity_source.py",
+      "sha256": "e9360ac16ef5c5ea384788ce9f58d99e967d34c6ee8c53f79e96c9c240661d0c"
+    },
+    "native_dll": {
+      "path": "tools/axon_onnx_dll/build/bin/Release/axon_onnx_predict.dll",
+      "sha256": "8bba944d7cc52fa0598dba57c2c21ee90a9157ecfaa26250e20c4c4dc7a4a2bc"
+    },
+    "native_selftest": {
+      "path": "tools/axon_onnx_dll/build/bin/Release/axon_onnx_selftest.exe",
+      "sha256": "4171b4880cc59fa770f45d6d7983f766c85eb55eaafc1006123010c897505bef"
+    },
+    "onnxruntime": {
+      "path": "tools/axon_onnx_dll/build/bin/Release/onnxruntime.dll",
+      "sha256": "b95efb2113b603bbbf3f191061c5516a871ed546893c820e4f3b7b6c358dbf2a"
+    },
+    "native_onnx": {
+      "path": "models/random_20w_8192/axon_loop28_base.onnx",
+      "sha256": "3199b158fc8f7e3a53a516b2681aef8b5d5aa4a210baf66152fded72a3ff07f4"
+    },
+    "native_onnx_data": {
+      "path": "models/random_20w_8192/axon_loop28_base.onnx.data",
+      "sha256": "4865d52d861d780627ca9aea4b16f83d8c2df62dd5b2136217d1e42547b8c7fa"
+    }
+  },
+  "verification": [
+    {
+      "scope": "static_and_python_synthetic",
+      "command": "vnev\\Scripts\\python.exe -m pytest tests\\test_native_loop28_parity_source.py -q -p no:cacheprovider",
+      "result": "15 passed, 9 skipped",
+      "duration_seconds": 3.33,
+      "model_inference_performed": false
+    },
+    {
+      "scope": "feature_only_native_dll",
+      "command": "set AXON_RUN_NATIVE_FEATURE_INTEGRATION=1 && vnev\\Scripts\\python.exe -m pytest tests\\test_native_loop28_parity_source.py -q -p no:cacheprovider",
+      "result": "20 passed, 4 skipped",
+      "duration_seconds": 3.81,
+      "model_inference_performed": false
+    },
+    {
+      "scope": "expanded_native_model_parity",
+      "command": "set AXON_RUN_NATIVE_FEATURE_INTEGRATION=1 && set AXON_RUN_NATIVE_PARITY_INTEGRATION=1 && set AXON_RUN_NATIVE_PARITY_VARIANTS=1 && vnev\\Scripts\\python.exe -m pytest tests\\test_native_loop28_parity_source.py -q -p no:cacheprovider -s",
+      "result": "21 passed, 3 failed",
+      "duration_seconds": 137.66,
+      "model_inference_performed": true,
+      "expected_gate_result": "failed_closed"
+    },
+    {
+      "scope": "variant_delta_capture",
+      "command": "set AXON_RUN_NATIVE_PARITY_VARIANTS=1 && vnev\\Scripts\\python.exe -m pytest tests\\test_native_loop28_parity_source.py -q -p no:cacheprovider -s -k parity_variants",
+      "result": "1 passed, 2 failed, 21 deselected",
+      "duration_seconds": 96.28,
+      "model_inference_performed": true,
+      "expected_gate_result": "failed_closed"
+    }
+  ],
+  "failure_analysis": {
+    "first_remaining_divergence_stage": "base_inference",
+    "feature_extraction_is_still_the_first_divergence": false,
+    "all_base_model_inputs_are_authenticated_exact": true,
+    "stage2_non_probability_features_are_authenticated_exact": true,
+    "remaining_stage2_feature_drift_is_limited_to_base_probability_transforms": true,
+    "observed_shape_dependency": "All three PE32 variants failed the base probability gate while the PE32+ variant passed.",
+    "strongest_current_explanation": "The frozen PyTorch checkpoint and frozen ONNX execution are not uniformly numerically faithful across valid inputs. Hard routing or accumulated kernel-order differences are plausible, but the exact internal operator boundary is not yet localized.",
+    "sole_cause_claim_allowed": false,
+    "next_required_evidence": [
+      "synthetic-only PyTorch-versus-ONNX intermediate activation localization",
+      "a canonical runtime decision: verified ONNX lineage, a stable exported architecture, or a PyTorch-compatible native runtime",
+      "multi-fixture export verification before any train raw rerun"
+    ]
+  },
+  "claim_boundary": {
+    "feature_implementation_parity_observed_on_expanded_synthetic_matrix": true,
+    "base_runtime_parity_claim_allowed": false,
+    "raw_remediation_claim_allowed": false,
+    "population_parity_claim_allowed": false,
+    "quality_claim_allowed": false,
+    "native_loop28_ready_claim_allowed": false,
+    "native_loop151_ready_claim_allowed": false,
+    "certification_claim_allowed": false
+  },
+  "decision": "block_train_rerun_input_dependent_onnx_base_drift"
+}

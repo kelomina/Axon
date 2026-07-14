@@ -1,0 +1,41 @@
+{
+  "schema": "axon_loop164_a2_metadata_request_v1",
+  "document_kind": "custodian_request_not_authorization",
+  "loop_id": "loop164_whole_file_residual_expert",
+  "request_state": "draft",
+  "authorization_granted": false,
+  "target_authorization_schema": "axon_loop164_isolation_validation_authorization_v3",
+  "requested_operation": "loop164_metadata_isolation_validation",
+  "authority_scope": {
+    "tier": "A2",
+    "operation": "metadata_isolation_only",
+    "protected_input_scope": "metadata_only",
+    "grants": []
+  },
+  "target_paths": {
+    "authorization": "manifests/roadmap_9997/loop164_whole_file_residual_expert/a2_isolation_validation_authorization.json",
+    "output": "reports/roadmap_9997/loop164/full_pool_isolation_validation.json",
+    "lease_marker_directory": "reports/roadmap_9997/loop164/metadata_lease_consumptions"
+  },
+  "custodian_required_bindings": [
+    "external_trust_anchor",
+    "authority_attestation",
+    "runtime_binding",
+    "validator_binding",
+    "validator_source_closure",
+    "canonical_argv",
+    "contract_binding",
+    "rows_artifact_binding",
+    "metadata_root_binding",
+    "resource_guard_binding",
+    "one_shot_lease"
+  ],
+  "forbidden_operations": [
+    "training",
+    "implementation_review",
+    "val",
+    "test10k",
+    "legacy_full_test",
+    "certification"
+  ]
+}

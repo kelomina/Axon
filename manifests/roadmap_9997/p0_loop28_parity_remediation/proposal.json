@@ -1,0 +1,171 @@
+{
+  "schema": "axon_loop28_parity_remediation_proposal_v1",
+  "loop_id": "p0_loop28_parity_remediation_001",
+  "created_at_utc": "2026-07-11T19:53:12Z",
+  "amended_at_utc": "2026-07-11T21:10:16Z",
+  "amendment_scope": "Fail-closed governance amendment after the repaired four-fixture synthetic matrix: supersede the original single-fixture pass, revoke the one-train-sample rerun, and restrict the next action to synthetic-only PyTorch-versus-ONNX fidelity localization.",
+  "parent_reference": {
+    "post_diagnostic_manifest": {
+      "path": "manifests/roadmap_9997/p0_loop28_parity_diagnostic/post_diagnostic_manifest.json",
+      "sha256": "9f57dee431d61a1a1ebc99f64ed9bcb9f65804fca8426c748d51b468e81e6d31"
+    },
+    "diagnostic_receipt": {
+      "path": "reports/roadmap_9997/p0_loop28_parity_diagnostic/diagnostic_receipt.final.json",
+      "sha256": "de8f0c5885df08646298f67f59b5427696252f7cb921d84eeb6527bef6878bc7"
+    }
+  },
+  "objective": "Preserve the now-exact native feature semantics, block all raw reruns, and localize the input-dependent PE32 PyTorch-versus-ONNX base-inference drift on synthetic fixtures before reconsidering any raw execution.",
+  "failure_observation": {
+    "first_divergence_stage": "feature_extraction",
+    "pe_mismatch_indices": [117, 125, 126, 135],
+    "stat_mismatch_indices": [45],
+    "stage2_feature_mismatch_count": 106,
+    "stage2_byte_summary_mismatch_count": 91,
+    "stage2_content_pe_mismatch_indices": [1496, 1497, 1499, 1500],
+    "base_probability_delta": 0.00013463559140205333,
+    "stage2_probability_delta": 0.000004856637441869656,
+    "frozen_tolerance": 0.000001
+  },
+  "hypotheses": [
+    {
+      "rank": 1,
+      "name": "precision_and_reduction_semantics",
+      "claim": "The observed PE aggregate, stat diff, and byte-summary drift is consistent with native float/double choices and reduction order that do not match the declared NumPy 2.4.4 semantics; this remains fixture-scoped evidence rather than population-wide causal proof."
+    },
+    {
+      "rank": 2,
+      "name": "api_prefix_semantics",
+      "claim": "The PE index 135 mismatch is consistent with connect, send, and recv being prefix-only in Python but substring-matched in native code; exactness must still be confirmed on the authorized frozen train sample."
+    },
+    {
+      "rank": 3,
+      "name": "content_directory_approximations",
+      "claim": "The synthetic content-PE mismatches are consistent with fixed-zero native resource/relocation approximations and TLS-directory presence being used instead of AddressOfCallbacks semantics; broader PE-shape coverage is a later hardening requirement."
+    },
+    {
+      "rank": 4,
+      "name": "hgb_json_float_narrowing",
+      "claim": "After feature parity, float parsing/storage of HGB baseline, thresholds, and leaves is a plausible source of avoidable Stage-2 tree-routing or score drift."
+    }
+  ],
+  "new_independent_evidence": [
+    "authenticated single-element HMAC mismatch indices from the immutable diagnostic receipt",
+    "source-level index-to-schema mapping in Python and native implementations",
+    "NumPy 2.4.4 pairwise-summation source contract with PW_BLOCKSIZE=128",
+    "bounded PE resource, TLS, and relocation directory structure parsing"
+  ],
+  "runtime_availability": {
+    "verification_status": "declared_from_preflight_not_cryptographically_verified",
+    "python": "3.14.4",
+    "numpy": "2.4.4",
+    "pefile": "2024.8.26",
+    "native_build": "MSVC Release via the existing CMake project",
+    "network_required_for_execution": false
+  },
+  "implementation_scope": [
+    "native float32 and float64 helpers that reproduce the frozen Python and NumPy semantics",
+    "fixed-v2 aggregate precision and prefix-only API matching",
+    "Stage-2 probability transforms and byte-summary precision",
+    "bounded resource, TLS, and relocation parsing for content PE v1",
+    "double parsing and storage for Stage-2 HGB numeric payloads",
+    "a remediation runner and implementation-manifest builder that hard-stop when the synthetic pre-run block is present",
+    "expanded synthetic and static tests plus a clean Release build whose hashes are frozen by the blocked evidence",
+    "an independent blocked closure that binds the governance chain, superseded discovery, expanded fail-closed evidence, verified native/runtime artifacts, and final goal, recommendations, and experiment journal without opening raw or heldout data"
+  ],
+  "allowed_splits": [],
+  "forbidden_inputs": [
+    "Val, Test-10k, legacy full-test, certification, or any other heldout raw file",
+    "heldout predictions, metrics, feature caches, error rows, or model-selection payloads",
+    "filename, path, directory, extension, hash, sample index, split, or row order as model evidence"
+  ],
+  "frozen_sample": {
+    "split": "train",
+    "sample_index": 0,
+    "source_sha256": "09b6b8c80bc31846312bd6958e1d4bf1bcd72d25450d7f7dec2bce6ba81798cc",
+    "size_bytes": 4218880
+  },
+  "synthetic_discovery_budget": {
+    "status": "expanded_matrix_completed_and_failed_closed_before_raw_access",
+    "recorded_verification_commands": 4,
+    "recorded_duration_seconds": 241.08,
+    "expanded_integrations_passed": 21,
+    "expanded_integrations_failed": 3,
+    "counts_fully_audited": true,
+    "dataset_raw_accessed": false,
+    "split_metadata_accessed": false,
+    "heldout_accessed": false,
+    "consumes_future_one_shot_train_budget": false
+  },
+  "budget": {
+    "authorization_status": "revoked_before_raw_access",
+    "max_remediation_generations": 0,
+    "max_verified_raw_snapshots": 0,
+    "max_python_executions": 0,
+    "max_native_executions": 0,
+    "max_crossfeed_executions": 0,
+    "per_execution_timeout_seconds": 120,
+    "total_wall_clock_seconds": 1200,
+    "cpu_only": true,
+    "gpu_executions": 0,
+    "network_requests": 0,
+    "max_output_bytes": 67108864
+  },
+  "success_gate": {
+    "status": "failed_closed_before_raw_access",
+    "feature_components_exact": [
+      "byte_seq",
+      "pe_features",
+      "stat_features",
+      "stage2_features indices 6 through 1519"
+    ],
+    "base_decision_match": true,
+    "final_decision_match": true,
+    "base_probability_delta_max": 0.000001,
+    "stage2_probability_delta_max": 0.000001,
+    "observed_base_probability_delta_max": 0.0074248304705810675,
+    "observed_stage2_probability_delta_max": 0.041100940333939406,
+    "train_raw_rerun_allowed": false,
+    "quality_claim_allowed": false
+  },
+  "productization_performance_gate": {
+    "blocking_for_one_shot_train_parity": true,
+    "required_before_native_product_promotion": true,
+    "baseline": "the pre-remediation ORT_ENABLE_EXTENDED native bundle",
+    "candidate": "the remediated ORT_DISABLE_ALL native bundle",
+    "required_evidence": [
+      "latency distribution",
+      "throughput",
+      "peak RSS or working set",
+      "binary and runtime hashes"
+    ],
+    "claim": "The expanded matrix disproves uniform frozen-runtime parity: all three PE32 fixtures fail while PE32+ passes, so synthetic-only operator-boundary localization and a canonical runtime decision are required before any raw rerun."
+  },
+  "synthetic_pre_run_block": {
+    "path": "manifests/roadmap_9997/p0_loop28_parity_remediation/synthetic_pre_run_blocked.json",
+    "sha256": "72f7c00a107e9eebcffbc14269815bdaacf3843d2dee70dfd70443c080adef7e",
+    "decision": "block_train_rerun_input_dependent_onnx_base_drift",
+    "train_raw_rerun_allowed": false
+  },
+  "stop_condition": "Stop before implementation-manifest generation, run authorization, lease creation, receipt generation, or any raw, split, heldout, training, fitting, or quality-metric access; continue only with separately governed synthetic-only ONNX fidelity localization.",
+  "expected_artifacts": [
+    "manifests/roadmap_9997/p0_loop28_parity_remediation/proposal.json",
+    "manifests/roadmap_9997/p0_loop28_parity_remediation/authorization.json",
+    "manifests/roadmap_9997/p0_loop28_parity_remediation/preflight.json",
+    "manifests/roadmap_9997/p0_loop28_parity_remediation/synthetic_discovery.json",
+    "manifests/roadmap_9997/p0_loop28_parity_remediation/synthetic_pre_run_blocked.json",
+    "scripts/remediate_loop28_parity.py",
+    "tests/test_remediate_loop28_parity.py",
+    "tools/axon_onnx_dll/src/axon_onnx_predict.cpp",
+    "tests/test_native_loop28_parity_source.py",
+    "scripts/build_loop28_parity_remediation_manifest.py",
+    "tests/test_build_loop28_parity_remediation_manifest.py",
+    "scripts/build_loop28_parity_post_remediation_manifest.py",
+    "tests/test_build_loop28_parity_post_remediation_manifest.py",
+    "goal.md",
+    "docs/ml_improvement_recommendations.md",
+    "reports/hard_family_finetune/experiment_journal.md",
+    "manifests/roadmap_9997/p0_loop28_parity_remediation/post_remediation_manifest.json"
+  ],
+  "authorization_level": "A1_synthetic_only_fidelity_localization_raw_execution_revoked",
+  "decision": "propose_synthetic_only_onnx_fidelity_localization_raw_rerun_blocked"
+}

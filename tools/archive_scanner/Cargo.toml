@@ -1,0 +1,22 @@
+[package]
+name = "axon-archive-scanner"
+version = "0.1.0"
+edition = "2021"
+description = "Strict nested archive scanner for Axon v2.6"
+
+[dependencies]
+anyhow = "1"
+cab = "0.6"
+clap = { version = "4", features = ["derive"] }
+hex = "0.4"
+msi = "0.10"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sevenz-rust = "0.6"
+sha2 = "0.10"
+tempfile = "3"
+zip = { version = "2", default-features = false, features = ["deflate", "bzip2", "zstd"] }
+
+[dev-dependencies]
+assert_cmd = "2"
+predicates = "3"

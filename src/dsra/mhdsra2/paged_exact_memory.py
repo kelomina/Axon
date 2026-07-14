@@ -13,6 +13,14 @@ from typing import List, Optional, Tuple
 import torch
 import torch.nn.functional as F
 
+try:
+    from ...config import DSRAArchitectureConfig
+except ImportError:
+    try:
+        from ..config import DSRAArchitectureConfig
+    except ImportError:
+        DSRAArchitectureConfig = None
+
 
 @dataclass
 class PageRecord:
@@ -32,9 +40,23 @@ class PagedExactMemory:
     without keeping 2M-token KV on GPU.
     """
 
-    def __init__(self, page_size: int = 1024, dtype: torch.dtype = torch.float16):
+    def __init__(
+        self,
+        page_size: int = None,
+        dtype: torch.dtype = torch.float16,
+        dsra_arch_config=None,
+        max_pages: Optional[int] = None,
+    ):
+        if page_size is None:
+            page_size = getattr(dsra_arch_config, 'paged_memory_page_size', 1024) if dsra_arch_config else 1024
         self.page_size = int(page_size)
         self.dtype = dtype
+        self._dsra_arch_config = dsra_arch_config
+        if max_pages is None and dsra_arch_config is not None:
+            max_pages = getattr(dsra_arch_config, 'paged_memory_max_pages', None)
+        self.max_pages = int(max_pages) if max_pages is not None else None
+        if self.max_pages is not None and self.max_pages < 1:
+            raise ValueError("max_pages must be positive when provided")
         self.pages: List[PageRecord] = []
         self.next_position = 0
 
@@ -62,13 +84,26 @@ class PagedExactMemory:
             summary = F.normalize(k_page.float().mean(dim=1), dim=-1).to(dtype=self.dtype)
             self.pages.append(PageRecord(k_page, v_page, summary, self.next_position + s, self.next_position + e))
         self.next_position += t
+        self._enforce_capacity()
 
     def invalidate_before(self, position: int) -> None:
-        """Forget obsolete pages without rewriting memory."""
-        for p in self.pages:
-            if p.end <= position:
-                p.valid = False
-                p.version += 1
+        """Forget obsolete pages and release their tensor storage."""
+        self.pages = [p for p in self.pages if p.end > position]
+
+    def clear(self, *, reset_position: bool = False) -> None:
+        """Release all stored pages.
+
+        ``reset_position`` is used at sample boundaries so a long-lived process
+        does not carry monotonically growing positions across independent inputs.
+        """
+        self.pages.clear()
+        if reset_position:
+            self.next_position = 0
+
+    def _enforce_capacity(self) -> None:
+        if self.max_pages is None or len(self.pages) <= self.max_pages:
+            return
+        self.pages = self.pages[-self.max_pages:]
 
     @staticmethod
     def _rank_by_score_then_position(scores: torch.Tensor, positions: torch.Tensor) -> torch.Tensor:
@@ -93,8 +128,8 @@ class PagedExactMemory:
     def retrieve(
         self,
         query: torch.Tensor,
-        top_pages: int = 4,
-        max_tokens: int = 128,
+        top_pages: int = None,
+        max_tokens: int = None,
         device: Optional[torch.device] = None,
     ) -> Tuple[Optional[torch.Tensor], Optional[torch.Tensor], Optional[torch.Tensor]]:
         """Return retrieved_k, retrieved_v, positions with latest-wins tie breaks.
@@ -116,6 +151,12 @@ class PagedExactMemory:
         - 关键词 / Keywords:
           retrieve|paged_exact_memory|latest_wins|external_memory|top_tokens|page_scores|token_scores|position|recall|分页检索
         """
+        if top_pages is None:
+            top_pages = getattr(self, '_dsra_arch_config', None)
+            top_pages = getattr(top_pages, 'paged_memory_top_pages', 4) if top_pages else 4
+        if max_tokens is None:
+            max_tokens = getattr(self, '_dsra_arch_config', None)
+            max_tokens = getattr(max_tokens, 'paged_memory_max_tokens', 128) if max_tokens else 128
         if len(self.pages) == 0:
             return None, None, None
         if query.dim() == 4:

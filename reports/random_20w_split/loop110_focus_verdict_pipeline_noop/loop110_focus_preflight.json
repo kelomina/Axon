@@ -1,0 +1,61 @@
+{
+  "schema": "axon_loop109_focus_annotation_preflight_v1",
+  "protocol": "read-only Loop106 focus annotation preflight; no private-map read, no unblind, no model fitting, no threshold selection, no automatic verdict, no split/cache mutation",
+  "identity_policy": "Focus manual fields must cite content or external evidence. Filename/path/directory/extension/hash/source_sha256/sample_index/split/row order/review rank/model score terms are not sufficient evidence.",
+  "inputs": {
+    "focus_annotations_csv": "reports\\random_20w_split\\loop106_content_review_focus_top240.csv"
+  },
+  "rows": 240,
+  "expected_rows": 240,
+  "decision": "ready_noop_no_focus_annotations",
+  "ready_for_focus_merge": true,
+  "blockers": [],
+  "warnings": [],
+  "missing_required_columns": [],
+  "forbidden_focus_columns": [],
+  "duplicate_blind_review_id_rows": 0,
+  "missing_blind_review_id_rows": 0,
+  "status_counts": {
+    "no_decision": 240
+  },
+  "reason_counts": {
+    "blank_manual_fields": 240
+  },
+  "verdict_counts": {
+    "blank": 240
+  },
+  "action_counts": {
+    "blank": 240
+  },
+  "row_issue_counts": {},
+  "annotated_rows": 0,
+  "actionable_rows": 0,
+  "invalid_rows": 0,
+  "manual_quality": {
+    "blank_verdict_rows": 240,
+    "content_or_external_note_rows": 0,
+    "identity_or_model_term_mention_rows": 0,
+    "actionable_verdict_missing_note_rows": 0,
+    "evidence_note_missing_content_or_external_rows": 0,
+    "evidence_note_identity_or_score_only_rows": 0
+  },
+  "decisions": {
+    "ready_for_focus_merge": true,
+    "automatic_verdict_allowed": false,
+    "automatic_relabel_allowed": false,
+    "automatic_replacement_allowed": false,
+    "training_allowed": false,
+    "test10k_allowed": false,
+    "next_allowed_step": "merge focus annotations into full blinded CSV"
+  },
+  "outputs": {
+    "validated_focus_csv": "reports\\random_20w_split\\loop110_focus_verdict_pipeline_noop\\loop110_focus_preflight_validated.csv",
+    "summary_json": "reports\\random_20w_split\\loop110_focus_verdict_pipeline_noop\\loop110_focus_preflight.json"
+  },
+  "notes": [
+    "This preflight keeps the review blinded and does not read the private map.",
+    "Blank manual fields are allowed as no-op review state; they do not create actionable verdicts.",
+    "Actionable focus annotations must cite content or external evidence before merge/unblind.",
+    "Identity fields and model scores alone are blocked before Loop107 merge and Loop87 import."
+  ]
+}

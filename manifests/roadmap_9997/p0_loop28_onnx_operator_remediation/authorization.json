@@ -1,0 +1,115 @@
+{
+  "schema": "axon_loop28_onnx_operator_remediation_authorization_v1",
+  "loop_id": "p0_loop28_onnx_operator_remediation_001",
+  "created_at_utc": "2026-07-11T22:35:08Z",
+  "authorization_basis": {
+    "active_user_goal": "Execute the long-term Axon Frontier 99.97 task",
+    "goal_contract": {
+      "path": "goal.md",
+      "sha256": "04018c74953ca9792368a3c5a1037123978c126c08437c1425d2b591b07126c9",
+      "authorized_level": "A1_scoped_change",
+      "p0_only": true
+    },
+    "frozen_next_action": {
+      "path": "reports/roadmap_9997/p0_loop28_onnx_fidelity/goal_delta.final.md",
+      "sha256": "14c3af85ee7151d27f81a44e59f686b5af169d59be311c06e74f123c5f010e75"
+    }
+  },
+  "proposal": {
+    "path": "manifests/roadmap_9997/p0_loop28_onnx_operator_remediation/proposal.json",
+    "sha256": "21e0699a3c6ceb4667bdb1acd7152ebf0d3029fa9b9fb3908e532fbe93a70100",
+    "decision": "propose_single_bounded_input_projection_gelu_remediation"
+  },
+  "parent_closure": {
+    "path": "manifests/roadmap_9997/p0_loop28_onnx_fidelity/post_manifest.json",
+    "sha256": "e36b720de8a20d137d740712242e67f4a102857b2365fdd2fdb7c8c5b2a5b719"
+  },
+  "authorized_scope": {
+    "level": "A1_scoped_change",
+    "implementation_generation_count": 1,
+    "semantic_candidate_count": 1,
+    "candidate_id": "candidate_001_microsoft_gelu",
+    "synthetic_fixture_count": 4,
+    "cpu_only": true,
+    "allowed_actions": [
+      "create the new proposal-bound builder, remediation runner, and focused tests",
+      "create immutable implementation, generation, verification, evidence, and closure artifacts under the new loop paths",
+      "read the frozen checkpoint and ONNX lineage only after a separately bound ready lease has been consumed before model or graph load",
+      "generate exactly one deterministic com.microsoft::Gelu candidate by the frozen 16-occurrence rewrite",
+      "run the four frozen synthetic fixtures through PyTorch eager, ONNX ReferenceEvaluator, and the existing ORT 1.24.4 CPU probe",
+      "select only among the proposal's predeclared exit decisions"
+    ]
+  },
+  "baseline_artifacts": {
+    "parent_post_closure": {
+      "path": "manifests/roadmap_9997/p0_loop28_onnx_fidelity/post_manifest.json",
+      "sha256": "e36b720de8a20d137d740712242e67f4a102857b2365fdd2fdb7c8c5b2a5b719"
+    },
+    "parent_implementation_manifest": {
+      "path": "manifests/roadmap_9997/p0_loop28_onnx_fidelity/implementation_manifest.json",
+      "sha256": "bd448172e6556d30a31219e7decba0872a956d1ea20de67b3314b803388e6f7d"
+    },
+    "parent_localization_evidence": {
+      "path": "reports/roadmap_9997/p0_loop28_onnx_fidelity/localization_evidence.final.json",
+      "sha256": "a3caf51b5354fb6c3725c09cb25bc2360ce91322934708e586d1bb576e72ced0"
+    },
+    "checkpoint": {
+      "path": "models/random_20w_8192/best_model.pt",
+      "sha256": "96a1b1ece41dd7dd9142a0f7f4330da3a7938a26cca8b01e0e7c7a1074e5e3a4"
+    },
+    "onnx_graph": {
+      "path": "models/random_20w_8192/axon_loop28_base.onnx",
+      "sha256": "3199b158fc8f7e3a53a516b2681aef8b5d5aa4a210baf66152fded72a3ff07f4"
+    },
+    "onnx_data": {
+      "path": "models/random_20w_8192/axon_loop28_base.onnx.data",
+      "sha256": "4865d52d861d780627ca9aea4b16f83d8c2df62dd5b2136217d1e42547b8c7fa"
+    },
+    "fixture_contract": {
+      "path": "tests/test_native_loop28_parity_source.py",
+      "sha256": "e9360ac16ef5c5ea384788ce9f58d99e967d34c6ee8c53f79e96c9c240661d0c"
+    },
+    "native_probe": {
+      "path": "tools/axon_onnx_fidelity/build/bin/Release/axon_onnx_fidelity_probe.exe",
+      "sha256": "2c71659f1fb6c726560d28b22fb3d2107f50b9562fe78f2d0593716dfca93d5a"
+    },
+    "onnxruntime": {
+      "path": "tools/axon_onnx_dll/build/bin/Release/onnxruntime.dll",
+      "sha256": "b95efb2113b603bbbf3f191061c5516a871ed546893c820e4f3b7b6c358dbf2a"
+    },
+    "frozen_localizer": {
+      "path": "scripts/diagnose_loop28_onnx_fidelity.py",
+      "sha256": "009a070aec94c20e48a362547ce7785fed53ee9bee2c92583542826d6a8c3ce0"
+    },
+    "model_source": {
+      "path": "src/model.py",
+      "sha256": "bebaa61a0a9797631f8d8e1cc7f7c5142b3d37ba7b4cbcc2a48b2b481d612f8a"
+    },
+    "config_source": {
+      "path": "src/config.py",
+      "sha256": "b4d592a2b453d86d7b865a1f3b610be46faf3d26f6f4c2aa5ed45d32c24fb85f"
+    },
+    "predict_api_source": {
+      "path": "src/predict_api.py",
+      "sha256": "a9207224a777bb7abb38d75524f386f9fa818533e205e6594ab97de6f158daa2"
+    },
+    "extractor_source": {
+      "path": "src/kvd_features/extractor.py",
+      "sha256": "1d456a0f0773e7ddec7540962feca4cb2862b806661bbfe82b45d693cadf312b"
+    }
+  },
+  "execution_gate": {
+    "implementation_manifest_required": true,
+    "generation_authorization_required": true,
+    "generation_lease_consumed_before_graph_load": true,
+    "candidate_manifest_required_before_verification_authorization": true,
+    "verification_lease_consumed_before_model_load": true,
+    "no_authorization_or_lease_reuse": true
+  },
+  "explicitly_not_authorized": [
+    "raw, split, cache, heldout, error-row, prediction-row, Val, Test-10k, legacy full-test, sentinel, confirmation, or certification access",
+    "training, fitting, thresholding, model selection, second candidate generation, F1 computation, or quality claims",
+    "dependency installation, GPU use, network use, deployment, data mutation, commit, or push"
+  ],
+  "decision": "authorize_single_bounded_operator_remediation_implementation"
+}

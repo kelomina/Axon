@@ -1,0 +1,23 @@
+{
+  "schema": "axon_loop28_pytorch_native_package_lease_v1",
+  "loop_id": "p0_loop28_pytorch_native_feasibility_001",
+  "lease_id": "p0_loop28_pytorch_native_feasibility_001_package_attempt_002",
+  "created_at_utc": "2026-07-11T23:59:55Z",
+  "status": "consumed_before_execution",
+  "authorization_path": "manifests/roadmap_9997/p0_loop28_pytorch_native_feasibility/package_authorization.json",
+  "authorization_sha256": "113ab7143fd2103fd70ddb8157be590f0084864fe1825a1f784ea6c5ba33ff2f",
+  "implementation_manifest_sha256": "45d38299623ab32e701d6bf1408a509caa19513287c239b3866532cd405bd3f4",
+  "cpp_build_receipt_sha256": "2ef9fc018cf72c0552902d4e9cca2190b4c5e983bdd15d4917dd5d926043dc77",
+  "package_reissue_authorization_sha256": "35f16bb360f07d031484f3fa26937e4afaf7df499a8178d5aa664162f065b8b8",
+  "package_controller_manifest_sha256": "d5164f3d785419fa9eec977580e55f4e8fa5e52ea798765a9a6691d8c5510dd7",
+  "frozen_binary_sha256": {
+    "aten": "595705bdc0716b7323a0da71b424470c0d474a6556ac7fa3c6507e5d4edfd524",
+    "aoti": "097a41e61bfceeeea4592ff2f1dd079e3b447275b677980b7eceb3f02a5dcca0"
+  },
+  "ready_command": "vnev/Scripts/python.exe scripts/run_loop28_pytorch_native_package_controller.py package",
+  "consumed_path": "manifests/roadmap_9997/p0_loop28_pytorch_native_feasibility/package_lease.final.json",
+  "max_retained_output_bytes": 536870912,
+  "failed_lease_reuse": false,
+  "single_use": true,
+  "original_lease_sha256": "24a2e44c6f30c1db12a565756ef3289104ffff3204c09c95e5b0506de5c2b913"
+}

@@ -1,0 +1,53 @@
+{
+  "schema": "axon_loop109_focus_annotation_preflight_summary_v1",
+  "date": "2026-07-03",
+  "protocol": "read-only blinded focus annotation quality preflight; no private-map read, no unblind, no merge, no training, no threshold tuning, no split/cache mutation",
+  "inputs": {
+    "focus_annotations_csv": "reports/random_20w_split/loop106_content_review_focus_top240.csv",
+    "preflight_json": "reports/random_20w_split/loop109_focus_annotation_preflight_noop.json",
+    "preflight_csv": "reports/random_20w_split/loop109_focus_annotation_preflight_noop.csv",
+    "guard_json": "reports/random_20w_split/loop109_focus_annotation_preflight_guard.json"
+  },
+  "real_result": {
+    "rows": 240,
+    "expected_rows": 240,
+    "decision": "ready_noop_no_focus_annotations",
+    "ready_for_focus_merge": true,
+    "blockers": [],
+    "annotated_rows": 0,
+    "actionable_rows": 0,
+    "invalid_rows": 0,
+    "identity_or_model_term_mention_rows": 0,
+    "training_allowed": false,
+    "test10k_allowed": false
+  },
+  "identity_feature_policy": {
+    "manual_fields_must_not_rely_on": [
+      "filename",
+      "path",
+      "directory",
+      "extension",
+      "hash",
+      "source_sha256",
+      "sample_index",
+      "split",
+      "row_order",
+      "review_rank",
+      "model_score",
+      "probability",
+      "prediction",
+      "threshold"
+    ],
+    "required_evidence_type": "content_or_external_evidence",
+    "allowed_purpose": "pre-merge quality gate for blinded review annotations"
+  },
+  "verification": {
+    "resource_guard": "pass",
+    "py_compile": "pass",
+    "pytest": {
+      "command": "python -m pytest tests/test_preflight_loop106_focus_annotations.py tests/test_import_loop87_review_evidence_verdicts.py tests/test_merge_loop106_focus_annotations.py",
+      "result": "15 passed"
+    }
+  },
+  "next_allowed_step": "Independent reviewer or external engine fills Loop106 focus manual fields with content/external evidence, reruns Loop109 preflight, then Loop107 merge/unblind/Loop87 import."
+}

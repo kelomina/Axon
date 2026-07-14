@@ -1,0 +1,79 @@
+{
+  "schema": "axon_stage2_frozen_eval_v1",
+  "protocol": "frozen stage2 model only; no fitting and no threshold sweep",
+  "model": "E:\\Project\\python\\Axon_v2.6Exp\\reports\\random_20w_split\\stage2_cache_matrix_replaced_extended_valonly\\stage2_selected_model.pkl",
+  "predictions": "E:\\Project\\python\\Axon_v2.6Exp\\reports\\random_20w_split\\random_20w_8192_replaced_test10k_predictions.csv",
+  "output_predictions_csv": "E:\\Project\\python\\Axon_v2.6Exp\\reports\\random_20w_split\\stage2_cache_matrix_replaced_extended_frozen_test10k_predictions.csv",
+  "selected_from_val": {
+    "name": "hgb_lr0.08_leaf31_l2_1e-3__noise_none",
+    "base_model": "hgb_lr0.08_leaf31_l2_1e-3",
+    "noise_mode": "none",
+    "fit_sec": 17.403796300000977,
+    "effective_train_rows": 20000,
+    "val_best": {
+      "threshold": 0.515,
+      "accuracy": 0.98175,
+      "precision": 0.9780688697032847,
+      "recall": 0.9856,
+      "f1": 0.9818199930268466,
+      "auc": 0.9978378850000001,
+      "true_positive": 9856,
+      "true_negative": 9779,
+      "false_positive": 221,
+      "false_negative": 144,
+      "errors": 365
+    },
+    "clean_val_at_val_threshold": {
+      "threshold": 0.515,
+      "accuracy": 0.9832320899643556,
+      "precision": 0.9796224153431226,
+      "recall": 0.9869175807587803,
+      "f1": 0.9832564668137157,
+      "auc": 0.9983528215334245,
+      "true_positive": 9807,
+      "true_negative": 9778,
+      "false_positive": 204,
+      "false_negative": 130,
+      "errors": 334,
+      "samples": 19919,
+      "excluded_suspected_noise": 81
+    },
+    "delta_val_f1_vs_baseline": 0.05094901723448331
+  },
+  "threshold": 0.515,
+  "feature_config": {
+    "prefix_len": 256,
+    "chunk_count": 16,
+    "include_pe": true,
+    "include_stat": true,
+    "include_lightweight": true,
+    "include_byte_summary": true
+  },
+  "records": {
+    "total": 10000,
+    "kept": 10000,
+    "skipped_missing_cache": 0
+  },
+  "feature_dim": 1420,
+  "metrics": {
+    "threshold": 0.515,
+    "accuracy": 0.9822,
+    "precision": 0.9815372265703391,
+    "recall": 0.982720514366084,
+    "f1": 0.9821285140562249,
+    "auc": 0.9981620811096363,
+    "true_positive": 4891,
+    "true_negative": 4931,
+    "false_positive": 92,
+    "false_negative": 86,
+    "errors": 178
+  },
+  "noise_summary": {
+    "medium_conflict_count": 132,
+    "severe_conflict_count": 25,
+    "medium_conflict_ratio": 0.0132,
+    "severe_conflict_ratio": 0.0025,
+    "label0_severe": 6,
+    "label1_severe": 19
+  }
+}

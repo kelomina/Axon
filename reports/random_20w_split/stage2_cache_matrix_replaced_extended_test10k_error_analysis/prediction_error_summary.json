@@ -1,0 +1,331 @@
+{
+  "predictions": "E:\\Project\\python\\Axon_v2.6Exp\\reports\\random_20w_split\\stage2_cache_matrix_replaced_extended_frozen_test10k_predictions.csv",
+  "threshold": 0.515,
+  "total_predictions": 10000,
+  "error_count": 178,
+  "false_positive_count": 92,
+  "false_negative_count": 86,
+  "fp_prob": {
+    "avg": 0.843259270426087,
+    "min": 0.5229873061,
+    "max": 0.9986906052
+  },
+  "fn_prob": {
+    "avg": 0.2420907008011628,
+    "min": 0.0060858121,
+    "max": 0.5112634897
+  },
+  "top_error_groups": [
+    {
+      "group_id": "unknown",
+      "error_count": 178,
+      "fp_count": 92,
+      "fn_count": 86,
+      "label_counts": "0:92|1:86",
+      "avg_prob_malicious": 0.5528070401578652,
+      "min_prob_malicious": 0.0060858121,
+      "max_prob_malicious": 0.9986906052,
+      "group_size": "",
+      "is_rare_group": "",
+      "group_source": "",
+      "hard_family_roles": "",
+      "example_paths": "E:\\Project\\python\\Axon_v2.6Exp\\data\\待拉黑\\黑文件1\\samples\\samples\\APT 10\\b9618847bd56419947576e9f14e43aa0f8397619f9456f2d4bff4d292c03faae_extracted\\b9618847bd56419947576e9f14e43aa0f8397619f9456f2d4bff4d292c03faae | E:\\Project\\python\\Axon_v2.6Exp\\data\\待拉黑\\2021-08\\2021-08-17\\43698d70087aa875c4384b59cacd8eff56bd0bff3be20e69b98613ec5184b41f.dll | E:\\Project\\python\\Axon_v2.6Exp\\data\\待拉黑\\2021-07\\2021-07-29\\954944ef6cdd1474ed35f27b790a7914156672cc7a1afbcc3214ccc1855ff12e.exe"
+    }
+  ],
+  "top_breakdowns": {
+    "data_dir": [
+      {
+        "dimension": "data_dir",
+        "value": "待加入白名单",
+        "error_count": 92,
+        "fp_count": 92,
+        "fn_count": 0,
+        "avg_prob_malicious": 0.843259270426087,
+        "min_prob_malicious": 0.5229873061,
+        "max_prob_malicious": 0.9986906052
+      },
+      {
+        "dimension": "data_dir",
+        "value": "待拉黑",
+        "error_count": 86,
+        "fp_count": 0,
+        "fn_count": 86,
+        "avg_prob_malicious": 0.2420907008011628,
+        "min_prob_malicious": 0.0060858121,
+        "max_prob_malicious": 0.5112634897
+      }
+    ],
+    "extension": [
+      {
+        "dimension": "extension",
+        "value": "<none>",
+        "error_count": 78,
+        "fp_count": 75,
+        "fn_count": 3,
+        "avg_prob_malicious": 0.7986666289025641,
+        "min_prob_malicious": 0.0060858121,
+        "max_prob_malicious": 0.9986906052
+      },
+      {
+        "dimension": "extension",
+        "value": ".exe",
+        "error_count": 76,
+        "fp_count": 16,
+        "fn_count": 60,
+        "avg_prob_malicious": 0.3938024381526316,
+        "min_prob_malicious": 0.0102148531,
+        "max_prob_malicious": 0.9986329675
+      },
+      {
+        "dimension": "extension",
+        "value": ".dll",
+        "error_count": 23,
+        "fp_count": 1,
+        "fn_count": 22,
+        "avg_prob_malicious": 0.26527453477391305,
+        "min_prob_malicious": 0.0084707318,
+        "max_prob_malicious": 0.9474385381
+      },
+      {
+        "dimension": "extension",
+        "value": ".xll",
+        "error_count": 1,
+        "fp_count": 0,
+        "fn_count": 1,
+        "avg_prob_malicious": 0.0733564943,
+        "min_prob_malicious": 0.0733564943,
+        "max_prob_malicious": 0.0733564943
+      }
+    ],
+    "group_size_bucket": [
+      {
+        "dimension": "group_size_bucket",
+        "value": "<unknown>",
+        "error_count": 178,
+        "fp_count": 92,
+        "fn_count": 86,
+        "avg_prob_malicious": 0.5528070401578652,
+        "min_prob_malicious": 0.0060858121,
+        "max_prob_malicious": 0.9986906052
+      }
+    ],
+    "group_source": [
+      {
+        "dimension": "group_source",
+        "value": "<unknown>",
+        "error_count": 178,
+        "fp_count": 92,
+        "fn_count": 86,
+        "avg_prob_malicious": 0.5528070401578652,
+        "min_prob_malicious": 0.0060858121,
+        "max_prob_malicious": 0.9986906052
+      }
+    ],
+    "hard_family_role": [
+      {
+        "dimension": "hard_family_role",
+        "value": "<unknown>",
+        "error_count": 178,
+        "fp_count": 92,
+        "fn_count": 86,
+        "avg_prob_malicious": 0.5528070401578652,
+        "min_prob_malicious": 0.0060858121,
+        "max_prob_malicious": 0.9986906052
+      }
+    ],
+    "is_rare_group": [
+      {
+        "dimension": "is_rare_group",
+        "value": "<unknown>",
+        "error_count": 178,
+        "fp_count": 92,
+        "fn_count": 86,
+        "avg_prob_malicious": 0.5528070401578652,
+        "min_prob_malicious": 0.0060858121,
+        "max_prob_malicious": 0.9986906052
+      }
+    ],
+    "month": [
+      {
+        "dimension": "month",
+        "value": "<none>",
+        "error_count": 95,
+        "fp_count": 92,
+        "fn_count": 3,
+        "avg_prob_malicious": 0.8202118406273684,
+        "min_prob_malicious": 0.0060858121,
+        "max_prob_malicious": 0.9986906052
+      },
+      {
+        "dimension": "month",
+        "value": "2020-11",
+        "error_count": 11,
+        "fp_count": 0,
+        "fn_count": 11,
+        "avg_prob_malicious": 0.21220794184545455,
+        "min_prob_malicious": 0.0735203698,
+        "max_prob_malicious": 0.4491577446
+      },
+      {
+        "dimension": "month",
+        "value": "2026-02",
+        "error_count": 7,
+        "fp_count": 0,
+        "fn_count": 7,
+        "avg_prob_malicious": 0.2212042171142857,
+        "min_prob_malicious": 0.0132961394,
+        "max_prob_malicious": 0.5076104999
+      },
+      {
+        "dimension": "month",
+        "value": "2021-08",
+        "error_count": 6,
+        "fp_count": 0,
+        "fn_count": 6,
+        "avg_prob_malicious": 0.2741805319666667,
+        "min_prob_malicious": 0.0084707318,
+        "max_prob_malicious": 0.5112634897
+      },
+      {
+        "dimension": "month",
+        "value": "2025-11",
+        "error_count": 6,
+        "fp_count": 0,
+        "fn_count": 6,
+        "avg_prob_malicious": 0.22451187733333333,
+        "min_prob_malicious": 0.060950961,
+        "max_prob_malicious": 0.4322197139
+      },
+      {
+        "dimension": "month",
+        "value": "2021-05",
+        "error_count": 5,
+        "fp_count": 0,
+        "fn_count": 5,
+        "avg_prob_malicious": 0.19888104314,
+        "min_prob_malicious": 0.0197740626,
+        "max_prob_malicious": 0.4797925651
+      },
+      {
+        "dimension": "month",
+        "value": "2021-09",
+        "error_count": 5,
+        "fp_count": 0,
+        "fn_count": 5,
+        "avg_prob_malicious": 0.27171941364,
+        "min_prob_malicious": 0.0286172312,
+        "max_prob_malicious": 0.4772543311
+      },
+      {
+        "dimension": "month",
+        "value": "2025-10",
+        "error_count": 5,
+        "fp_count": 0,
+        "fn_count": 5,
+        "avg_prob_malicious": 0.307286337,
+        "min_prob_malicious": 0.0733564943,
+        "max_prob_malicious": 0.4536423683
+      },
+      {
+        "dimension": "month",
+        "value": "2026-01",
+        "error_count": 5,
+        "fp_count": 0,
+        "fn_count": 5,
+        "avg_prob_malicious": 0.27464300396,
+        "min_prob_malicious": 0.1006637514,
+        "max_prob_malicious": 0.4562814534
+      },
+      {
+        "dimension": "month",
+        "value": "2026-03",
+        "error_count": 5,
+        "fp_count": 0,
+        "fn_count": 5,
+        "avg_prob_malicious": 0.2175705582,
+        "min_prob_malicious": 0.0421921909,
+        "max_prob_malicious": 0.378387481
+      }
+    ],
+    "prob_bucket": [
+      {
+        "dimension": "prob_bucket",
+        "value": "fp:>=0.90",
+        "error_count": 44,
+        "fp_count": 44,
+        "fn_count": 0,
+        "avg_prob_malicious": 0.9674816510909091,
+        "min_prob_malicious": 0.9017176628,
+        "max_prob_malicious": 0.9986906052
+      },
+      {
+        "dimension": "prob_bucket",
+        "value": "fn:0.10-0.30",
+        "error_count": 36,
+        "fp_count": 0,
+        "fn_count": 36,
+        "avg_prob_malicious": 0.19805567546666666,
+        "min_prob_malicious": 0.1006637514,
+        "max_prob_malicious": 0.2940115333
+      },
+      {
+        "dimension": "prob_bucket",
+        "value": "fp:0.52-0.75",
+        "error_count": 26,
+        "fp_count": 26,
+        "fn_count": 0,
+        "avg_prob_malicious": 0.6394522831961539,
+        "min_prob_malicious": 0.5229873061,
+        "max_prob_malicious": 0.7473920584
+      },
+      {
+        "dimension": "prob_bucket",
+        "value": "fn:0.30-0.45",
+        "error_count": 23,
+        "fp_count": 0,
+        "fn_count": 23,
+        "avg_prob_malicious": 0.37545079380869567,
+        "min_prob_malicious": 0.3016197979,
+        "max_prob_malicious": 0.4496314526
+      },
+      {
+        "dimension": "prob_bucket",
+        "value": "fp:0.75-0.90",
+        "error_count": 22,
+        "fp_count": 22,
+        "fn_count": 0,
+        "avg_prob_malicious": 0.8356773121863637,
+        "min_prob_malicious": 0.760504365,
+        "max_prob_malicious": 0.8971927762
+      },
+      {
+        "dimension": "prob_bucket",
+        "value": "fn:<0.10",
+        "error_count": 18,
+        "fp_count": 0,
+        "fn_count": 18,
+        "avg_prob_malicious": 0.04136765562222222,
+        "min_prob_malicious": 0.0060858121,
+        "max_prob_malicious": 0.0970468
+      },
+      {
+        "dimension": "prob_bucket",
+        "value": "fn:0.45-0.52",
+        "error_count": 9,
+        "fp_count": 0,
+        "fn_count": 9,
+        "avg_prob_malicious": 0.4788677659222222,
+        "min_prob_malicious": 0.452178359,
+        "max_prob_malicious": 0.5112634897
+      }
+    ]
+  },
+  "outputs": {
+    "errors_csv": "E:\\Project\\python\\Axon_v2.6Exp\\reports\\random_20w_split\\stage2_cache_matrix_replaced_extended_test10k_error_analysis\\prediction_errors.csv",
+    "false_positives_csv": "E:\\Project\\python\\Axon_v2.6Exp\\reports\\random_20w_split\\stage2_cache_matrix_replaced_extended_test10k_error_analysis\\false_positives.csv",
+    "false_negatives_csv": "E:\\Project\\python\\Axon_v2.6Exp\\reports\\random_20w_split\\stage2_cache_matrix_replaced_extended_test10k_error_analysis\\false_negatives.csv",
+    "error_groups_csv": "E:\\Project\\python\\Axon_v2.6Exp\\reports\\random_20w_split\\stage2_cache_matrix_replaced_extended_test10k_error_analysis\\error_groups.csv",
+    "error_breakdown_csv": "E:\\Project\\python\\Axon_v2.6Exp\\reports\\random_20w_split\\stage2_cache_matrix_replaced_extended_test10k_error_analysis\\error_breakdown.csv",
+    "summary_json": "E:\\Project\\python\\Axon_v2.6Exp\\reports\\random_20w_split\\stage2_cache_matrix_replaced_extended_test10k_error_analysis\\prediction_error_summary.json"
+  }
+}

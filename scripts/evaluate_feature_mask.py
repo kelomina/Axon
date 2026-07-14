@@ -216,12 +216,16 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: Optional[Sequence[str]] = None) -> int:
     args = build_parser().parse_args(argv)
     device = torch.device(args.device if args.device == "cpu" or torch.cuda.is_available() else "cpu")
-    checkpoint = load_safe_checkpoint(args.checkpoint, map_location=device)
+    checkpoint = load_safe_checkpoint(args.checkpoint, map_location="cpu")
     config = AxonExperimentConfig.from_dict(checkpoint["config"])
 
     model = AxonMalwareModel(config)
-    model.load_state_dict(checkpoint["model_state_dict"])
+    model_state_dict = checkpoint["model_state_dict"]
+    model.load_state_dict(model_state_dict)
+    del checkpoint, model_state_dict
     model.to(device)
+    if torch.device(device).type == "cuda":
+        torch.cuda.empty_cache()
     model.eval()
 
     feature_mask = load_feature_mask_tensors(args.feature_mask, config, device)

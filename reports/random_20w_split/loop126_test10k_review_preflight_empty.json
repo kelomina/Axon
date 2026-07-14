@@ -1,0 +1,34 @@
+{
+  "schema": "axon_loop126_review_preflight_v1",
+  "protocol": "strict Loop126 annotation preflight; no private-map read, no unblind, no automatic relabel, no split/cache mutation",
+  "identity_policy": "review_focus_id is the only public row key. Source path, cache path, source hash, sample index, filename, directory, extension, model score, probability, threshold, and prediction fields are not allowed.",
+  "annotations_csv": "E:\\Project\\python\\Axon_v2.6Exp\\reports\\random_20w_split\\loop126_test10k_review_annotations_template.csv",
+  "output_csv": "E:\\Project\\python\\Axon_v2.6Exp\\reports\\random_20w_split\\loop126_test10k_review_preflight_empty.csv",
+  "expected_rows": 278,
+  "rows": 278,
+  "annotated_rows": 0,
+  "actionable_rows": 0,
+  "replacement_required_rows": 0,
+  "training_policy_rows": 0,
+  "ready_for_private_mapping": false,
+  "blockers": [],
+  "missing_columns": [],
+  "forbidden_columns": [],
+  "missing_review_focus_id_rows": 0,
+  "duplicate_review_focus_id_rows": 0,
+  "status_counts": {
+    "no_decision": 278
+  },
+  "issue_counts": {},
+  "verdict_counts": {
+    "blank": 278
+  },
+  "action_counts": {
+    "blank": 278
+  },
+  "replacement_label_counts": {},
+  "automatic_relabel_allowed": false,
+  "automatic_replacement_allowed": false,
+  "test10k_allowed": false,
+  "full_test_allowed": false
+}

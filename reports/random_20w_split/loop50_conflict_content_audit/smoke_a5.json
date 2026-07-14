@@ -1,0 +1,25 @@
+{
+  "schema": "axon_loop50_conflict_content_audit_v1",
+  "policy": "Read-only content/cache health audit. Filename/path/extension/directory/hash/sample id/split/row order are not model evidence or relabel evidence.",
+  "queue_csv": "E:\\Project\\python\\Axon_v2.6Exp\\reports\\random_20w_split\\loop39_loop28_conflict_adjudication\\loop28_conflict_adjudication_queue.csv",
+  "split_csv": "E:\\Project\\python\\Axon_v2.6Exp\\reports\\random_20w_split\\loop27_corrected_split.csv",
+  "manifest_json": "E:\\Project\\python\\Axon_v2.6Exp\\data\\.cache\\manifest_38672ba0.json",
+  "lane_filter": "A_unfixed_severe_conflict",
+  "limit": 5,
+  "rows": 5,
+  "lane_counts": {
+    "A_unfixed_severe_conflict": 5
+  },
+  "error_type_counts": {
+    "FP": 5
+  },
+  "manual_label_verdict_blank_count": 5,
+  "recommended_action_blank_count": 5,
+  "objective_issue_row_count": 0,
+  "issue_counts": {},
+  "outputs": {
+    "audit_csv": "E:\\Project\\python\\Axon_v2.6Exp\\reports\\random_20w_split\\loop50_conflict_content_audit\\smoke_a5.csv",
+    "summary_json": "E:\\Project\\python\\Axon_v2.6Exp\\reports\\random_20w_split\\loop50_conflict_content_audit\\smoke_a5.json"
+  },
+  "replacement_rule": "If an objective content/cache issue is independently confirmed, replace with a fresh same-label candidate and preserve the exact 200000-row split. This audit does not alter labels or splits."
+}

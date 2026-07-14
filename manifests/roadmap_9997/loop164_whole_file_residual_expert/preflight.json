@@ -1,0 +1,765 @@
+{
+  "schema": "axon_loop164_mainline_preflight_v1",
+  "loop_id": "loop164_whole_file_residual_expert",
+  "generated_at_utc": "2026-07-12T16:00:00+00:00",
+  "authority": {
+    "proposal": {
+      "path": "manifests/roadmap_9997/loop164_whole_file_residual_expert/proposal.json",
+      "sha256": "3c9f9a6a13426b59b400522c21074906f5696c8e276d0ca31e98809bfc44796e"
+    },
+    "frontier_sources": {
+      "path": "manifests/roadmap_9997/loop164_whole_file_residual_expert/frontier_sources.json",
+      "sha256": "12904aee15f178c8e3aa11fc3180c41236609520f135cb13cabc79eb7da1bd0f"
+    },
+    "authorization": {
+      "path": "manifests/roadmap_9997/loop164_whole_file_residual_expert/authorization.json",
+      "sha256": "9a4437f8ebdc0c231caa8a7f8edbd6bbed339cb2200ee43dcca0d4aa6ece4ce2"
+    },
+    "authorization_level": "A1_scoped_design_and_static_preflight_only",
+    "static_preflight_authorized": true,
+    "a1_static_contract_verified": true,
+    "model_or_data_execution_authorized": false,
+    "creates_runtime_artifact": false,
+    "implementation_contract_a1_scope_verified": {
+      "protected_input_access": false,
+      "model_or_data_execution": false,
+      "creates_runtime_artifact": false,
+      "heldout_evaluation": false
+    }
+  },
+  "aggregate_evidence": {
+    "loop151_val": {
+      "path": "reports/phase3_loop151/loop151_trusted_signer_guard_val_eval.json",
+      "sha256": "304d2783eda51e22797d602ce2e9af5cc053331d318ed715198957d1ead17be6"
+    },
+    "loop151_test10k": {
+      "path": "reports/phase3_loop151/loop151_trusted_signer_guard_test10k_eval.json",
+      "sha256": "69ee20bb76e8bcdd69d2fa3b04a9b0104011b5d2aa183746b09fd93bd05a2c29"
+    },
+    "loop151_full": {
+      "path": "reports/phase3_loop151/loop151_trusted_signer_guard_full_eval.json",
+      "sha256": "3f5aa05cee5afbaaf06d90d3234618bf44d117caa20b2269edac4d3d7a4ca922"
+    },
+    "loop161_guard": {
+      "path": "reports/phase3_loop161/loop161_test10k_promotion_margin_guard.json",
+      "sha256": "06bd0a1ceb808f76f9e83d096bdb3c6b74c2675f9ffb1c36ccb426592e290ec2"
+    },
+    "loop163_support": {
+      "path": "reports/phase3_loop163/loop163_r11_rescue_support_audit.json",
+      "sha256": "b311c3f8163649dffc2cd9ebca7a0a1669b93111989f5ab24dcd0de8e6ac9c9d"
+    },
+    "loop158_annotations": {
+      "path": "reports/phase3_loop158/loop158_loop157_external_annotation_import_summary.json",
+      "sha256": "67fa91c1eccbea993e370a80b4c99860b5fbf17d56d4a5852abba7e22c134618"
+    },
+    "group_distribution": {
+      "path": "reports/raw_group_diagnostics/group_distribution_summary.json",
+      "sha256": "3b77bb854d9a5ea87989f370ea547ca757dae3aa5a93edeb466713d62942a4a0"
+    },
+    "content_pe_v2_cache": {
+      "path": "reports/random_20w_split/stage2_loop32_content_pe_v2_cache_train_val/content_pe_v2_cache_report.json",
+      "sha256": "c41f13c69fa31cfedef8e8bf562e469ea9cf6cbd7c3003ccebf46605ac9e8373"
+    },
+    "content_string_cache": {
+      "path": "reports/random_20w_split/stage2_loop30_content_string_cache_train_val/content_string_cache_report.json",
+      "sha256": "b57b073e1cd8f0896942ba8126da195885661d82d9066400c761b9a3511e5d61"
+    },
+    "content_cert_cache": {
+      "path": "reports/random_20w_split/stage2_loop31_content_cert_cache_train_val/content_cert_cache_report.json",
+      "sha256": "d22c39cd2b2469e89098f0016404cd6eec0259caea1ff82ca10d491b9be14391"
+    }
+  },
+  "a2_request_contract": {
+    "validator": {
+      "path": "scripts/validate_loop164_a2_request.py",
+      "sha256": "4f98e8d07e2c16faed32e77b868c9181dd9b24430e8701345d2c83aa6abe3b83"
+    },
+    "metadata_template": {
+      "path": "manifests/roadmap_9997/loop164_whole_file_residual_expert/templates/a2_metadata_request.template.json",
+      "sha256": "9d7edcf82a8760655468c5bea2236613ca8db330de74a0e017b2369e76666ea9"
+    },
+    "training_template": {
+      "path": "manifests/roadmap_9997/loop164_whole_file_residual_expert/templates/a2_training_request.template.json",
+      "sha256": "78cd9a1e2f6d618705f635ff094b234fc051724b84979a08606fa6d3135ddaab"
+    },
+    "document_kind": "custodian_request_not_authorization",
+    "authorization_granted": false,
+    "metadata_state": "draft",
+    "training_state": "blocked_pending_metadata_and_static_review",
+    "gate": "A request is not an A2 authorization: it cannot carry an allow decision, lease, issuance window, runtime binding, or protected-input grant. Only a separately custodian-issued authorization may satisfy a future execution blocker."
+  },
+  "research_champion": {
+    "val": {
+      "f1": 0.9919193934557063,
+      "errors": 162,
+      "fp": 105,
+      "fn": 57,
+      "tp": 9943,
+      "tn": 9895,
+      "positive_rows": 10000,
+      "negative_rows": 10000,
+      "rows": 20000,
+      "f1_exact": {
+        "numerator": 9943,
+        "denominator": 10024
+      }
+    },
+    "test10k": {
+      "f1": 0.9921921921921922,
+      "errors": 78,
+      "fp": 49,
+      "fn": 29,
+      "tp": 4956,
+      "tn": 4966,
+      "positive_rows": 4985,
+      "negative_rows": 5015,
+      "rows": 10000,
+      "f1_exact": {
+        "numerator": 1652,
+        "denominator": 1665
+      }
+    },
+    "legacy_full_test": {
+      "f1": 0.9908541911012403,
+      "errors": 1466,
+      "fp": 879,
+      "fn": 587,
+      "tp": 79413,
+      "tn": 79121,
+      "positive_rows": 80000,
+      "negative_rows": 80000,
+      "rows": 160000,
+      "f1_exact": {
+        "numerator": 79413,
+        "denominator": 80146
+      }
+    }
+  },
+  "target_gap": {
+    "target_f1": 0.9997,
+    "f1_fraction": {
+      "numerator": 9997,
+      "denominator": 10000
+    },
+    "legacy_point_error_budget": "47-48",
+    "legacy_point_geometry": {
+      "f1_fraction": {
+        "numerator": 9997,
+        "denominator": 10000
+      },
+      "reference": {
+        "positive_rows": 80000,
+        "negative_rows": 80000,
+        "scope": "legacy_development_point_reference_only"
+      },
+      "false_negative_coefficient": 10003,
+      "false_positive_coefficient": 9997,
+      "weighted_error_budget": 480000,
+      "all_allocations_pass_through_errors": 47,
+      "maximum_total_errors": 48,
+      "maximum_false_negatives_at_maximum_total_errors": 24,
+      "all_allocations_fail_from_errors": 49,
+      "minimum_net_error_removal": 1418,
+      "boundary_cases": [
+        {
+          "label": "all_fn_47",
+          "fp": 0,
+          "fn": 47,
+          "weighted_errors": 470141,
+          "meets_point_target": true
+        },
+        {
+          "label": "balanced_24_24",
+          "fp": 24,
+          "fn": 24,
+          "weighted_errors": 480000,
+          "meets_point_target": true
+        },
+        {
+          "label": "all_fp_48",
+          "fp": 48,
+          "fn": 0,
+          "weighted_errors": 479856,
+          "meets_point_target": true
+        },
+        {
+          "label": "fn_heavy_23_25",
+          "fp": 23,
+          "fn": 25,
+          "weighted_errors": 480006,
+          "meets_point_target": false
+        },
+        {
+          "label": "all_fn_48",
+          "fp": 0,
+          "fn": 48,
+          "weighted_errors": 480144,
+          "meets_point_target": false
+        },
+        {
+          "label": "all_fp_49",
+          "fp": 49,
+          "fn": 0,
+          "weighted_errors": 489853,
+          "meets_point_target": false
+        }
+      ],
+      "development_point_reference_only_not_certification_evidence": true
+    },
+    "minimum_net_error_removal": 1418
+  },
+  "execution_sequence": {
+    "a1_static_prerequisites": [
+      "file_size_distribution_without_identity_export",
+      "GPU_memory_and_wall_clock_probe_on_train_only_synthetic_or_public_bytes",
+      "bounded_loader_and_timeout_contract",
+      "v2_static_whole_file_implementation_contract_and_synthetic_equivalence_tests",
+      "non_authorizing_A2_metadata_and_training_request_contracts",
+      "disk_cache_budget"
+    ],
+    "a2_metadata_outputs": [
+      "aggregate_validation_receipt_with_partition_and_feature_semantics_only",
+      "custodian_attested_fold_scope_plan_with_shared_five_fold_commitment",
+      "aggregate_only_fold_scope_plan_validation_receipt_bound_to_contract_and_isolation_receipt"
+    ],
+    "a2_metadata_request_prerequisites": [
+      "custodian_full_pool_isolation_manifest",
+      "externally_pinned_A2_metadata_v3_authorization_with_exact_argv_source_closure_fresh_resource_guard_custodian_root_and_stable_lease_before_inventory_open",
+      "empty_canonical_isolation_receipt_output"
+    ],
+    "a2_training_outputs": [
+      "in_process_content_addressed_final_lease_consumption_before_protected_open",
+      "complete_nested_oof_execution_receipt_before_train_or_fusion_claim"
+    ],
+    "a2_training_request_prerequisites": [
+      "separately_authorized_static_whole_file_implementation_manifest_review",
+      "Loop151_equivalent_train_oof_input_bundle",
+      "fresh_training_resource_guard",
+      "externally_pinned_A2_training_authorization_v2"
+    ]
+  },
+  "closed_routes": {
+    "probability_and_r11_selector": {
+      "decision": "reject_low_support_no_selector_training",
+      "val_disagreements": 9,
+      "val_fixes": 8,
+      "val_breaks": 1
+    },
+    "promotion_floor": {
+      "decision": "guard_active",
+      "min_val_error_improvement": 3,
+      "min_test10k_error_improvement": 3
+    }
+  },
+  "parallel_data_governance": {
+    "loop158_decision": "ready_noop_no_external_annotations",
+    "returned_annotations": 0,
+    "private_join_performed": false,
+    "promotion_dependency": "parallel_only_not_a_loop164_promotion_blocker"
+  },
+  "current_capabilities": {
+    "legacy_group_diagnostics": {
+      "total_samples": 40000,
+      "total_groups": 35052,
+      "cross_split_groups": 338,
+      "leakage_groups": 273,
+      "scope": "historical_40k_diagnostic_not_loop164_full_pool_contract"
+    },
+    "existing_sidecar_caches": {
+      "content_pe_v2_cache": {
+        "schema": "axon_content_pe_v2_feature_cache_v1",
+        "input_rows": 40000,
+        "unique_rows": 40000,
+        "feature_dim": 182,
+        "zero_features": 0
+      },
+      "content_string_cache": {
+        "schema": "axon_content_string_feature_cache_v1",
+        "input_rows": 40000,
+        "unique_rows": 40000,
+        "feature_dim": 43,
+        "zero_features": 0
+      },
+      "content_cert_cache": {
+        "schema": "axon_content_cert_feature_cache_v1",
+        "input_rows": 40000,
+        "unique_rows": 40000,
+        "feature_dim": 55,
+        "zero_features": 26249
+      }
+    },
+    "whole_file_expert_present": false,
+    "loop151_train_oof_present": false
+  },
+  "full_pool_isolation_contract": {
+    "validator": {
+      "path": "scripts/validate_loop164_isolation_contract.py",
+      "sha256": "6d5661afc562ec2d7545180d5383b667ac6c0b6b40601e8180c734960b6ba059"
+    },
+    "contract_schema": "axon_loop164_full_pool_isolation_contract_v2",
+    "receipt_schema": "axon_loop164_full_pool_isolation_validation_v4",
+    "required_hard_relations": [
+      "exact_cluster_id",
+      "near_duplicate_cluster_id",
+      "family_id",
+      "campaign_id",
+      "source_group_id"
+    ],
+    "required_time_boundary": "purged_forward_group_oof_with_explicit_warmup",
+    "model_identity_feature_count_required": 0,
+    "feature_contract": {
+      "feature_fields": [
+        "loop151_oof_score",
+        "whole_file_oof_score",
+        "loop151_oof_uncertainty",
+        "whole_file_oof_uncertainty",
+        "loop151_missingness",
+        "whole_file_missingness"
+      ],
+      "implementation_binding_phase": "deferred_to_a2_training_authority",
+      "metadata_receipt_binds_production_implementation": false
+    },
+    "future_manifest": {
+      "path": "reports/roadmap_9997/loop164/full_pool_group_manifest.json",
+      "present": false,
+      "a1_verification": "not_present"
+    },
+    "future_validation_receipt": {
+      "path": "reports/roadmap_9997/loop164/full_pool_isolation_validation.json",
+      "present": false,
+      "a1_verification": "not_present"
+    },
+    "future_fold_scope_plan": {
+      "path": "reports/roadmap_9997/loop164/fold_scope_plan.json",
+      "present": false,
+      "a1_verification": "not_present"
+    },
+    "future_fold_scope_plan_validation": {
+      "path": "reports/roadmap_9997/loop164/fold_scope_plan_validation.json",
+      "present": false,
+      "a1_verification": "not_present"
+    },
+    "future_inner_oof_execution_receipt": {
+      "path": "reports/roadmap_9997/loop164/loop164_train_oof_execution_receipt.json",
+      "present": false,
+      "a1_verification": "not_present"
+    },
+    "a2_gate": "An externally anchored A2 metadata v3 authorization must bind the exact argv, source closure, canonical output, stable lease, metadata-only scope, and empty grants before opening rows; its provenance-bound aggregate-only receipt freezes only partition and residual-feature semantics. The production implementation manifest is intentionally deferred to the separately authorized A2 training authority."
+  },
+  "fold_scope_plan_contract": {
+    "validator": {
+      "path": "scripts/validate_loop164_fold_scope_plan.py",
+      "sha256": "4f63f0d9616203259640ddf2658eaefe3e27a004fe61b814bbcdece37b2b027a"
+    },
+    "plan_schema": "axon_loop164_fold_scope_plan_v1",
+    "validation_schema": "axon_loop164_fold_scope_plan_validation_v1",
+    "future_scope_plan": {
+      "path": "reports/roadmap_9997/loop164/fold_scope_plan.json",
+      "present": false,
+      "a1_verification": "not_present"
+    },
+    "future_validation_receipt": {
+      "path": "reports/roadmap_9997/loop164/fold_scope_plan_validation.json",
+      "present": false,
+      "a1_verification": "not_present"
+    },
+    "gate": "The aggregate-only validator must produce the canonical validation receipt after the custodian freezes the scope plan. A pass freezes scope commitments only; it does not authorize training, consume a training lease, or open any heldout split."
+  },
+  "whole_file_implementation_contract": {
+    "validator": {
+      "path": "scripts/validate_loop164_whole_file_implementation.py",
+      "sha256": "0b449f717ceb873fef1d0fdac649c2ca5f4b06741131fef9f8024a1070d1f8b5"
+    },
+    "synthetic_exactness_oracle": {
+      "path": "tests/test_loop164_whole_file_gcg.py",
+      "sha256": "7981e5d7d69a915ea960bebde8761b2d4ddda8b7c948b1e56a2203183a427dcd"
+    },
+    "authorization": {
+      "path": "manifests/roadmap_9997/loop164_whole_file_residual_expert/implementation_contract_authorization.json",
+      "sha256": "5d30dba8d042545581909ae20c91d3966f06930f01462cbc16bc9c8bca90e7d0"
+    },
+    "manifest_schema": "axon_loop164_whole_file_implementation_manifest_v2",
+    "future_manifest": {
+      "path": "reports/roadmap_9997/loop164/whole_file_expert_implementation_manifest.json",
+      "present": false,
+      "a1_verification": "not_present"
+    },
+    "required_source_roles": [
+      "controller",
+      "model",
+      "input_loader",
+      "oof_protocol",
+      "fusion",
+      "dense_equivalence_test"
+    ],
+    "required_semantics": [
+      "all_bytes_chunked_no_silent_truncation",
+      "exact_independent_regions",
+      "reserved_pad_token_or_explicit_length_mask",
+      "denominator_with_explicit_missingness",
+      "zero_identity_features"
+    ],
+    "oracle_scope": "in_memory_synthetic_only_no_protected_input_or_f1_claim",
+    "gate": "A1 only source-binds the validator and synthetic review contract. The production manifest remains missing until the full-pool contract passes and a future implementation is separately authorized and statically reviewed."
+  },
+  "training_authority_contract": {
+    "validator": {
+      "path": "scripts/validate_loop164_training_authority.py",
+      "sha256": "246ca47880876b0a4198fc561ac03a78a2dced495a13335671fe78c547d13f1f"
+    },
+    "authorization_schema": "axon_loop164_training_authorization_v2",
+    "final_lease_schema": "axon_loop164_training_lease_consumption_v2",
+    "input_bundle_schema": "axon_loop164_train_oof_input_bundle_v1",
+    "future_training_authorization": {
+      "path": "manifests/roadmap_9997/loop164_whole_file_residual_expert/a2_training_authorization.json",
+      "present": false,
+      "a1_verification": "not_present"
+    },
+    "future_scope_plan_validation": {
+      "path": "reports/roadmap_9997/loop164/fold_scope_plan_validation.json",
+      "present": false,
+      "a1_verification": "not_present"
+    },
+    "future_input_bundle": {
+      "path": "reports/roadmap_9997/loop164/train_oof_input_bundle_manifest.json",
+      "present": false,
+      "a1_verification": "not_present"
+    },
+    "future_final_lease": {
+      "path": "reports/roadmap_9997/loop164/training_lease_consumption.final.json",
+      "present": false,
+      "a1_verification": "not_present"
+    },
+    "gate": "The future controller must validate the external trust anchor, fixed runtime, canonical argv, scope validation, input bundle, and fresh resource guard in-process before atomically consuming the final lease. This static source binding does not authorize execution."
+  },
+  "nested_oof_execution_contract": {
+    "validator": {
+      "path": "scripts/validate_loop164_nested_oof_execution_receipt.py",
+      "sha256": "27161c10ef7e61defa862656f00ab50dde4e7b404653a5e3814d5cb39fb8ed11"
+    },
+    "receipt_schema": "axon_loop164_train_oof_execution_receipt_v1",
+    "validation_schema": "axon_loop164_train_oof_execution_validation_v1",
+    "fixed_seeds": [
+      41,
+      42,
+      43
+    ],
+    "outer_fold_count": 5,
+    "inner_fold_count_per_outer_fold": 5,
+    "frozen_fusion_feature_fields": [
+      "loop151_oof_score",
+      "whole_file_oof_score",
+      "loop151_oof_uncertainty",
+      "whole_file_oof_uncertainty",
+      "loop151_missingness",
+      "whole_file_missingness"
+    ],
+    "required_future_artifacts": {
+      "fold_scope_plan": {
+        "path": "reports/roadmap_9997/loop164/fold_scope_plan.json",
+        "present": false,
+        "a1_verification": "not_present"
+      },
+      "fold_scope_plan_validation": {
+        "path": "reports/roadmap_9997/loop164/fold_scope_plan_validation.json",
+        "present": false,
+        "a1_verification": "not_present"
+      },
+      "train_oof_input_bundle": {
+        "path": "reports/roadmap_9997/loop164/train_oof_input_bundle_manifest.json",
+        "present": false,
+        "a1_verification": "not_present"
+      },
+      "training_authorization": {
+        "path": "manifests/roadmap_9997/loop164_whole_file_residual_expert/a2_training_authorization.json",
+        "present": false,
+        "a1_verification": "not_present"
+      },
+      "training_final_lease": {
+        "path": "reports/roadmap_9997/loop164/training_lease_consumption.final.json",
+        "present": false,
+        "a1_verification": "not_present"
+      },
+      "execution_receipt": {
+        "path": "reports/roadmap_9997/loop164/loop164_train_oof_execution_receipt.json",
+        "present": false,
+        "a1_verification": "not_present"
+      }
+    },
+    "gate": "The aggregate receipt must bind the canonical proposal, provenance-attested isolation contract and pass receipt, scope plan, implementation review, Loop151 Train OOF manifest, resource guard, v2 training authority, input bundle, content-addressed lease marker, and final lease. A receipt pass only proves the Train-OOF boundary; it never authorizes Val, Test-10k, or full-test access."
+  },
+  "future_artifacts": {
+    "a2_isolation_validation_authorization": {
+      "path": "manifests/roadmap_9997/loop164_whole_file_residual_expert/a2_isolation_validation_authorization.json",
+      "present": false,
+      "a1_verification": "not_present"
+    },
+    "a2_training_authorization": {
+      "path": "manifests/roadmap_9997/loop164_whole_file_residual_expert/a2_training_authorization.json",
+      "present": false,
+      "a1_verification": "not_present"
+    },
+    "whole_file_implementation_manifest": {
+      "path": "reports/roadmap_9997/loop164/whole_file_expert_implementation_manifest.json",
+      "present": false,
+      "a1_verification": "not_present"
+    },
+    "loop151_train_oof_manifest": {
+      "path": "reports/roadmap_9997/loop164/loop151_train_oof_manifest.json",
+      "present": false,
+      "a1_verification": "not_present"
+    },
+    "loop164_train_oof_execution_receipt": {
+      "path": "reports/roadmap_9997/loop164/loop164_train_oof_execution_receipt.json",
+      "present": false,
+      "a1_verification": "not_present"
+    },
+    "fold_scope_plan": {
+      "path": "reports/roadmap_9997/loop164/fold_scope_plan.json",
+      "present": false,
+      "a1_verification": "not_present"
+    },
+    "fold_scope_plan_validation": {
+      "path": "reports/roadmap_9997/loop164/fold_scope_plan_validation.json",
+      "present": false,
+      "a1_verification": "not_present"
+    },
+    "train_oof_input_bundle": {
+      "path": "reports/roadmap_9997/loop164/train_oof_input_bundle_manifest.json",
+      "present": false,
+      "a1_verification": "not_present"
+    },
+    "training_final_lease": {
+      "path": "reports/roadmap_9997/loop164/training_lease_consumption.final.json",
+      "present": false,
+      "a1_verification": "not_present"
+    },
+    "full_pool_group_manifest": {
+      "path": "reports/roadmap_9997/loop164/full_pool_group_manifest.json",
+      "present": false,
+      "a1_verification": "not_present"
+    },
+    "full_pool_isolation_validation": {
+      "path": "reports/roadmap_9997/loop164/full_pool_isolation_validation.json",
+      "present": false,
+      "a1_verification": "not_present"
+    },
+    "resource_guard": {
+      "path": "reports/roadmap_9997/loop164/resource_guard.json",
+      "present": false,
+      "a1_verification": "not_present"
+    },
+    "val_a_manifest": {
+      "path": "manifests/roadmap_9997/p1_evaluation_reset/val_a_manifest.json",
+      "present": false,
+      "a1_verification": "not_present"
+    },
+    "val_b_manifest": {
+      "path": "manifests/roadmap_9997/p1_evaluation_reset/val_b_manifest.json",
+      "present": false,
+      "a1_verification": "not_present"
+    },
+    "champion_registry": {
+      "path": "reports/model_review/final_model_selection/champion_registry.json",
+      "present": true,
+      "a1_verification": "present_static_reference"
+    }
+  },
+  "execution_blockers": [
+    "a2_isolation_validation_authorization_missing",
+    "a2_training_authorization_missing",
+    "whole_file_implementation_manifest_missing",
+    "loop151_train_oof_manifest_missing",
+    "loop164_train_oof_execution_receipt_missing",
+    "fold_scope_plan_missing",
+    "fold_scope_plan_validation_missing",
+    "train_oof_input_bundle_missing",
+    "training_final_lease_missing",
+    "full_pool_group_manifest_missing",
+    "full_pool_isolation_validation_missing",
+    "resource_guard_missing"
+  ],
+  "promotion_blockers": [
+    "val_a_manifest_missing",
+    "val_b_manifest_missing"
+  ],
+  "certification_contract": {
+    "status": "static_protocol_preregistered_runtime_evidence_missing",
+    "legacy_point_geometry_scope": "development_point_reference_only_not_certification_evidence",
+    "protocol": {
+      "schema": "axon_loop164_certification_protocol_v1",
+      "state": "static_preregistration_only_no_a3_authorization",
+      "amendment_policy": "forbidden_after_first_sealed_window_lock",
+      "claim_scope": {
+        "legacy_point_is_non_certification": true,
+        "target_f1_fraction": {
+          "numerator": 9997,
+          "denominator": 10000
+        },
+        "two_window_replication_required": true
+      },
+      "sealed_windows": {
+        "window_ids": [
+          "W1_certification",
+          "W2_later_replication"
+        ],
+        "time_order": "W2_starts_after_W1_ends",
+        "evaluation_generation": 1,
+        "independent_a3_authorization_and_lease_required": true,
+        "window_pooling_or_replacement_forbidden": true
+      },
+      "candidate_freeze": {
+        "frozen_before_W1_release": true,
+        "required_hash_fields": [
+          "bundle_manifest_sha256",
+          "checkpoint_sha256",
+          "model_source_closure_sha256",
+          "config_sha256",
+          "calibration_sha256",
+          "threshold_policy_sha256",
+          "abstain_policy_sha256",
+          "runtime_environment_sha256",
+          "sbom_sha256",
+          "statistics_runner_sha256"
+        ],
+        "post_W1_selection_or_recalibration_forbidden": true
+      },
+      "isolation": {
+        "component_relation_fields": [
+          "exact_cluster_id",
+          "near_duplicate_cluster_id",
+          "family_id",
+          "campaign_id",
+          "source_group_id"
+        ],
+        "component_time": "max_first_seen_time_utc",
+        "temporal_stratification": "preregistered_calendar_blocks",
+        "zero_cross_window_component_overlap": true,
+        "identity_or_grouping_model_inputs_forbidden": true
+      },
+      "scoring": {
+        "metric": "f1_from_full_system_confusion_matrix",
+        "report_unrounded_TP_TN_FP_FN": true,
+        "denominator_outcomes": [
+          "abstain",
+          "timeout",
+          "missing_feature",
+          "unsupported",
+          "parser_failure",
+          "runtime_failure"
+        ],
+        "fixed_outcome_mapping_required_before_A3": true,
+        "silent_drop_forbidden": true
+      },
+      "inference": {
+        "familywise_alpha": 0.05,
+        "per_window_one_sided_alpha": 0.025,
+        "per_window_lower_confidence_level": 0.975,
+        "method": "stratified_relationship_component_bootstrap_with_conservative_guard",
+        "resampling_unit": "unioned_relationship_component_with_temporal_block",
+        "bootstrap_replicates": 200000,
+        "seed_derivation": "sha256(protocol_sha256|window_manifest_sha256|bundle_sha256|statistics_runner_sha256)",
+        "statistical_failure_decision": "insufficient_evidence"
+      },
+      "acceptance": {
+        "per_window_point_f1_fraction": {
+          "numerator": 9997,
+          "denominator": 10000
+        },
+        "per_window_lower_bound_fraction": {
+          "numerator": 9997,
+          "denominator": 10000
+        },
+        "both_window_pass_required": true,
+        "planned_point_floor": "blinded_power_analysis_must_set_strictly_above_target_before_A3",
+        "failed_window_burns_lineage_without_replacement": true
+      },
+      "power_analysis": {
+        "required_before_A3": true,
+        "method": "aggregate_only_grouped_bootstrap_simulation",
+        "minimum_simulations": 50000,
+        "minimum_joint_power": 0.9,
+        "output_sha256_required": true,
+        "insufficient_support_blocks_A3": true
+      },
+      "operational_gates": {
+        "state": "product_owner_thresholds_required_before_A3",
+        "required_metrics": [
+          "FPR",
+          "FNR",
+          "FP_per_million_benign",
+          "FN_per_1000_malicious",
+          "coverage",
+          "P95_latency",
+          "cost",
+          "critical_slice_error_share"
+        ]
+      },
+      "future_artifacts": [
+        "reports/roadmap_9997/loop164/certification_power_analysis.json",
+        "reports/roadmap_9997/loop164/sealed_window_w1_manifest.json",
+        "reports/roadmap_9997/loop164/sealed_window_w1_evaluation_receipt.json",
+        "reports/roadmap_9997/loop164/sealed_window_w2_manifest.json",
+        "reports/roadmap_9997/loop164/sealed_window_w2_evaluation_receipt.json",
+        "reports/roadmap_9997/loop164/certification_replication_receipt.json"
+      ]
+    },
+    "validator": {
+      "path": "scripts/validate_loop164_certification_evidence.py",
+      "sha256": "b64d289b8ae508004ab8e0142ce93827bcc9e3ad47e4ff802e94a6c378dad08f"
+    },
+    "validator_scope": "aggregate_only_dual_window_hash_statistical_and_operational_gates",
+    "future_artifacts": {
+      "certification_power_analysis": {
+        "path": "reports/roadmap_9997/loop164/certification_power_analysis.json",
+        "present": false,
+        "a1_verification": "not_present"
+      },
+      "sealed_window_w1_manifest": {
+        "path": "reports/roadmap_9997/loop164/sealed_window_w1_manifest.json",
+        "present": false,
+        "a1_verification": "not_present"
+      },
+      "sealed_window_w1_receipt": {
+        "path": "reports/roadmap_9997/loop164/sealed_window_w1_evaluation_receipt.json",
+        "present": false,
+        "a1_verification": "not_present"
+      },
+      "sealed_window_w2_manifest": {
+        "path": "reports/roadmap_9997/loop164/sealed_window_w2_manifest.json",
+        "present": false,
+        "a1_verification": "not_present"
+      },
+      "sealed_window_w2_receipt": {
+        "path": "reports/roadmap_9997/loop164/sealed_window_w2_evaluation_receipt.json",
+        "present": false,
+        "a1_verification": "not_present"
+      },
+      "certification_replication_receipt": {
+        "path": "reports/roadmap_9997/loop164/certification_replication_receipt.json",
+        "present": false,
+        "a1_verification": "not_present"
+      }
+    }
+  },
+  "certification_blockers": [
+    "certification_operational_thresholds_not_preregistered",
+    "certification_power_analysis_missing",
+    "sealed_window_w1_manifest_missing",
+    "sealed_window_w1_receipt_missing",
+    "sealed_window_w2_manifest_missing",
+    "sealed_window_w2_receipt_missing",
+    "certification_replication_receipt_missing"
+  ],
+  "ready_for": {
+    "static_design_review": true,
+    "implementation": false,
+    "train_oof": false,
+    "legacy_val_development": false,
+    "test10k": false,
+    "legacy_full_test": false,
+    "certification": false
+  },
+  "decision": "static_preflight_ready_execution_blocked_missing_prerequisites",
+  "next_action": "Obtain a metadata-only A2 authorization before any future full-pool inventory open. Its pass freezes partition semantics only; then complete scope validation and static implementation review before requesting the separate A2 training authority."
+}

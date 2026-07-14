@@ -1,0 +1,110 @@
+{
+  "schema": "axon_loop28_parity_diagnostic_run_authorization_v1",
+  "loop_id": "p0_loop28_parity_diagnostic_001",
+  "issued_at_utc": "2026-07-11T19:35:26Z",
+  "basis": "The fixed hash-only implementation manifest verifies 48 current artifacts and all four immutable parent evidence hashes without parsing heldout predictions or metrics.",
+  "prereg_authorization_sha256": "3de5c204c37e300c552eba16fd2b633fda5b8bcc68cbdb2b58a7d00b24cb201f",
+  "parent_evidence": {
+    "truth_manifest": "174861be850a681025a7040798c59b7157cc67ab5503437088359692dad5659d",
+    "train_smoke_receipt": "3fbbd597dc14cf67a082203e680e83c1f521972e1bf1f36282ef847d9d4d2309",
+    "native_parity_receipt": "abeaeb0dd28060a09b7b23fbf0300b2ba6616ef040c4c4958f870aa5d13436b8",
+    "complete_replay_verify_receipt": "fc39b4a0289d4fc21955030157a8fb4beb437eba78d28dec6f5a665bcf0a5c94"
+  },
+  "implementation_manifest": {
+    "path": "manifests/roadmap_9997/p0_loop28_parity_diagnostic/implementation_manifest.json",
+    "sha256": "a581f00503d62117576e0f2721de72da049ea8fe7786788db63a653ace207a49"
+  },
+  "implementation_artifacts": {
+    "python_diagnostic": {
+      "path": "scripts/diagnose_loop28_parity.py",
+      "sha256": "a0877e5bee3304bf9a1e33b06666fd66508b769782162a76698c2dadc9ff05a0"
+    },
+    "native_runtime_source": {
+      "path": "tools/axon_onnx_dll/src/axon_onnx_predict.cpp",
+      "sha256": "b712d4993f6d27a62bf638d4f66ed8892bd76f5d658cb3637ae13566b3fdd79b"
+    },
+    "native_public_header": {
+      "path": "tools/axon_onnx_dll/include/axon_onnx_predict.h",
+      "sha256": "95a488020ce62fa71c5ff33de4431b79c7d36e204608aa5a70888475a92aa278"
+    },
+    "native_selftest_source": {
+      "path": "tools/axon_onnx_dll/examples/axon_onnx_selftest.cpp",
+      "sha256": "04ce9f75ea17930dd064a7a254594cd355ebbc01b1a897ddcd253eb79982815e"
+    },
+    "native_cmake": {
+      "path": "tools/axon_onnx_dll/CMakeLists.txt",
+      "sha256": "b0423e02f0cd3329a7988cb2cc493d1bb515f10b91d01846d7014e02a40532e6"
+    },
+    "native_dll": {
+      "path": "tools/axon_onnx_dll/build/bin/Release/axon_onnx_predict.dll",
+      "sha256": "870fbf3b36734478d73edbee6871532410b9f2b8fd613c0690df5f77f932bc5d"
+    },
+    "native_selftest": {
+      "path": "tools/axon_onnx_dll/build/bin/Release/axon_onnx_selftest.exe",
+      "sha256": "394aa394934f092b0717151f5aec754bbc38196154802cbc2c030d0f61f29006"
+    }
+  },
+  "runtime_artifacts": {
+    "python_checkpoint": {
+      "path": "models/random_20w_8192/best_model.pt",
+      "sha256": "96a1b1ece41dd7dd9142a0f7f4330da3a7938a26cca8b01e0e7c7a1074e5e3a4"
+    },
+    "python_stage2": {
+      "path": "reports/random_20w_split/stage2_loop28_content_pe_valonly/stage2_selected_model.pkl",
+      "sha256": "34d76eaf015e6750ca080f80a8ae528e8e10f2261ff9f1c001dc2f243672a5c2"
+    },
+    "python_stage2_metadata": {
+      "path": "manifests/roadmap_9997/p0_raw_replay/loop28_stage2.metadata.json",
+      "sha256": "0a24dcf1ec5bab43d6afd004df006e4c8008bace854265cdd5f8cc4c79ba80f4"
+    },
+    "pickle_allowlist": {
+      "path": "manifests/roadmap_9997/p0_raw_replay/pickle_sha256_allowlist.json",
+      "sha256": "744ec3792d88721e861a412acaaaa768d9d0ae99f05c41b2c3b49d78dd3ad8ee"
+    },
+    "native_onnx": {
+      "path": "models/random_20w_8192/axon_loop28_base.onnx",
+      "sha256": "3199b158fc8f7e3a53a516b2681aef8b5d5aa4a210baf66152fded72a3ff07f4"
+    },
+    "native_onnx_data": {
+      "path": "models/random_20w_8192/axon_loop28_base.onnx.data",
+      "sha256": "4865d52d861d780627ca9aea4b16f83d8c2df62dd5b2136217d1e42547b8c7fa"
+    },
+    "native_stage2": {
+      "path": "models/random_20w_8192/loop28_stage2_hgb.json",
+      "sha256": "c2c0cb0f39d12892891f9949e6f765e03fb1188f8fa3f3e574c0c4f73c63c648"
+    }
+  },
+  "frozen_sample": {
+    "split": "train",
+    "sample_index": 0,
+    "source_sha256": "09b6b8c80bc31846312bd6958e1d4bf1bcd72d25450d7f7dec2bce6ba81798cc",
+    "size_bytes": 4218880
+  },
+  "budget": {
+    "max_diagnostic_generations": 1,
+    "max_verified_raw_snapshots": 1,
+    "max_python_executions": 6,
+    "max_native_executions": 6,
+    "max_crossfeed_executions": 4,
+    "per_execution_timeout_seconds": 120,
+    "total_wall_clock_seconds": 1200,
+    "cpu_only": true,
+    "gpu_executions": 0,
+    "network_requests": 0,
+    "max_output_bytes": 67108864
+  },
+  "timeout_enforcement": {
+    "native_subprocess": "hard_timeout",
+    "verified_snapshot": "post_return_elapsed_rejection",
+    "python_inference": "post_return_elapsed_rejection",
+    "total_flow": "checkpointed_elapsed_rejection_outer_watchdog_required"
+  },
+  "frozen_tolerance": 0.000001,
+  "attempt_id": "p0_loop28_parity_diagnostic_001_final_attempt_001",
+  "attempt_lease_path": "manifests/roadmap_9997/p0_loop28_parity_diagnostic/run_attempt.final.json",
+  "generation": "final",
+  "output_path": "reports/roadmap_9997/p0_loop28_parity_diagnostic/diagnostic_receipt.final.json",
+  "outer_watchdog_seconds": 1200,
+  "quality_or_certification_claim_allowed": false,
+  "decision": "allow_bounded_loop28_parity_diagnostic_run"
+}

@@ -1,0 +1,24 @@
+{
+  "schema": "axon_roadmap_9997_authorization_v1",
+  "loop_id": "p0_truth_freeze_001",
+  "authorization_level": "A1_scoped_change",
+  "basis": "The user asked to continue the active long-term planning and goal-writing task.",
+  "allowed": [
+    "replace goal.md with the long-term execution contract",
+    "add the read-only truth-manifest builder",
+    "add targeted tests",
+    "hash and parse existing artifacts",
+    "write P0 machine manifests",
+    "append the durable experiment journal"
+  ],
+  "not_authorized": [
+    "training",
+    "large feature extraction",
+    "dependency installation",
+    "Test-10k or full-test inference",
+    "split, label, cache, or raw-data mutation",
+    "deployment",
+    "git commit or push"
+  ],
+  "decision": "allow_p0_truth_freeze_only"
+}

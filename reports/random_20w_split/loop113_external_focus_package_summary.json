@@ -1,0 +1,51 @@
+{
+  "schema": "axon_loop113_external_focus_annotation_package_v1",
+  "protocol": "Loop113 external focus annotation package export; content context plus Loop111 submission template only; no private-map read, no unblind, no model fitting, no threshold selection, no automatic verdict, no split/cache mutation",
+  "identity_policy": "The external context package may expose blind_review_id and content-derived fields only. Filename/path/directory/extension/hash/source_sha256/sample_index/split/row order/model score/rank fields are not exported and are not verdict evidence.",
+  "inputs": {
+    "focus_csv": "reports\\random_20w_split\\loop106_content_review_focus_top240.csv",
+    "expected_focus_rows": 240
+  },
+  "decision": "ready_for_external_content_annotation",
+  "blockers": [],
+  "warnings": [],
+  "rows": 240,
+  "label_counts": {
+    "0": 207,
+    "1": 33
+  },
+  "field_audit": {
+    "focus_field_count": 30,
+    "context_field_count": 25,
+    "missing_required_columns": [],
+    "missing_context_fields": [],
+    "forbidden_focus_columns": [],
+    "context_header_violations": [],
+    "context_value_violation_count": 0,
+    "context_value_violation_examples": [],
+    "missing_blind_review_id_rows": 0,
+    "duplicate_blind_review_id_rows": 0
+  },
+  "decisions": {
+    "ready_for_external_content_annotation": true,
+    "loop111_input_ready_as_noop_template": true,
+    "automatic_verdict_allowed": false,
+    "automatic_relabel_allowed": false,
+    "automatic_replacement_allowed": false,
+    "training_allowed": false,
+    "test10k_allowed": false,
+    "full_test_allowed": false,
+    "next_allowed_step": "fill annotation template with independent content/external verdicts, then run Loop112"
+  },
+  "outputs": {
+    "context_csv": "reports\\random_20w_split\\loop113_external_focus_context.csv",
+    "annotation_template_csv": "reports\\random_20w_split\\loop113_external_annotation_template.csv",
+    "reviewer_guide_json": "reports\\random_20w_split\\loop113_external_reviewer_guide.json",
+    "summary_json": "reports\\random_20w_split\\loop113_external_focus_package_summary.json"
+  },
+  "notes": [
+    "The context CSV intentionally omits loop106 rank/score, source paths, hashes, sample indices, split, and model scores.",
+    "The annotation template is header-only so it is a valid no-op Loop111 input until real rows are added.",
+    "Blank annotation rows are not accepted by Loop111; reviewers should submit only filled verdict rows."
+  ]
+}

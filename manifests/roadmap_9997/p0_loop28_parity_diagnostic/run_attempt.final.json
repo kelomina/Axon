@@ -1,0 +1,10 @@
+{
+  "schema": "axon_loop28_parity_diagnostic_attempt_lease_v1",
+  "loop_id": "p0_loop28_parity_diagnostic_001",
+  "attempt_id": "p0_loop28_parity_diagnostic_001_final_attempt_001",
+  "generation": "final",
+  "run_authorization_sha256": "aa07e16765e23b6b0e2e07dad5ffa06ed2036d064d25940b4c0f36f6f4eda359",
+  "output_path": "reports/roadmap_9997/p0_loop28_parity_diagnostic/diagnostic_receipt.final.json",
+  "consumed_at_utc": "2026-07-11T19:36:54.628473+00:00",
+  "status": "authorization_consumed_before_raw_access"
+}

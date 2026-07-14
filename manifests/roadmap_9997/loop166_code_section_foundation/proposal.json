@@ -1,0 +1,96 @@
+{
+  "schema": "axon_loop166_code_section_foundation_proposal_v1",
+  "loop_id": "loop166_code_section_foundation",
+  "parent_decision": "park_current_loop164_recipe_surrogate_negative_exact_loop151_gate_not_run",
+  "status": "phase_a_extractor_gate_authorized_train_only",
+  "hypothesis": "Executable-code-section BPE plus masked-language pretraining learns multi-byte program evidence that is materially more orthogonal to Loop151 than another prefix, whole-file morphology, PE sidecar, selector, or signer refinement.",
+  "claim_scope": "user_directed_local_train_only_foundation_diagnostic_not_promotion",
+  "sources": {
+    "malwarept": {
+      "url": "https://arxiv.org/abs/2605.16455",
+      "version": "v1",
+      "published": "2026-05-15",
+      "code_or_weights_available": false
+    },
+    "ember2024": {
+      "url": "https://github.com/FutureComputing4AI/EMBER2024",
+      "commit": "0ef753e81d98bf209f71b03cd331dfc190b5b54d"
+    },
+    "tesseract": {
+      "url": "https://github.com/s2labres/tesseract-ml-release",
+      "commit": "05132c83eccaa0be24b5403bfe9a73c22199ddef"
+    },
+    "nebula": {
+      "url": "https://github.com/dtrizna/nebula",
+      "commit": "3d3b97e5b079d64371224db3dcfbdf175975e90d"
+    }
+  },
+  "phase_a": {
+    "input_bundle": "reports/roadmap_9997/loop164/local_probe_bundle.jsonl",
+    "input_bundle_sha256": "90961bfed0460787e261965a3180e1b0569df0f9d275f9693daad1ccf53dc233",
+    "rows": 256,
+    "rows_per_label": 128,
+    "allowed_split": "train",
+    "training": false,
+    "model_construction": false,
+    "quality_metrics": false,
+    "threshold_operations": false,
+    "val_test_or_full_access": false,
+    "public_key_required": false,
+    "minimum_extractor_coverage": 0.85,
+    "maximum_wall_seconds": 180,
+    "maximum_peak_rss_bytes": 1073741824,
+    "silent_drop_allowed": false,
+    "raw_code_output_allowed": false
+  },
+  "phase_b_frozen_recipe": {
+    "vocabulary": "1024_bpe_plus_5_special",
+    "tokenizer_window_original_bytes": 512,
+    "sequence_tokens": 512,
+    "maximum_chunks_per_file": 8,
+    "layers": 6,
+    "hidden_dim": 384,
+    "heads": 6,
+    "ffn_dim": 1536,
+    "local_attention_window": 128,
+    "mlm_mask_ratio": 0.25,
+    "fit_scope": "outer_fit_only",
+    "maximum_wall_hours_per_fold": 8,
+    "minimum_throughput_original_byte_equivalent_tokens_per_second": 2000
+  },
+  "forbidden_model_inputs": [
+    "filename",
+    "path",
+    "extension",
+    "source_sha256",
+    "sample_index",
+    "fold",
+    "source",
+    "family",
+    "time",
+    "signer",
+    "reviewer_verdict",
+    "pe_features",
+    "stat_features",
+    "content_sidecars",
+    "loop151_scores",
+    "loop69_scores",
+    "loop164_scores"
+  ],
+  "one_seed_gate": {
+    "minimum_supported_coverage": 0.85,
+    "full_system_denominator_coverage": 1.0,
+    "minimum_mlm_bits_per_original_byte_improvement": 0.05,
+    "minimum_error_reduction": "max(30, ceil(0.10 * strongest_control_errors))",
+    "minimum_improved_folds": 4,
+    "component_cluster_one_sided_95_lcb_net_error_reduction": ">0",
+    "maximum_fp_or_fn_relative_regression": 0.05,
+    "maximum_structural_residual_overlap": 0.8,
+    "minimum_structural_error_repairs": 50
+  },
+  "decision": "run_phase_a_extractor_gate_only",
+  "research_champion": "Loop151",
+  "target_f1": 0.9997,
+  "target_achieved": false,
+  "promotion_evidence": false
+}

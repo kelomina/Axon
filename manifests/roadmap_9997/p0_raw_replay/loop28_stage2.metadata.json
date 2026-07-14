@@ -1,0 +1,42 @@
+{
+  "schema": "axon_stage2_model_metadata_v1",
+  "metadata_contract": "axon_loop28_legacy_stage2_binding_v1",
+  "model_path": "reports/random_20w_split/stage2_loop28_content_pe_valonly/stage2_selected_model.pkl",
+  "model_sha256": "34d76eaf015e6750ca080f80a8ae528e8e10f2261ff9f1c001dc2f243672a5c2",
+  "checkpoint_path": "models/random_20w_8192/best_model.pt",
+  "checkpoint_sha256": "96a1b1ece41dd7dd9142a0f7f4330da3a7938a26cca8b01e0e7c7a1074e5e3a4",
+  "provenance_report_path": "reports/random_20w_split/stage2_loop28_content_pe_valonly/stage2_cache_matrix_report.json",
+  "provenance_report_sha256": "8cdcbe3f9f250efc3e809aa8e5eb8f7710aa84797e1b8f129c2a4ff4bb5bc520",
+  "selected_model_name": "hgb_lr0.06_leaf31_l2_0__noise_none",
+  "threshold": 0.5,
+  "feature_dim": 1520,
+  "feature_config": {
+    "prefix_len": 256,
+    "chunk_count": 16,
+    "include_pe": true,
+    "include_stat": true,
+    "include_lightweight": true,
+    "include_byte_summary": true,
+    "include_content_pe": true,
+    "include_content_pe_v2": false,
+    "include_content_string": false,
+    "include_content_cert": false
+  },
+  "checkpoint_config_contract": {
+    "max_byte_length": 8192,
+    "pe_feature_dim": 256,
+    "stat_feature_dim": 49,
+    "lightweight_feature_dim": 256,
+    "pe_schema_version": "fixed_v2"
+  },
+  "knn": {
+    "enabled": false,
+    "reference_storage": null,
+    "reference_path": null
+  },
+  "generation": {
+    "method": "metadata-only migration from the frozen report and safe checkpoint facts",
+    "pickle_opened": false,
+    "training_or_fitting_performed": false
+  }
+}

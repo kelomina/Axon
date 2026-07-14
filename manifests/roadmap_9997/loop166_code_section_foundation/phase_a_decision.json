@@ -1,0 +1,56 @@
+{
+  "schema": "axon_loop166_code_section_foundation_phase_a_decision_v1",
+  "loop_id": "loop166_code_section_foundation",
+  "claim_scope": "local_train_only_extractor_resource_diagnostic_not_model_quality",
+  "bindings": {
+    "proposal": {
+      "path": "manifests/roadmap_9997/loop166_code_section_foundation/proposal.json",
+      "sha256": "0bffb0fe0e5990758017014ce3ff14d43f33ef9a59b5e3feb662aaaa0fdcd5ae"
+    },
+    "module_init": {
+      "path": "src/loop166/__init__.py",
+      "sha256": "a04b3dcbb6a2c40a75d2cc452b9b9700229073f5f8ce4f70e2583508dfb6b358"
+    },
+    "extractor": {
+      "path": "src/loop166/code_sections.py",
+      "sha256": "281a494ca5cabe2581a93733e218a181e2d11f579e109e221fc99c3ec215f607"
+    },
+    "runner": {
+      "path": "scripts/run_loop166_code_section_extractor_probe.py",
+      "sha256": "0e573d2ebe8ad74b895f0fcf6f651c024c9715dcb793e01532ed5692ffc3ead3"
+    },
+    "tests": {
+      "path": "tests/test_loop166_code_sections.py",
+      "sha256": "3fd26e1f29ea401d3eb1b0223c75bebc522bcfaade3f027e8a8419c469b1e2e1"
+    },
+    "report": {
+      "path": "reports/roadmap_9997/loop166/code_section_extractor_probe.json",
+      "sha256": "bf4a56aa12d0de9a53eabb776e9d9f0dbb57b756be143c147bdd1f8e1e7fca6f"
+    },
+    "documentation": {
+      "path": "docs/phase3_loop166_code_section_extractor_probe.md",
+      "sha256": "14a3f352346a7c7291edbcf14e46fb354c1226f5883da2c416ff13baf2532770"
+    }
+  },
+  "result": {
+    "denominator": 256,
+    "success": 251,
+    "missing": 5,
+    "coverage": 0.98046875,
+    "silent_drop": 0,
+    "elapsed_seconds": 1.294335200000205,
+    "peak_process_rss_bytes": 48603136,
+    "raw_code_artifact_bytes": 0,
+    "extraction_commitment_sha256": "a3939a1ade92e1b379c57529252565b797f148ff11812a1ad8db940f8290e83e"
+  },
+  "decision": "phase_a_extractor_gate_pass",
+  "ready_for": {
+    "one_outer_tiny_mlm_resource_cell": true,
+    "five_fold_oof": false,
+    "val_test_or_full": false,
+    "promotion": false
+  },
+  "research_champion": "Loop151",
+  "target_f1": 0.9997,
+  "target_achieved": false
+}

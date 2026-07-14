@@ -1,0 +1,77 @@
+{
+  "schema": "axon_loop51_region_view_cache_build_v1",
+  "split_csv": "E:\\Project\\python\\Axon_v2.6Exp\\reports\\random_20w_split\\loop27_corrected_split.csv",
+  "source_manifest": "E:\\Project\\python\\Axon_v2.6Exp\\data\\.cache\\manifest_38672ba0.json",
+  "output_cache_dir": "E:\\Project\\python\\Axon_v2.6Exp\\data\\.cache_loop51_region_view_8192",
+  "output_manifest": "E:\\Project\\python\\Axon_v2.6Exp\\data\\.cache_loop51_region_view_8192\\manifest_38672ba0.json",
+  "requested_splits": [
+    "train",
+    "val"
+  ],
+  "requested_rows": 40000,
+  "written_rows": 40000,
+  "skipped_existing_rows": 0,
+  "split_counts": {
+    "train": 20000,
+    "val": 20000
+  },
+  "label_counts": {
+    "0": 20000,
+    "1": 20000
+  },
+  "issue_counts": {},
+  "byte_length": 8192,
+  "region_names": [
+    "head",
+    "tail",
+    "entrypoint",
+    "overlay_payload",
+    "security_directory",
+    "resource_directory",
+    "import_directory",
+    "export_directory",
+    "first_exec_section",
+    "last_section",
+    "max_entropy_section"
+  ],
+  "region_slot_sizes": {
+    "head": 745,
+    "tail": 745,
+    "entrypoint": 745,
+    "overlay_payload": 745,
+    "security_directory": 745,
+    "resource_directory": 745,
+    "import_directory": 745,
+    "export_directory": 745,
+    "first_exec_section": 744,
+    "last_section": 744,
+    "max_entropy_section": 744
+  },
+  "region_present_counts": {
+    "entrypoint": 34414,
+    "export_directory": 11881,
+    "first_exec_section": 35230,
+    "head": 40000,
+    "import_directory": 34310,
+    "last_section": 39840,
+    "max_entropy_section": 40000,
+    "overlay_payload": 4191,
+    "resource_directory": 37003,
+    "security_directory": 13830,
+    "tail": 40000
+  },
+  "total_region_bytes": {
+    "entrypoint": 25625311,
+    "export_directory": 4143953,
+    "first_exec_section": 26196152,
+    "head": 29800000,
+    "import_directory": 6894790,
+    "last_section": 26503769,
+    "max_entropy_section": 29716888,
+    "overlay_payload": 2550459,
+    "resource_directory": 27003205,
+    "security_directory": 10239645,
+    "tail": 29800000
+  },
+  "identity_policy": "Paths, hashes, sample ids, split names, and row order are not encoded into byte_sequence."
+}

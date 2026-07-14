@@ -1,0 +1,34 @@
+{
+  "schema": "axon_prediction_noise_audit_v1",
+  "predictions": "reports\\random_20w_split\\stage2_cache_matrix_replaced_extended_valonly\\frozen_val_predictions.csv",
+  "threshold": 0.515,
+  "samples": 20000,
+  "errors": 365,
+  "false_positive_count": 221,
+  "false_negative_count": 144,
+  "fp_prob": {
+    "avg": 0.8201131772126696,
+    "min": 0.5209944248,
+    "max": 0.9991766214
+  },
+  "fn_prob": {
+    "avg": 0.22435699353541666,
+    "min": 0.0017886285,
+    "max": 0.5139400959
+  },
+  "noise_bucket_counts": {
+    "high_fn_conflict_prob_le_0.05": 19,
+    "high_fp_conflict_prob_ge_0.95": 38,
+    "near_threshold_error_le_0.05": 29,
+    "near_threshold_error_le_0.10": 25,
+    "none": 19853,
+    "severe_fn_conflict_prob_le_0.01": 8,
+    "severe_fp_conflict_prob_ge_0.99": 28
+  },
+  "suspected_count": 147,
+  "outputs": {
+    "suspected_csv": "reports\\random_20w_split\\stage2_cache_matrix_replaced_extended_val_noise_audit\\suspected_noise_and_hard_examples.csv",
+    "breakdown_csv": "reports\\random_20w_split\\stage2_cache_matrix_replaced_extended_val_noise_audit\\noise_breakdown.csv",
+    "summary_json": "reports\\random_20w_split\\stage2_cache_matrix_replaced_extended_val_noise_audit\\noise_audit_summary.json"
+  }
+}

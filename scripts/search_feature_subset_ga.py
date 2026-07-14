@@ -36,6 +36,20 @@ from security import load_safe_checkpoint  # noqa: E402
 
 
 Batch = tuple[torch.Tensor, torch.Tensor, torch.Tensor]
+MAX_JSON_INPUT_BYTES = 8 * 1024 * 1024
+
+
+def load_json_object(path: Path) -> dict:
+    if path.stat().st_size > MAX_JSON_INPUT_BYTES:
+        raise ValueError(f"JSON input is too large: {path}")
+    with path.open("r", encoding="utf-8") as handle:
+        raw = handle.read(8388609)
+    if len(raw.encode("utf-8")) > MAX_JSON_INPUT_BYTES:
+        raise ValueError(f"JSON input exceeded bounded read limit: {path}")
+    payload = json.loads(raw)
+    if not isinstance(payload, dict):
+        raise ValueError(f"JSON input must be an object: {path}")
+    return payload
 
 
 @dataclass(frozen=True)
@@ -107,6 +121,7 @@ class GeneticConfig:
     target_keep_ratio: float = 0.45
     min_pe_features: int = 1
     min_stat_features: int = 1
+    max_leaderboard_size: int = 100
 
 
 def parse_thresholds(text: str) -> list[float]:
@@ -410,7 +425,7 @@ def run_genetic_search(
         cache.values(),
         key=lambda item: (item["fitness"], item["metrics"]["f1"], -item["kept_total"]),
         reverse=True,
-    )
+    )[: max(1, int(ga_config.max_leaderboard_size))]
     return {
         "best": best_result,
         "leaderboard": leaderboard,
@@ -502,22 +517,62 @@ def collect_eval_batches(
     device: torch.device,
     max_batches: Optional[int],
 ) -> tuple[list[Batch], np.ndarray]:
+    """Collect bounded eval batches on CPU.
+
+    GA evaluates many masks against the same samples. Keeping those samples on
+    CUDA would make memory grow with the loaded eval set, so tensors are cached
+    on CPU and moved per batch inside ``predict_with_masks``.
+    """
     batches = []
     labels_all = []
+    del device
     for batch_idx, (byte_seq, pe_features, stat_features, labels) in enumerate(loader):
         if max_batches is not None and batch_idx >= max_batches:
             break
         batches.append(
             (
-                byte_seq.to(device, non_blocking=True),
-                pe_features.to(device, non_blocking=True),
-                stat_features.to(device, non_blocking=True),
+                byte_seq.detach().cpu(),
+                pe_features.detach().cpu(),
+                stat_features.detach().cpu(),
             )
         )
         labels_all.extend(labels.detach().cpu().numpy().astype(np.int64).tolist())
     if not batches:
         raise ValueError("no evaluation batches were available")
     return batches, np.asarray(labels_all, dtype=np.int64)
+
+
+def _select_batches_by_global_indices(
+    batches: Sequence[Batch],
+    indices: Sequence[int],
+) -> list[Batch]:
+    selected: list[Batch] = []
+    sorted_indices = np.asarray(sorted(int(index) for index in indices), dtype=np.int64)
+    if sorted_indices.size == 0:
+        return selected
+
+    cursor = 0
+    start = 0
+    for byte_seq, pe_features, stat_features in batches:
+        batch_size = int(byte_seq.shape[0])
+        end_cursor = cursor + batch_size
+        while start < sorted_indices.size and sorted_indices[start] < cursor:
+            start += 1
+        stop = start
+        while stop < sorted_indices.size and sorted_indices[stop] < end_cursor:
+            stop += 1
+        if stop > start:
+            local_indices = torch.from_numpy(sorted_indices[start:stop] - cursor).to(dtype=torch.long)
+            selected.append(
+                (
+                    byte_seq.index_select(0, local_indices),
+                    pe_features.index_select(0, local_indices),
+                    stat_features.index_select(0, local_indices),
+                )
+            )
+        cursor = end_cursor
+        start = stop
+    return selected
 
 
 def split_batches_stratified(
@@ -528,17 +583,15 @@ def split_batches_stratified(
 ) -> tuple[list[Batch], np.ndarray, list[Batch], np.ndarray]:
     """按标签均衡切出 search/holdout，避免 GA 在同一批样本上自证成功。
 
-    DataLoader 已经把样本分成 batch 了。为了保持实现简单可靠，这里先把这些
-    batch 拼起来，再按标签打散切分，最后重新组成两个“内存 batch”。
+    DataLoader 已经把样本分成 batch 了。这里按全局样本下标做选择，但不把
+    所有 batch 先拼成一个巨型 tensor，避免 holdout 切分时出现 2-3 份数据峰值。
     """
     if not 0 < holdout_ratio < 1:
         raise ValueError("holdout_ratio must be in (0, 1)")
 
-    byte_seq = torch.cat([batch[0] for batch in batches], dim=0)
-    pe_features = torch.cat([batch[1] for batch in batches], dim=0)
-    stat_features = torch.cat([batch[2] for batch in batches], dim=0)
     labels = np.asarray(labels, dtype=np.int64)
-    if labels.shape[0] != byte_seq.shape[0]:
+    sample_count = sum(int(batch[0].shape[0]) for batch in batches)
+    if labels.shape[0] != sample_count:
         raise ValueError("labels and batches have different sample counts")
 
     rng = random.Random(seed)
@@ -558,19 +611,8 @@ def split_batches_stratified(
 
     search_indices.sort()
     holdout_indices.sort()
-    search_tensor = torch.tensor(search_indices, dtype=torch.long, device=byte_seq.device)
-    holdout_tensor = torch.tensor(holdout_indices, dtype=torch.long, device=byte_seq.device)
-
-    search_batches = [(
-        byte_seq.index_select(0, search_tensor),
-        pe_features.index_select(0, search_tensor),
-        stat_features.index_select(0, search_tensor),
-    )]
-    holdout_batches = [(
-        byte_seq.index_select(0, holdout_tensor),
-        pe_features.index_select(0, holdout_tensor),
-        stat_features.index_select(0, holdout_tensor),
-    )]
+    search_batches = _select_batches_by_global_indices(batches, search_indices)
+    holdout_batches = _select_batches_by_global_indices(batches, holdout_indices)
     return (
         search_batches,
         labels[np.asarray(search_indices, dtype=np.int64)],
@@ -594,6 +636,11 @@ def predict_with_masks(
     probs = []
     model.eval()
     for byte_seq, pe_features, stat_features in batches:
+        byte_seq = byte_seq.to(device, non_blocking=True)
+        pe_features = pe_features.to(device, non_blocking=True)
+        stat_features = stat_features.to(device, non_blocking=True)
+        pe_mask = pe_mask.to(dtype=pe_features.dtype)
+        stat_mask = stat_mask.to(dtype=stat_features.dtype)
         outputs = model(
             byte_seq,
             pe_features * pe_mask,
@@ -606,7 +653,9 @@ def predict_with_masks(
 
 def write_json(path: Path, payload: dict) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+    with path.open("w", encoding="utf-8") as handle:
+        json.dump(payload, handle, indent=2, ensure_ascii=False)
+        handle.write("\n")
 
 
 def write_leaderboard_csv(path: Path, rows: Sequence[dict]) -> None:
@@ -678,7 +727,7 @@ def individual_from_selected_indices(
 
 
 def load_feature_mask(path: Path, spec: FeatureMaskSpec) -> np.ndarray:
-    payload = json.loads(path.read_text(encoding="utf-8"))
+    payload = load_json_object(path)
     mask_spec = payload.get("mask_spec", {})
     expected = {
         "pe_feature_dim": spec.pe_feature_dim,
@@ -750,7 +799,7 @@ def export_mask_from_report(
     output_path: Path,
     note: str = "",
 ) -> dict:
-    report = json.loads(report_path.read_text(encoding="utf-8"))
+    report = load_json_object(report_path)
     best = report["best"]
     mask_spec = report["mask_spec"]
     spec = FeatureMaskSpec(
@@ -834,6 +883,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--target-keep-ratio", type=float, default=0.45)
     parser.add_argument("--min-pe-features", type=int, default=1)
     parser.add_argument("--min-stat-features", type=int, default=1)
+    parser.add_argument("--leaderboard-size", type=int, default=100)
     parser.add_argument("--seed", type=int, default=42)
 
     parser.add_argument(
@@ -922,7 +972,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         raise ValueError("--checkpoint is required unless --export-mask-from-report is used")
 
     device = torch.device(args.device if args.device == "cpu" or torch.cuda.is_available() else "cpu")
-    checkpoint = load_safe_checkpoint(args.checkpoint, map_location=device)
+    checkpoint = load_safe_checkpoint(args.checkpoint, map_location="cpu")
     config = AxonExperimentConfig.from_dict(checkpoint["config"])
     train_config_dict = checkpoint.get("train_config", {})
     train_config = TrainingConfig(**train_config_dict) if train_config_dict else TrainingConfig()
@@ -936,8 +986,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     )
 
     model = AxonMalwareModel(config)
-    model.load_state_dict(checkpoint["model_state_dict"])
+    model_state_dict = checkpoint["model_state_dict"]
+    model.load_state_dict(model_state_dict)
+    del checkpoint, model_state_dict
     model.to(device)
+    if torch.device(device).type == "cuda":
+        torch.cuda.empty_cache()
     model.eval()
 
     spec = build_feature_mask_spec(
@@ -969,6 +1023,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         target_keep_ratio=args.target_keep_ratio,
         min_pe_features=args.min_pe_features,
         min_stat_features=args.min_stat_features,
+        max_leaderboard_size=max(int(args.leaderboard_size), int(args.top_k)),
     )
 
     def evaluate(individual: np.ndarray) -> dict:

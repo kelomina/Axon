@@ -1,0 +1,148 @@
+{
+  "schema": "axon_loop28_pytorch_native_feasibility_proposal_v1",
+  "loop_id": "p0_loop28_pytorch_native_feasibility_001",
+  "created_at_utc": "2026-07-11T22:56:00Z",
+  "parent_closure": {
+    "path": "manifests/roadmap_9997/p0_loop28_onnx_operator_remediation/post_manifest.json",
+    "sha256": "4eae028bdffa0683b273bfadf4ac46df6cb7388c3742dd6222b28fafb9056e6e",
+    "decision": "post_operator_preflight_exact_tie_fallback_pytorch_native_no_execution"
+  },
+  "objective": "Determine whether the installed Windows PyTorch 2.12 CPU stack can produce and execute one Python-free-oriented native package through torch.export plus AOTInductor and a LibTorch/TorchScript diagnostic control, before any Axon checkpoint, ONNX, Stage-2, raw, split, cache, heldout, or quality artifact is opened.",
+  "strategic_roles": {
+    "primary_frontier": "torch.export -> AOTInductor .pt2 -> C++ AOTIModelPackageLoader",
+    "diagnostic_control": "TorchScript trace -> C++ torch::jit::load",
+    "selection_rule": "If the LibTorch control fails, the local C++ toolchain is invalid. If the control passes but AOTI fails, close the Windows AOTI route and consider a separately governed LibTorch Axon feasibility loop. If both pass, a new Axon synthetic-only authorization is still required."
+  },
+  "tiny_model_contract": {
+    "name": "TinyLinearGeluTopKCPU",
+    "input": {
+      "name": "input",
+      "dtype": "float32",
+      "shape": [2, 8],
+      "contiguous": true,
+      "values": "explicit source constants"
+    },
+    "parameters": "explicit immutable float32 linear weight and bias buffers with paired duplicate rows",
+    "operations": ["aten.linear", "aten.gelu.default", "aten.topk.default"],
+    "outputs": ["linear", "gelu", "topk_values", "topk_indices"],
+    "topk": 2,
+    "exact_ties_intentional": true,
+    "random_initialization": false,
+    "training": false,
+    "axon_dependency": false
+  },
+  "execution_lanes": [
+    "python_eager_reference",
+    "python_aoti_load_package",
+    "python_torchscript_control",
+    "cpp_aoti_model_package_loader",
+    "cpp_libtorch_torchscript_control"
+  ],
+  "toolchain_contract": {
+    "python": "vnev/Scripts/python.exe",
+    "torch_version": "2.12.0+cu132",
+    "torch_commit": "7661cd9c6b841b62b7f411aa52ec51f05457263b",
+    "cpu_capability": "AVX512",
+    "aoti_python_apis": ["torch._inductor.aoti_compile_and_package", "torch._inductor.aoti_load_package"],
+    "cpp_loader_header": "vnev/Lib/site-packages/torch/include/torch/csrc/inductor/aoti_package/model_package_loader.h",
+    "cpp_control_api": "torch::jit::load",
+    "cmake_generator": "Visual Studio 18 2026",
+    "cmake_configuration": "Release",
+    "cpp_standard": 20,
+    "cpu_threads": 1,
+    "gpu_execution_allowed": false
+  },
+  "read_allowlist": [
+    "goal.md",
+    "manifests/roadmap_9997/p0_loop28_onnx_operator_remediation/post_manifest.json",
+    "reports/roadmap_9997/p0_loop28_onnx_operator_remediation/**",
+    "manifests/roadmap_9997/p0_loop28_pytorch_native_feasibility/**",
+    "scripts/run_loop28_pytorch_native_feasibility.py",
+    "scripts/build_loop28_pytorch_native_feasibility_manifest.py",
+    "tests/test_run_loop28_pytorch_native_feasibility.py",
+    "tests/test_build_loop28_pytorch_native_feasibility_manifest.py",
+    "tools/axon_tiny_pytorch_native/**",
+    "artifacts/roadmap_9997/p0_loop28_pytorch_native_feasibility/**",
+    "vnev/Lib/site-packages/torch/**",
+    "vnev/Scripts/python.exe",
+    "C:/Users/Saika/AppData/Local/Python/pythoncore-3.14-64/**",
+    "C:/Program Files/Microsoft Visual Studio/18/Insiders/**",
+    "C:/Program Files (x86)/Windows Kits/**",
+    "Windows runtime dependencies resolved by the frozen compiler and PyTorch binaries"
+  ],
+  "write_allowlist": [
+    "manifests/roadmap_9997/p0_loop28_pytorch_native_feasibility/**",
+    "reports/roadmap_9997/p0_loop28_pytorch_native_feasibility/**",
+    "artifacts/roadmap_9997/p0_loop28_pytorch_native_feasibility/**",
+    "scripts/run_loop28_pytorch_native_feasibility.py",
+    "scripts/build_loop28_pytorch_native_feasibility_manifest.py",
+    "tests/test_run_loop28_pytorch_native_feasibility.py",
+    "tests/test_build_loop28_pytorch_native_feasibility_manifest.py",
+    "tools/axon_tiny_pytorch_native/**"
+  ],
+  "forbidden": [
+    "reading, hashing, importing, loading, or executing any project models/** checkpoint, ONNX, external-data, Stage-2, family-classifier, or production runtime artifact",
+    "reading any raw sample, split, cache, prediction row, error row, Val, Test-10k, legacy full-test, sentinel, confirmation, or certification artifact",
+    "importing src/model.py, src/dsra/**, src/kvd_features/**, or project prediction/training code into the tiny runner",
+    "training, fitting, calibration, threshold search, feature selection, model selection, F1 computation, or quality claim",
+    "GPU execution, network access, dependency installation, download, deployment, commit, push, data mutation, or modification of any prior closure",
+    "treating a tiny-model pass as Axon runtime parity, Loop28 readiness, Loop151 readiness, population evidence, or certification"
+  ],
+  "budget": {
+    "implementation_generations": 1,
+    "tiny_model_specifications": 1,
+    "torch_export_calls": 1,
+    "aoti_compile_and_package_calls": 1,
+    "torchscript_export_calls": 1,
+    "clean_cpp_builds": 1,
+    "python_lane_repeats": 3,
+    "cpp_lane_repeats": 3,
+    "compile_subprocesses_max": 12,
+    "compile_timeout_seconds": 1200,
+    "run_timeout_seconds": 60,
+    "total_wall_clock_seconds": 3600,
+    "max_retained_output_bytes": 536870912,
+    "cpu_threads": 1,
+    "gpu_executions": 0,
+    "network_requests": 0
+  },
+  "success_gate": {
+    "cpp_loader_header_present": true,
+    "required_import_libraries_present": true,
+    "cpp_runner_clean_build_passed": true,
+    "pt2_package_exclusive_create_passed": true,
+    "pt2_archive_members_safe_and_hashed": true,
+    "torchscript_control_exclusive_create_passed": true,
+    "all_lane_input_hashes_exact": true,
+    "all_output_shapes_and_dtypes_exact": true,
+    "all_float_output_max_absolute_delta_at_most": 0.000001,
+    "all_topk_indices_exact": true,
+    "all_lane_repeats_bit_exact": true,
+    "gpu_execution_count": 0,
+    "cuda_initialized": false,
+    "toolchain_and_artifact_hashes_stable": true,
+    "forbidden_project_artifact_access_count": 0,
+    "quality_metric_count": 0
+  },
+  "exit_decisions": [
+    "tiny_aoti_cpp_and_libtorch_pass_axon_requires_new_authorization",
+    "cpp_aoti_loader_surface_missing_no_execution",
+    "tiny_aoti_compile_or_package_unsupported",
+    "tiny_aoti_python_pass_cpp_loader_fail",
+    "tiny_libtorch_control_fail_toolchain_invalid",
+    "tiny_numeric_or_determinism_mismatch",
+    "toolchain_or_dll_drift_invalid",
+    "budget_exhausted_no_claim",
+    "administrative_failure_no_execution"
+  ],
+  "claim_boundary": {
+    "tiny_runtime_feasibility_claim_allowed": true,
+    "axon_checkpoint_access_allowed": false,
+    "axon_runtime_parity_claim_allowed": false,
+    "population_parity_claim_allowed": false,
+    "quality_claim_allowed": false,
+    "raw_rerun_allowed": false,
+    "certification_claim_allowed": false
+  },
+  "decision": "propose_tiny_pytorch_native_feasibility_only"
+}

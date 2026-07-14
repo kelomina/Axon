@@ -9,8 +9,22 @@ import os
 import importlib.util
 from pathlib import Path
 
+try:
+    sys.stdout.reconfigure(encoding="utf-8")
+except Exception:
+    pass
+
 # 添加 src 目录到路径
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+
+
+def iter_project_python_files(project_root: Path):
+    """只扫描项目代码目录，避免递归进入 vnev、缓存和数据目录。"""
+    for dir_name in ["src", "scripts", "tests"]:
+        root = project_root / dir_name
+        if root.exists():
+            yield from root.rglob("*.py")
+    yield from project_root.glob("*.py")
 
 def test_project_structure():
     """测试项目结构"""
@@ -80,7 +94,7 @@ def test_syntax():
     import ast
     
     project_root = Path(__file__).parent.parent
-    py_files = list(project_root.rglob("*.py"))
+    py_files = list(iter_project_python_files(project_root))
     
     success = 0
     failed = []

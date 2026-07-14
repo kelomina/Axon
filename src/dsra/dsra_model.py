@@ -8,6 +8,11 @@ import torch.nn as nn
 from .domain import normalize_model_type
 from .mhdsra2.improved_dsra_mha import MHDSRA2Config, MultiHeadDSRA2
 
+try:
+    from ..config import DSRAArchitectureConfig
+except ImportError:
+    from config import DSRAArchitectureConfig
+
 
 def select_mhdsra2_heads(dim: int) -> int:
     """Select a valid MHDSRA2 head count for a hidden dimension.
@@ -35,14 +40,15 @@ class MultiLayerMHDSRA2Model(nn.Module):
         self,
         vocab_size: int,
         dim: int,
-        num_layers: int = 2,
-        K: int = 128,
-        kr: int = 16,
-        chunk_size: int = 256,
+        num_layers: int = None,
+        K: int = None,
+        kr: int = None,
+        chunk_size: int = None,
         *,
         use_retrieval: bool = False,
         model_type: str = "mhdsra2",
         mhdsra2_config_override: dict | None = None,
+        dsra_arch_config: DSRAArchitectureConfig | None = None,
     ) -> None:
         """Create a stacked MHDSRA2 token model.
 
@@ -68,6 +74,25 @@ class MultiLayerMHDSRA2Model(nn.Module):
         active_model_type = normalize_model_type(model_type)
         if active_model_type != "mhdsra2":
             raise ValueError(f"Unsupported multi-layer architecture: {model_type}")
+
+        if dsra_arch_config is not None:
+            if num_layers is None:
+                num_layers = dsra_arch_config.num_layers
+            if K is None:
+                K = dsra_arch_config.slots
+            if kr is None:
+                kr = dsra_arch_config.read_topk
+            if chunk_size is None:
+                chunk_size = dsra_arch_config.local_window
+
+        if num_layers is None:
+            num_layers = 2
+        if K is None:
+            K = 128
+        if kr is None:
+            kr = 16
+        if chunk_size is None:
+            chunk_size = 256
 
         heads = select_mhdsra2_heads(dim)
         self.architecture = active_model_type

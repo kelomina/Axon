@@ -1,0 +1,385 @@
+{
+  "schema": "axon_loop_candidate_proposal_v1",
+  "loop_id": "loop164_whole_file_residual_expert",
+  "state": "proposed_static_preflight_only",
+  "parent_reference": "Loop151",
+  "objective": "Test whether a whole-file byte expert with an induction bias independent from the Loop151 8192-byte MHDSRA and PE/content stack can provide broad, group-stable residual corrections.",
+  "hypothesis": "A MalConv2-style low-memory Global Channel Gating expert can use byte regions beyond the current prefix and create enough independent Train-OOF signal for a conservative residual fusion candidate to reduce both Loop151 FP and FN.",
+  "failure_observation": "Loop149's same-family 32768-byte MHDSRA fixed only 59 Loop136 Val errors while breaking 1414 correct rows; Loop154/159/160/163 closed threshold, signer-sweep, and R11 probability micro-routes; Loop151 still has 1466 legacy full-test errors and must remove at least 1418 to reach the point target.",
+  "new_independent_evidence": "Whole-file byte regions processed by a convolutional Global Channel Gating expert, not another prefix MHDSRA, shallow byte n-gram blend, certificate blob feature, signer term, identity field, or probability-only rule.",
+  "runtime_availability": {
+    "official_reference_verified": true,
+    "official_reference_commit": "b5a865420e984b22a2474834bd1748318e84b553",
+    "project_implementation_present": false,
+    "static_implementation_contract_validator_present": true,
+    "synthetic_exactness_oracle_present": true,
+    "dependencies_installed_for_loop": false,
+    "a2_training_authorization_present": false,
+    "status": "designable_but_not_executable"
+  },
+  "champion": {
+    "scope": "legacy_development_research_champion",
+    "val": {
+      "rows": 20000,
+      "f1": 0.9919193934557063,
+      "errors": 162,
+      "fp": 105,
+      "fn": 57
+    },
+    "test10k": {
+      "rows": 10000,
+      "f1": 0.9921921921921922,
+      "errors": 78,
+      "fp": 49,
+      "fn": 29
+    },
+    "legacy_full_test": {
+      "rows": 160000,
+      "f1": 0.9908541911012403,
+      "errors": 1466,
+      "fp": 879,
+      "fn": 587
+    }
+  },
+  "target": {
+    "f1": 0.9997,
+    "f1_fraction": {
+      "numerator": 9997,
+      "denominator": 10000
+    },
+    "legacy_point_error_budget": "47-48",
+    "minimum_net_error_removal_from_loop151": 1418,
+    "legacy_balanced_reference": {
+      "positive_rows": 80000,
+      "negative_rows": 80000,
+      "scope": "legacy_development_point_reference_only"
+    },
+    "legacy_point_geometry": {
+      "all_allocations_pass_through_errors": 47,
+      "maximum_total_errors": 48,
+      "maximum_false_negatives_at_maximum_total_errors": 24,
+      "all_allocations_fail_from_errors": 49,
+      "point_reference_only_not_certification_evidence": true
+    },
+    "certification_requires_two_future_sealed_windows": true
+  },
+  "certification_protocol": {
+    "schema": "axon_loop164_certification_protocol_v1",
+    "state": "static_preregistration_only_no_a3_authorization",
+    "amendment_policy": "forbidden_after_first_sealed_window_lock",
+    "claim_scope": {
+      "legacy_point_is_non_certification": true,
+      "target_f1_fraction": {
+        "numerator": 9997,
+        "denominator": 10000
+      },
+      "two_window_replication_required": true
+    },
+    "sealed_windows": {
+      "window_ids": [
+        "W1_certification",
+        "W2_later_replication"
+      ],
+      "time_order": "W2_starts_after_W1_ends",
+      "evaluation_generation": 1,
+      "independent_a3_authorization_and_lease_required": true,
+      "window_pooling_or_replacement_forbidden": true
+    },
+    "candidate_freeze": {
+      "frozen_before_W1_release": true,
+      "required_hash_fields": [
+        "bundle_manifest_sha256",
+        "checkpoint_sha256",
+        "model_source_closure_sha256",
+        "config_sha256",
+        "calibration_sha256",
+        "threshold_policy_sha256",
+        "abstain_policy_sha256",
+        "runtime_environment_sha256",
+        "sbom_sha256",
+        "statistics_runner_sha256"
+      ],
+      "post_W1_selection_or_recalibration_forbidden": true
+    },
+    "isolation": {
+      "component_relation_fields": [
+        "exact_cluster_id",
+        "near_duplicate_cluster_id",
+        "family_id",
+        "campaign_id",
+        "source_group_id"
+      ],
+      "component_time": "max_first_seen_time_utc",
+      "temporal_stratification": "preregistered_calendar_blocks",
+      "zero_cross_window_component_overlap": true,
+      "identity_or_grouping_model_inputs_forbidden": true
+    },
+    "scoring": {
+      "metric": "f1_from_full_system_confusion_matrix",
+      "report_unrounded_TP_TN_FP_FN": true,
+      "denominator_outcomes": [
+        "abstain",
+        "timeout",
+        "missing_feature",
+        "unsupported",
+        "parser_failure",
+        "runtime_failure"
+      ],
+      "fixed_outcome_mapping_required_before_A3": true,
+      "silent_drop_forbidden": true
+    },
+    "inference": {
+      "familywise_alpha": 0.05,
+      "per_window_one_sided_alpha": 0.025,
+      "per_window_lower_confidence_level": 0.975,
+      "method": "stratified_relationship_component_bootstrap_with_conservative_guard",
+      "resampling_unit": "unioned_relationship_component_with_temporal_block",
+      "bootstrap_replicates": 200000,
+      "seed_derivation": "sha256(protocol_sha256|window_manifest_sha256|bundle_sha256|statistics_runner_sha256)",
+      "statistical_failure_decision": "insufficient_evidence"
+    },
+    "acceptance": {
+      "per_window_point_f1_fraction": {
+        "numerator": 9997,
+        "denominator": 10000
+      },
+      "per_window_lower_bound_fraction": {
+        "numerator": 9997,
+        "denominator": 10000
+      },
+      "both_window_pass_required": true,
+      "planned_point_floor": "blinded_power_analysis_must_set_strictly_above_target_before_A3",
+      "failed_window_burns_lineage_without_replacement": true
+    },
+    "power_analysis": {
+      "required_before_A3": true,
+      "method": "aggregate_only_grouped_bootstrap_simulation",
+      "minimum_simulations": 50000,
+      "minimum_joint_power": 0.9,
+      "output_sha256_required": true,
+      "insufficient_support_blocks_A3": true
+    },
+    "operational_gates": {
+      "state": "product_owner_thresholds_required_before_A3",
+      "required_metrics": [
+        "FPR",
+        "FNR",
+        "FP_per_million_benign",
+        "FN_per_1000_malicious",
+        "coverage",
+        "P95_latency",
+        "cost",
+        "critical_slice_error_share"
+      ]
+    },
+    "future_artifacts": [
+      "reports/roadmap_9997/loop164/certification_power_analysis.json",
+      "reports/roadmap_9997/loop164/sealed_window_w1_manifest.json",
+      "reports/roadmap_9997/loop164/sealed_window_w1_evaluation_receipt.json",
+      "reports/roadmap_9997/loop164/sealed_window_w2_manifest.json",
+      "reports/roadmap_9997/loop164/sealed_window_w2_evaluation_receipt.json",
+      "reports/roadmap_9997/loop164/certification_replication_receipt.json"
+    ]
+  },
+  "design": {
+    "expert": "Audited project-native MalConv2-style low-memory whole-file byte CNN with Global Channel Gating.",
+    "input_policy": "Consume every byte for supported files through chunked pooling; oversize, unreadable, timeout, and unsupported cases remain in the denominator with explicit reason codes.",
+    "train_oof": "Exactly five purged forward group OOF folds for seeds 41/42/43 with one shared frozen partition. A train_anchor warmup supplies the first fit; every eligible train_oof record appears in exactly one outer holdout. Component time is max(first_seen_time_utc), embargo is at least 2592000 seconds (30 days), every fit window has at least 1000 locked rows per class, and every outer holdout has at least 100 locked rows per class.",
+    "fusion": "Train-only nested OOF residual fusion using only Loop151-equivalent OOF scores, whole-file expert OOF scores, uncertainty, and explicit missingness. Identity and grouping fields never enter the feature matrix.",
+    "metadata_authority_scope": {
+      "tier": "A2",
+      "operation": "metadata_isolation_only",
+      "protected_input_scope": "metadata_only",
+      "grants": []
+    },
+    "implementation_contract": "The A2 metadata-isolation contract fixes only the six residual feature fields and declares implementation_binding_phase=deferred_to_a2_training_authority; it deliberately carries no production implementation-manifest SHA. Its authority scope is exactly metadata_isolation_only with metadata-only protected input and no grants, so an isolation pass cannot imply training or heldout access. Only after a passing isolation receipt may a separately authorized v2 static implementation review bind a fixed controller/model/loader/fusion source closure, config and runtime lock hashes, 257-token or explicit-length byte semantics, exact independent-region LowMemConv pooling, bounded two-pass reads, resource caps, five explicit missingness reasons, and zero identity features. The training authority, resource guard, final lease, and nested receipt must then each rebind that actual manifest. A pure in-memory oracle separately covers dense/chunk value and gradient equivalence, winner positions, tail, all-negative, pad/EOF, two-pass context, and noncontiguous-window counterexamples; it is not production-model evidence.",
+    "negative_controls": [
+      "Loop151 unchanged",
+      "matched-capacity prefix-only byte CNN",
+      "whole-file model with Global Channel Gating disabled"
+    ]
+  },
+  "allowed_splits": {
+    "a1_static_preflight": [
+      "aggregate_loop151_metrics",
+      "aggregate_loop161_guard",
+      "aggregate_loop163_support",
+      "aggregate_loop158_annotation_state",
+      "aggregate_group_and_cache_reports"
+    ],
+    "future_a2_after_separate_authorization": [
+      "train_only_group_manifest",
+      "train_only_oof"
+    ],
+    "future_selection_after_integrity_gate": [
+      "legacy_val_as_development_only",
+      "future_val_a",
+      "future_val_b"
+    ],
+    "not_authorized_now": [
+      "test10k",
+      "legacy_full_test",
+      "sentinel",
+      "confirmation",
+      "certification"
+    ]
+  },
+  "forbidden_inputs": [
+    "filename",
+    "path",
+    "directory",
+    "extension",
+    "hash_as_model_feature",
+    "source_sha256_as_model_feature",
+    "sample_index",
+    "split",
+    "row_order",
+    "future_reputation",
+    "Loop162_or_any_full_test_posthoc_row",
+    "reviewer_verdict_as_runtime_feature"
+  ],
+  "forbidden_operations": [
+    "dependency_installation_under_this_proposal",
+    "raw_or_checkpoint_open_under_A1",
+    "cache_build",
+    "training_or_fitting",
+    "threshold_or_feature_selection",
+    "test10k_or_full_test_evaluation",
+    "relabeling_or_split_mutation",
+    "deployment"
+  ],
+  "frozen_thresholds": {
+    "loop161_floor_val_error_reduction": 3,
+    "loop161_floor_test10k_error_reduction": 3,
+    "loop164_program_val_error_reduction": 10,
+    "loop164_program_test10k_error_reduction": 5,
+    "override_precision_min": 0.8,
+    "residual_overlap_max": 0.8
+  },
+  "minimum_support": {
+    "val_disagreements": 100,
+    "loop151_error_fixes": 30,
+    "independent_groups": 10,
+    "maximum_single_group_share": 0.2,
+    "accepted_override_precision": 0.8,
+    "observed_support": "unknown_until_separately_authorized_oof_run"
+  },
+  "sample_count": {
+    "known_legacy_train": 20000,
+    "known_legacy_val": 20000,
+    "known_legacy_test10k": 10000,
+    "known_legacy_full_test": 160000,
+    "new_temporal_selection": "missing",
+    "future_sealed_confirmation": "missing"
+  },
+  "seeds": [
+    41,
+    42,
+    43
+  ],
+  "compute_budget": {
+    "state": "not_authorized_and_not_yet_sized",
+    "a1_static_prerequisites": [
+      "file_size_distribution_without_identity_export",
+      "GPU_memory_and_wall_clock_probe_on_train_only_synthetic_or_public_bytes",
+    "bounded_loader_and_timeout_contract",
+    "v2_static_whole_file_implementation_contract_and_synthetic_equivalence_tests",
+    "non_authorizing_A2_metadata_and_training_request_contracts",
+    "disk_cache_budget"
+    ],
+    "a2_metadata_request_prerequisites": [
+      "custodian_full_pool_isolation_manifest",
+      "externally_pinned_A2_metadata_v3_authorization_with_exact_argv_source_closure_fresh_resource_guard_custodian_root_and_stable_lease_before_inventory_open",
+      "empty_canonical_isolation_receipt_output"
+    ],
+    "a2_metadata_outputs": [
+      "aggregate_validation_receipt_with_partition_and_feature_semantics_only",
+      "custodian_attested_fold_scope_plan_with_shared_five_fold_commitment",
+      "aggregate_only_fold_scope_plan_validation_receipt_bound_to_contract_and_isolation_receipt"
+    ],
+    "a2_training_request_prerequisites": [
+      "separately_authorized_static_whole_file_implementation_manifest_review",
+      "Loop151_equivalent_train_oof_input_bundle",
+      "fresh_training_resource_guard",
+      "externally_pinned_A2_training_authorization_v2"
+    ],
+    "a2_training_outputs": [
+      "in_process_content_addressed_final_lease_consumption_before_protected_open",
+      "complete_nested_oof_execution_receipt_before_train_or_fusion_claim"
+    ]
+  },
+  "success_gate": {
+    "integrity": "The custody-signed full pool has at least 200000 active rows and all pre-registered roles. Every eligible Train OOF row appears exactly once after an explicit warmup window; exact/near-duplicate/family/campaign/custodian-source groups never cross roles or folds; component time uses max(first_seen_time_utc) with a pre-registered 30-day embargo; unknown/path-derived grouping or timestamp evidence blocks; the residual fusion matrix is the frozen six-field allowlist only. The metadata contract must declare implementation_binding_phase=deferred_to_a2_training_authority and must not carry a placeholder implementation SHA. Before any metadata inventory open, an external pinned-key A2 metadata v3 authority must bind exact argv, Python, validator/resource-guard source closure, canonical output, custodian metadata root, contract/rows SHA, a stable issuer+lease-id marker, and the exact metadata-only empty-grants scope; the aggregate receipt must carry that provenance. A passing metadata receipt freezes partition and feature semantics only. A custodian-attested scope plan must then have a separately validated aggregate-only receipt; after separately authorized static implementation review, a trusted-root-pinned A2 training authorization must bind the actual implementation manifest, that receipt, and a train-only input bundle before an in-process controller atomically consumes its final lease. The later nested-OOF receipt must bind all three seeds, five outer folds, five inner folds, implementation, Loop151 lineage, resource guard, metadata/training A2 authority provenance, input bundle, and final lease. Scope-plan validation never substitutes for training authority or that execution receipt.",
+    "val": {
+      "max_errors": 152,
+      "max_fp": 105,
+      "max_fn": 57,
+      "all_three_seeds_improve": true,
+      "minimum_disagreements": 100,
+      "minimum_fixes": 30,
+      "minimum_override_precision": 0.8
+    },
+    "test10k_after_separate_authorization": {
+      "max_errors": 73,
+      "max_fp": 49,
+      "max_fn": 29,
+      "threshold_and_fusion_frozen_before_access": true
+    },
+    "legacy_full_test": "One frozen confirmation only after both Val and Test-10k gates; never selection and never row-level feedback."
+  },
+  "business_gate": "FP and FN must each be no worse than Loop151, missing/timeout/unsupported remain in the denominator, and latency/cost ceilings must be preregistered before connected-system promotion.",
+  "slice_gate": "No protected family/source/time/packer/signer/parser/missingness slice may have a statistically supported net regression; one group may not supply more than 20% of accepted corrections.",
+  "stop_condition": [
+    "Val disagreements below 100 or Loop151 fixes below 30.",
+    "Any seed reverses the improvement direction.",
+    "Val error reduction is below 10 or Test-10k reduction is below 5.",
+    "FP or FN exceeds the Loop151 ceiling.",
+    "Residual overlap exceeds 80% without a statistically supported complementary slice.",
+    "Any identity, future-evidence, split, duplicate-group, family, source, or temporal leakage is found.",
+    "The whole-file path silently truncates, drops, or filters a sample.",
+    "The route requires full-test rows or repeated holdout access to continue."
+  ],
+  "expected_artifacts": [
+    "manifests/roadmap_9997/loop164_whole_file_residual_expert/frontier_sources.json",
+    "manifests/roadmap_9997/loop164_whole_file_residual_expert/proposal.json",
+    "manifests/roadmap_9997/loop164_whole_file_residual_expert/authorization.json",
+    "manifests/roadmap_9997/loop164_whole_file_residual_expert/implementation_contract_authorization.json",
+    "manifests/roadmap_9997/loop164_whole_file_residual_expert/templates/a2_metadata_request.template.json",
+    "manifests/roadmap_9997/loop164_whole_file_residual_expert/templates/a2_training_request.template.json",
+    "manifests/roadmap_9997/loop164_whole_file_residual_expert/preflight.json",
+    "reports/roadmap_9997/loop164/preflight.json",
+    "reports/roadmap_9997/loop164/full_pool_group_manifest.json",
+    "reports/roadmap_9997/loop164/full_pool_isolation_validation.json",
+    "reports/roadmap_9997/loop164/fold_scope_plan.json",
+    "reports/roadmap_9997/loop164/fold_scope_plan_validation.json",
+    "reports/roadmap_9997/loop164/train_oof_input_bundle_manifest.json",
+    "manifests/roadmap_9997/loop164_whole_file_residual_expert/a2_isolation_validation_authorization.json",
+    "manifests/roadmap_9997/loop164_whole_file_residual_expert/a2_training_authorization.json",
+    "reports/roadmap_9997/loop164/whole_file_expert_implementation_manifest.json",
+    "scripts/validate_loop164_whole_file_implementation.py",
+    "scripts/validate_loop164_a2_request.py",
+    "scripts/validate_loop164_certification_evidence.py",
+    "tests/test_validate_loop164_certification_evidence.py",
+    "tests/test_loop164_whole_file_gcg.py",
+    "reports/roadmap_9997/loop164/loop151_train_oof_manifest.json",
+    "reports/roadmap_9997/loop164/resource_guard.json",
+    "reports/roadmap_9997/loop164/training_lease_consumption.final.json",
+    "reports/roadmap_9997/loop164/loop164_train_oof_execution_receipt.json",
+    "reports/roadmap_9997/loop164/certification_power_analysis.json",
+    "reports/roadmap_9997/loop164/sealed_window_w1_manifest.json",
+    "reports/roadmap_9997/loop164/sealed_window_w1_evaluation_receipt.json",
+    "reports/roadmap_9997/loop164/sealed_window_w2_manifest.json",
+    "reports/roadmap_9997/loop164/sealed_window_w2_evaluation_receipt.json",
+    "reports/roadmap_9997/loop164/certification_replication_receipt.json",
+    "docs/phase3_loop164_whole_file_residual_expert_proposal.md"
+  ],
+  "authorization_level": {
+    "current": "A1_scoped_design_static_preflight_and_synthetic_implementation_contract_only",
+    "metadata_validation": "A2_metadata_isolation_validation_v3_with_external_trust_anchor_exact_argv_source_closure_metadata_only_scope_and_one_shot_lease",
+    "training": "A2_explicit_plus_machine_authorization_required",
+    "test10k": "separate_explicit_evaluation_authorization_required",
+    "full_test": "separate_A3_confirmation_authorization_required"
+  },
+  "native_path": "Not part of the A1 proposal. A successful expert must later expose a chunked deterministic runtime and pass Python/native decision parity before product promotion; Loop28 parity work remains paused and is not a prerequisite for this static proposal.",
+  "decision": "propose_loop164_whole_file_residual_expert_no_execution"
+}

@@ -1,0 +1,74 @@
+# Axon v2.6 200k random split configuration
+# Purpose: train from scratch on 200k samples (1:1:8) with same architecture
+# as the current best candidate (8192-byte fixed-v2 PE256, dsra_dim=160).
+
+[experiment]
+name = "axon_v2.6_random_20w_8192"
+seed = 42
+fast_mode_samples = 100000
+fast_mode_epochs = 8
+fast_mode_byte_length = 8192
+
+[model]
+max_byte_length = 8192
+byte_embedding_dim = 128
+
+dsra_dim = 160
+dsra_heads = 4
+dsra_slots = 160
+dsra_read_topk = 12
+dsra_write_topk = 4
+dsra_local_window = 384
+dsra_chunk_size = 512
+
+pe_feature_dim = 256
+pe_projection_dim = 160
+pe_projector_hidden_dim = 384
+classifier_hidden_dim = 96
+
+fusion_type = "concat"
+dropout = 0.15
+
+[training]
+optimizer = "adamw"
+learning_rate = 0.00008
+weight_decay = 0.00005
+lr_scheduler = "cosine"
+warmup_epochs = 2
+warmup_start_lr = 0.000001
+min_lr = 0.000001
+
+max_epochs = 50
+early_stopping_patience = 6
+early_stopping_min_delta = 0.0003
+gradient_clip = 0.75
+mixed_precision = false
+batch_size = 32
+pin_memory = true
+
+decision_threshold = 0.50
+label_smoothing = 0.03
+focal_gamma = 1.0
+focal_alpha = 0.55
+diversity_loss_weight = 0.03
+enable_swanlab = false
+
+[data]
+data_dir = "data"
+cache_dir = "data/.cache"
+output_dir = "models/random_20w_8192"
+log_dir = "reports/logs/random_20w_8192"
+val_ratio = 0.04
+test_ratio = 0.8
+strict_pe_parsing = true
+allow_pe_fallback = false
+pe_schema_version = "fixed_v2"
+pe_fixed_section_slots = 32
+follow_symlinks = false
+allowed_symlink_roots = []
+strict_unknown_labels = true
+eval_interval = 1
+save_best_only = true
+
+[device]
+device = "cuda"
