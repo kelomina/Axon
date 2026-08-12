@@ -215,6 +215,7 @@ class AxonTrainer:
         self.metrics_tracker = MetricsTracker()
         self.best_f1 = 0.0
         self.best_epoch = 0
+        self.best_score = 0.0
         
         # 早停
         self.early_stopping = EarlyStopping(
@@ -334,6 +335,8 @@ class AxonTrainer:
         labels: torch.Tensor,
         sample_weights: Optional[torch.Tensor] = None,
     ) -> torch.Tensor:
+        # loss 始终在 fp32 计算（bf16 下 7-bit 尾数的交叉熵会损失训练信号精度）
+        logits = logits.float()
         # Near-threshold weighting: upweight samples with predictions near the decision boundary
         if self.train_config.near_threshold_weight > 1.0:
             per_sample_loss = self._criterion_per_sample(logits, labels)
@@ -418,13 +421,15 @@ class AxonTrainer:
         epoch: int
     ) -> TrainingMetrics:
         self.model.train()
-        
+
         all_preds = []
         all_targets = []
         all_probs = []
-        total_loss = 0.0
+        # total_loss 用 GPU fp32 标量累积（替代每 step 一次 loss.item() 同步）；
+        # preds/probs/labels 以 GPU 张量列表累积，epoch 末尾一次 .cpu().numpy()。
+        total_loss = torch.zeros((), device=self.device, dtype=torch.float32)
         num_batches = 0
-        
+
         start_time = time.time()
         
         for batch_idx, batch in enumerate(train_loader):
@@ -463,43 +468,49 @@ class AxonTrainer:
                         div_loss = self.model.dsra.diversity_loss(dsra_state_for_div)
                     loss = loss + self.train_config.diversity_loss_weight * div_loss
 
-                if not torch.isfinite(loss):
-                    logits_finite = torch.isfinite(logits).all().item()
-                    raise FloatingPointError(
-                        "Non-finite training loss detected "
-                        f"at epoch={epoch}, batch={batch_idx + 1}. "
-                        f"logits_finite={logits_finite}, "
-                        f"mixed_precision={self.use_amp}"
-                    )
-            
+                if (batch_idx + 1) % self.train_config.log_interval == 0 or (batch_idx + 1) == len(train_loader):
+                    # NaN 检查移到 log cadence：~每 log_interval 步一次，避免每 step GPU->CPU 同步
+                    if not torch.isfinite(loss):
+                        logits_finite = torch.isfinite(logits).all().item()
+                        raise FloatingPointError(
+                            "Non-finite training loss detected "
+                            f"at epoch={epoch}, batch={batch_idx + 1}. "
+                            f"logits_finite={logits_finite}, "
+                            f"mixed_precision={self.use_amp}"
+                        )
+
             # AMP 反向传播
             self.scaler.scale(loss).backward()
-            
+
             if self.train_config.gradient_clip > 0:
                 self.scaler.unscale_(self.optimizer)
-                torch.nn.utils.clip_grad_norm_(
-                    self.model.parameters(),
-                    self.train_config.gradient_clip
-                )
-            
+                # 纯张量 clip（无 float() 同步），数学上等价于 clip_grad_norm_：
+                # norm > max 时按 max/norm 缩放，否则不动。
+                _grads = [p.grad for p in self.model.parameters() if p.grad is not None]
+                if _grads:
+                    _n = torch.sqrt(sum((g * g).sum() for g in _grads))
+                    _coef = torch.clamp(self.train_config.gradient_clip / (_n + 1e-6), max=1.0)
+                    for g in _grads:
+                        g.mul_(_coef)
+
             self.scaler.step(self.optimizer)
             self.scaler.update()
-            
+
             # EMA: update EMA model after each optimizer step
             self._update_ema()
-            
-            total_loss += loss.item()
+
+            total_loss = total_loss + loss.detach()
             num_batches += 1
-            
+
             with torch.no_grad():
                 probs = torch.softmax(logits.detach(), dim=1)[:, 1]
                 preds = (probs >= self.train_config.decision_threshold).long()
-            
-            all_preds.extend(preds.cpu().numpy())
-            all_targets.extend(labels.cpu().numpy())
-            all_probs.extend(probs.detach().cpu().numpy())
-            
-            # 每10个batch打印一次进度
+
+            all_preds.append(preds)
+            all_targets.append(labels)
+            all_probs.append(probs.detach())
+
+            # 每 log_interval 个 batch 打印一次进度
             if (batch_idx + 1) % self.train_config.log_interval == 0 or (batch_idx + 1) == len(train_loader):
                 elapsed = time.time() - start_time
                 print(f"  Batch {batch_idx+1}/{len(train_loader)} | "
@@ -513,10 +524,10 @@ class AxonTrainer:
         
         metrics = self._compute_metrics(
             epoch, "train",
-            np.array(all_targets),
-            np.array(all_preds),
-            np.array(all_probs),
-            total_loss / num_batches,
+            torch.cat(all_targets).cpu().numpy(),
+            torch.cat(all_preds).cpu().numpy(),
+            torch.cat(all_probs).cpu().numpy(),
+            float(total_loss / num_batches),
             self.optimizer.param_groups[0]['lr'],
             batch_time
         )
@@ -531,11 +542,12 @@ class AxonTrainer:
         phase: str = "val"
     ) -> TrainingMetrics:
         self.model.eval()
-        
+
         all_preds = []
         all_targets = []
         all_probs = []
-        total_loss = 0.0
+        # 同 train_epoch：GPU 累积，末尾一次转移，避免每 batch 3 次 cpu() 同步
+        total_loss = torch.zeros((), device=self.device, dtype=torch.float32)
         num_batches = 0
         
         for byte_seq, pe_features, stat_features, labels in eval_loader:
@@ -549,25 +561,25 @@ class AxonTrainer:
                 logits = outputs['logits']
                 loss = self.criterion(logits, labels)
             
-            total_loss += loss.item()
+            total_loss = total_loss + loss.detach()
             num_batches += 1
-            
+
             probs = torch.softmax(logits, dim=1)[:, 1]
             preds = (probs >= self.train_config.decision_threshold).long()
-            
-            all_preds.extend(preds.detach().cpu().numpy())
-            all_targets.extend(labels.detach().cpu().numpy())
-            all_probs.extend(probs.detach().cpu().numpy())
-        
+
+            all_preds.append(preds)
+            all_targets.append(labels)
+            all_probs.append(probs.detach())
+
         if num_batches == 0:
             raise ValueError(f"{phase}_loader is empty")
 
         metrics = self._compute_metrics(
             epoch, phase,
-            np.array(all_targets),
-            np.array(all_preds),
-            np.array(all_probs),
-            total_loss / num_batches,
+            torch.cat(all_targets).cpu().numpy(),
+            torch.cat(all_preds).cpu().numpy(),
+            torch.cat(all_probs).cpu().numpy(),
+            float(total_loss / num_batches),
             self.optimizer.param_groups[0]['lr'],
             0.0
         )
@@ -691,7 +703,19 @@ class AxonTrainer:
         )
         
         return metrics
-    
+
+    def _selection_score(self, metrics: TrainingMetrics) -> float:
+        """最佳模型选择分数（也用于早停）。
+
+        - best_metric="f1"（默认）: 仅 val F1，向后兼容。
+        - best_metric="goal": F1 - best_metric_beta * FPR，惩罚误报。
+          用于降低白文件误报的重训：F1 在微调中通常持平，FPR 才是目标指标。
+        """
+        if getattr(self.train_config, "best_metric", "f1") == "goal":
+            beta = self.train_config.best_metric_beta
+            return float(metrics.f1) - beta * float(metrics.false_positive_rate)
+        return float(metrics.f1)
+
     def train(
         self,
         train_loader: DataLoader,
@@ -780,7 +804,9 @@ class AxonTrainer:
                     if self.ema_model is not None:
                         self._restore_model_from_ema_backup()
                 
-                if val_metrics.f1 > self.best_f1:
+                score = self._selection_score(val_metrics)
+                if score > self.best_score:
+                    self.best_score = score
                     self.best_f1 = val_metrics.f1
                     self.best_epoch = epoch
                     # Save EMA model if available, otherwise save regular model
@@ -793,8 +819,8 @@ class AxonTrainer:
                     else:
                         self.save_checkpoint(self.train_config.best_model_filename, last_epoch=epoch)
                     print(f"  [Best model saved] F1: {val_metrics.f1:.4f}")
-                
-                if self.early_stopping(val_metrics.f1):
+
+                if self.early_stopping(score):
                     print(f"\nEarly stopping triggered at epoch {epoch}")
                     break
             
@@ -855,7 +881,7 @@ class AxonTrainer:
             return False
 
         checkpoint = load_safe_checkpoint(best_path, map_location="cpu")
-        self.model.load_state_dict(checkpoint['model_state_dict'])
+        self._load_plain_state_dict(checkpoint['model_state_dict'])
         del checkpoint
         if self.device.type == "cuda":
             torch.cuda.empty_cache()
@@ -913,6 +939,16 @@ class AxonTrainer:
             for k, v in state_dict.items()
         }
 
+    def _plain_model(self):
+        """torch.compile 会把模型包成 OptimizedModule（含 _orig_mod），取其底层模块以便读写裸 state_dict。"""
+        return getattr(self.model, "_orig_mod", self.model)
+
+    def _plain_model_state_dict(self) -> Dict[str, torch.Tensor]:
+        return self._plain_model().state_dict()
+
+    def _load_plain_state_dict(self, state_dict: Dict[str, torch.Tensor]) -> None:
+        self._plain_model().load_state_dict(state_dict)
+
     def _move_checkpoint_value_to_cpu(self, value: Any) -> Any:
         if torch.is_tensor(value):
             return value.detach().cpu()
@@ -928,7 +964,7 @@ class AxonTrainer:
         checkpoint = {
             'epoch': self.best_epoch,
             'last_epoch': last_epoch,
-            'model_state_dict': self._state_dict_to_cpu(self.model.state_dict()),
+            'model_state_dict': self._state_dict_to_cpu(self._plain_model_state_dict()),
             'optimizer_state_dict': self._move_checkpoint_value_to_cpu(self.optimizer.state_dict()),
             'best_f1': self.best_f1,
             'config': self.config.to_dict(),
@@ -959,7 +995,7 @@ class AxonTrainer:
             required_keys={"optimizer_state_dict", "epoch", "best_f1"},
         )
         
-        self.model.load_state_dict(checkpoint['model_state_dict'])
+        self._load_plain_state_dict(checkpoint['model_state_dict'])
         self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         self.best_epoch = checkpoint['epoch']
         self.best_f1 = checkpoint['best_f1']

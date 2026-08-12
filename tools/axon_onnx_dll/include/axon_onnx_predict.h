@@ -4,7 +4,9 @@
 #include <stdint.h>
 
 #if defined(_WIN32)
-  #if defined(KVD_BUILD_DLL)
+  #if defined(KVD_NO_EXPORTS)
+    #define KVD_API
+  #elif defined(KVD_BUILD_DLL)
     #define KVD_API __declspec(dllexport)
   #else
     #define KVD_API __declspec(dllimport)

@@ -44,12 +44,16 @@ reports/
 .DS_Store
 Thumbs.db
 
+# Secrets
+config/vt_api_key.txt
+
 # Documentation
 agents.md
 
 # Build
 dist/
 build/
+build-bench/
 *.egg-info/
 /.project-analysis/
 /.qoder/
@@ -58,3 +62,12 @@ tools/axon_tiny_pytorch_native/build.failed_*/
 tools/archive_scanner/target/
 tools/predict_dll/target/
 tmp_archive_scanner_demo/
+
+# Rust build artifacts (any target/ dir)
+target/
+**/target/
+
+# Session scratch / FFI probe leftovers
+.koffi-*/
+_scratch_attr/
+resources/

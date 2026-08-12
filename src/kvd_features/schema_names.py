@@ -60,22 +60,39 @@ FIXED_V2_AGGREGATE_FEATURE_NAMES = [
 ]
 
 
-def fixed_v2_feature_names(section_slots: int = 32, pe_feature_dim: Optional[int] = None) -> list[str]:
-    """Return stable column names for the fixed_v2 PE feature vector."""
+# fixed_v3 is fixed_v2 without `has_signature`. That column was permanently 0:
+# it tested `hasattr(pe, 'DIRECTORY_ENTRY_SECURITY')`, an attribute pefile never
+# sets (the certificate table lives in OPTIONAL_HEADER.DATA_DIRECTORY[4]), so it
+# held a single value across all 200,145 cached samples. Every later column
+# shifts down by one; fixed_v2 is frozen for checkpoint reproducibility.
+FIXED_V3_HEADER_FEATURE_NAMES = [
+    name for name in FIXED_V2_HEADER_FEATURE_NAMES if name != "fixed_v2_has_signature"
+]
 
+
+def _fixed_schema_feature_names(
+    version: str,
+    header_names: list[str],
+    aggregate_names: list[str],
+    section_slots: int,
+    pe_feature_dim: Optional[int],
+) -> list[str]:
     if section_slots <= 0:
         raise ValueError("section_slots must be positive")
 
-    names = list(FIXED_V2_HEADER_FEATURE_NAMES)
+    def retag(name: str) -> str:
+        return name.replace("fixed_v2_", f"{version}_", 1)
+
+    names = [retag(name) for name in header_names]
     for slot in range(section_slots):
         names.extend(
             [
-                f"fixed_v2_section_{slot:02d}_is_executable",
-                f"fixed_v2_section_{slot:02d}_is_writable",
-                f"fixed_v2_section_{slot:02d}_is_readable",
+                f"{version}_section_{slot:02d}_is_executable",
+                f"{version}_section_{slot:02d}_is_writable",
+                f"{version}_section_{slot:02d}_is_readable",
             ]
         )
-    names.extend(FIXED_V2_AGGREGATE_FEATURE_NAMES)
+    names.extend(retag(name) for name in aggregate_names)
 
     used_dim = len(names)
     if pe_feature_dim is None:
@@ -83,7 +100,87 @@ def fixed_v2_feature_names(section_slots: int = 32, pe_feature_dim: Optional[int
     if pe_feature_dim < used_dim:
         raise ValueError(
             f"pe_feature_dim ({pe_feature_dim}) must be at least {used_dim} "
-            "for fixed_v2 PE schema"
+            f"for {version} PE schema"
         )
-    names.extend(f"fixed_v2_reserved_{idx:03d}" for idx in range(used_dim, pe_feature_dim))
+    names.extend(f"{version}_reserved_{idx:03d}" for idx in range(used_dim, pe_feature_dim))
+    return names
+
+
+def fixed_v2_feature_names(section_slots: int = 32, pe_feature_dim: Optional[int] = None) -> list[str]:
+    """Return stable column names for the fixed_v2 PE feature vector."""
+
+    return _fixed_schema_feature_names(
+        "fixed_v2",
+        FIXED_V2_HEADER_FEATURE_NAMES,
+        FIXED_V2_AGGREGATE_FEATURE_NAMES,
+        section_slots,
+        pe_feature_dim,
+    )
+
+
+def fixed_v3_feature_names(section_slots: int = 32, pe_feature_dim: Optional[int] = None) -> list[str]:
+    """Return stable column names for the fixed_v3 PE feature vector."""
+
+    return _fixed_schema_feature_names(
+        "fixed_v3",
+        FIXED_V3_HEADER_FEATURE_NAMES,
+        FIXED_V2_AGGREGATE_FEATURE_NAMES,
+        section_slots,
+        pe_feature_dim,
+    )
+
+
+def stat_feature_names(segment_count: int = 3, chunk_count: int = 10) -> list[str]:
+    """Return stable column names for the statistical feature vector.
+
+    Mirrors ``extract_statistical_features`` and must stay in step with
+    ``AxonExperimentConfig.expected_stat_feature_dim``:
+    ``7 + 4 + 1 + 3 * segment_count + 2 * chunk_count + 8``.
+    """
+
+    if segment_count <= 0 or chunk_count <= 0:
+        raise ValueError("segment_count and chunk_count must be positive")
+
+    names = [
+        "stat_byte_mean",
+        "stat_byte_std",
+        "stat_byte_min",
+        "stat_byte_max",
+        "stat_byte_median",
+        "stat_byte_q25",
+        "stat_byte_q75",
+        "stat_count_0x00",
+        "stat_count_0xff",
+        "stat_count_0x90",
+        "stat_ascii_count",
+        "stat_global_entropy_normalized",
+    ]
+    for segment in range(segment_count):
+        names.extend(
+            (
+                f"stat_segment_{segment}_mean",
+                f"stat_segment_{segment}_std",
+                f"stat_segment_{segment}_entropy_normalized",
+            )
+        )
+    names.extend(f"stat_chunk_{chunk}_mean" for chunk in range(chunk_count))
+    names.extend(f"stat_chunk_{chunk}_std" for chunk in range(chunk_count))
+    names.extend(
+        (
+            "stat_chunk_mean_abs_diff_mean",
+            "stat_chunk_mean_diff_std",
+            "stat_chunk_mean_diff_max",
+            "stat_chunk_mean_diff_min",
+            "stat_chunk_std_abs_diff_mean",
+            "stat_chunk_std_diff_std",
+            "stat_chunk_std_diff_max",
+            "stat_chunk_std_diff_min",
+        )
+    )
+
+    expected = 7 + 4 + 1 + 3 * segment_count + 2 * chunk_count + 8
+    if len(names) != expected:
+        raise RuntimeError(
+            f"stat feature name count {len(names)} drifted from expected {expected}"
+        )
     return names

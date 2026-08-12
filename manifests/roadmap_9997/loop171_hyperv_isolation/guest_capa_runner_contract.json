@@ -1,0 +1,36 @@
+{
+  "schema": "axon_loop171_guest_capa_runner_contract_v1",
+  "loop_id": "loop171_hyperv_isolation",
+  "status": "static_guest_adapter_only_not_executed",
+  "claim_scope": "future_linux_guest_aggregate_only_capability_collection_not_model_or_heldout_evidence",
+  "toolchain": {
+    "asset": "capa-v9.4.0-linux.zip",
+    "sha256": "07800a1d20a21eb18fc98716e2ae81b668e0c9a04defd588c8aa17ea3d3281e4",
+    "windows_binary_or_wine_forbidden": true,
+    "linux_elf_binary_required": true,
+    "archive_binary_and_rules_sha256_binding_required": true
+  },
+  "execution_contract": {
+    "guest_only": true,
+    "source_scope": "future_authorized_train_only_256_rows",
+    "source_sha256_and_exact_size_required_before_and_after_capa": true,
+    "source_mount_must_be_read_only": true,
+    "toolchain_archive_mount_must_be_read_only": true,
+    "zero_nic_guest_acceptance_required": true,
+    "offline_proxy_environment_enforced": true,
+    "per_sample_timeout_required": true,
+    "capa_process_group_kill_on_timeout_or_output_limit": true,
+    "capa_json_max_bytes": 67108864,
+    "aggregate_receipt_max_bytes": 65536,
+    "raw_capa_json_match_locations_source_paths_and_source_identities_persist_forbidden": true,
+    "sample_access_allowed": false,
+    "training_allowed": false,
+    "heldout_allowed": false,
+    "f1_claim_allowed": false
+  },
+  "activation_gate": [
+    "new_vm_zero_nic_and_read_only_input_acceptance_passes",
+    "harmless_fixture_acceptance_proves_forced_termination_and_aggregate_output_bounds",
+    "new_train_only_authorization_is_issued"
+  ]
+}

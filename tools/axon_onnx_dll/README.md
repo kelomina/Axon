@@ -30,6 +30,22 @@ C++ DLL 使用 ONNX Runtime 加载 `.onnx` 基础模型，并可加载 Loop28 St
 
 这相当于把“训练厨房”和“上菜窗口”分开：Python 负责做菜谱和训练，C++ DLL 负责按菜谱快速出结果。
 
+## Loop151 Native Champion
+
+Loop151 使用同一套 native-only 交付边界，但把 Stage-2 及 selector 权重导出为
+纯 JSON 数值资产，不再加载 Python、PyTorch、pickle 或 sklearn。构建的
+`axon_loop151_champion.dll` 通过 `runtime/loop151_native_runtime.json` 绑定
+base ONNX、primary/conservative/content-cross/noise/selector 五个权重文件；该
+配置文件和模型目录可以整体复制到另一台 Windows x64 机器。`onnxruntime.dll`
+必须和 champion DLL 放在同一 `bin` 目录，ONNX `.data` 文件必须和 `.onnx` 相邻。
+
+```powershell
+.\build\bin\Release\axon_loop151_example.exe `
+  --dll .\build\bin\Release\axon_loop151_champion.dll `
+  --runtime-config ..\..\dist\axon_loop151_native_champion\runtime\loop151_native_runtime.json `
+  --target C:\samples\sample.exe
+```
+
 ## 家族归属
 
 Axon 的相似样本分组工具可以离线生成 `family_classifier.json`。DLL 加载它以后，会在样本被判定为恶意时追加：
@@ -55,10 +71,77 @@ cd "E:\Project\python\Axon_v2.6Exp"
 
 这一步不是训练模型。它只是把调试阶段的“相似样本组”整理成部署时能查的“家族地图”。
 
+## 关闭 base ONNX（`base_onnx_enabled`）
+
+`runtime/loop151_native_runtime.json` 支持一个可选布尔字段：
+
+```json
+{
+  "schema": "axon_loop151_native_runtime_v1",
+  "base_onnx_enabled": false,
+  ...
+}
+```
+
+**字段缺省等于 `true`**，已发布的运行时配置行为不变。
+
+设为 `false` 时，DLL 不加载 base ONNX，也不执行它的推理，并跳过 `content_cross`。
+这样做的依据是 Stage-2 资产自身的元数据：`primary`、`conservative`、`noise` 三个
+stack 都带 `drop_base_prob_features: true` 且 `dropped_feature_count: 6`，
+原生打分器在评分前会把 base 概率派生的那 6 列（`prob`、`prob²`、`|prob-0.5|`、
+`log(prob)`、`log(1-prob)`、`logit`）整段 erase 掉。也就是说这三个主力模型从不
+消费 base 概率，`content_cross` 是它唯一的下游。
+
+`content_cross` 只通过 `possible` 的 OR 分支参与判决；去掉它以后判据退化为
+`primary == 1 && conservative == 0`，比原式更难满足，因此规则触发的
+「恶意 → 良性」翻转只会变少，不会凭空多出漏报。
+
+关闭以后基础 ONNX 及其 `.onnx.data` 就不必随包分发。
+
+### 原生模型加载
+
+Stage-2 资产是几个非常大的扁平数字数组：`loop151_noise.native.json` 一个文件就有
+1143 万个数字，而字符串只有 2486 个、数组 178 个、对象 49 个。加载器针对这个形状
+做了三处处理，都不改变任何数值：
+
+- **不装箱纯数字数组。** 全部元素都是数字的数组直接存进 `std::vector<double>`，
+  不为每个数字建 JSON 节点。三个大资产合计 1919 万个节点，按每节点约 96 字节算
+  是 1.72 GiB，加上 vector 扩容拷贝正是此前 4.8 GiB 加载峰值的来源。
+- **不做序列化往返。** 嵌套模型此前会被 `json_encode` 重新序列化成 17 位精度的
+  文本再解析一遍；每个 stack 有 15 个基模型，这是加载耗时的主要来源。现在直接
+  传递已解析的节点。
+- **用 `std::from_chars` 代替 `std::strtod`**，避免逐个数字查询 C locale。
+
+累计效果：初始化 117 s → 5.1 s，加载峰值 4876 MiB → 607 MiB，稳态常驻
+1041 MiB → 238 MiB。判决完全不变，`tests/axon_loop151_number_parse_test.cpp`
+用真实资产的 1917 万个数字逐位验证了新旧解析结果一致。
+
+### 诊断用环境变量
+
+这两个开关只影响输出内容，不改变 ABI，也不改变判决：
+
+- `AXON_LOOP151_TIMING=1`：在结果 JSON 里追加 `timing_ms`，按阶段给出
+  `base_onnx` / `stage2_features` / `content_features` / 各 stack / `authenticode`
+  的耗时。
+- `AXON_LOOP151_NO_ONNX_SHADOW=1`：在开启 ONNX 的前提下，额外计算一份
+  「假如关闭 ONNX」的判决并写入 `no_onnx` 字段，用于在同一次扫描里做配对对比。
+
+配套的基准程序是 `axon_loop151_bench.exe`，它把一次性初始化、常驻内存和单文件
+延迟分开测量，并可通过 `--split-csv` 读入带标签的切分直接计算 F1：
+
+```powershell
+.\build\bin\Release\axon_loop151_bench.exe `
+  --dll .\build\bin\Release\axon_loop151_champion.dll `
+  --runtime-config ..\..\dist\axon_loop151_native_champion\runtime\loop151_native_runtime.json `
+  --split-csv ..\..\manifests\roadmap_9997\corpus_712_split\split_712.csv `
+  --split test --count 2000
+```
+
 ## 重要限制
 
-DLL 当前面向 Loop28：`fixed_v2 + byte_length=8192 + pe_feature_dim=256 + stat_feature_dim=49`。
-Stage-2 C++ 版会复刻主要内容特征，但少量深层 PE 目录计数字段使用稳定兜底值，因此和 Python 研究脚本的分数可能存在很小差异。
+Loop28 兼容 DLL 当前面向 `fixed_v2 + byte_length=8192 + pe_feature_dim=256 + stat_feature_dim=49`。
+Loop151 native DLL 还会执行五阶段原生 stack/selector 决策；其交付包中的 README
+和 parity receipt 明确标注了验证范围，不把有限样本 parity 当成 full-test 质量声明。
 
 ## 导出 ONNX
 

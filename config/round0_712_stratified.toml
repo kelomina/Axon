@@ -1,0 +1,101 @@
+# Axon v2.6 Round 0 -- 7:1:2 full-corpus split with shortcut-stratified reweighting
+#
+# Architecture is deliberately IDENTICAL to config/random_20w_8192.toml. Round 0
+# changes only the data: ~209k training rows instead of 20k, and per-row
+# sample_weight values that flatten the packing/entropy/signature shortcut the
+# error attribution found. Holding the architecture fixed is the point -- the
+# oracle-bound and capacity evidence says architecture is not what caps F1, so
+# an architecture change here would confound the data result.
+#
+# Run with the strata-annotated split (weights live in its sample_weight column,
+# which dataset.create_split_from_file picks up automatically):
+#
+#   python scripts/main.py train --config config/round0_712_stratified.toml \
+#     --split-file manifests/roadmap_9997/corpus_712_split/split_712_round0_alpha1.csv
+#
+# Control arm: same command with the alpha0 split (unweighted).
+#
+# NOTE ON EPOCH COST: 209k rows at batch_size 32 is ~6,536 steps/epoch, roughly
+# 10x the 20k-row reference. Measure one epoch before committing to max_epochs.
+
+[experiment]
+name = "axon_v2.6_round0_712_stratified"
+seed = 9997
+fast_mode_samples = 100000
+fast_mode_epochs = 8
+fast_mode_byte_length = 8192
+
+[model]
+max_byte_length = 8192
+byte_embedding_dim = 128
+
+dsra_dim = 160
+dsra_heads = 4
+dsra_slots = 160
+dsra_read_topk = 12
+dsra_write_topk = 4
+dsra_local_window = 384
+dsra_chunk_size = 512
+
+pe_feature_dim = 256
+pe_projection_dim = 160
+pe_projector_hidden_dim = 384
+classifier_hidden_dim = 96
+
+fusion_type = "concat"
+dropout = 0.15
+
+[training]
+optimizer = "adamw"
+learning_rate = 0.00008
+weight_decay = 0.00005
+lr_scheduler = "cosine"
+warmup_epochs = 2
+warmup_start_lr = 0.000001
+min_lr = 0.000001
+
+# 10x the training rows, so far fewer passes are needed; early stopping decides.
+max_epochs = 20
+early_stopping_patience = 4
+early_stopping_min_delta = 0.0003
+gradient_clip = 0.75
+mixed_precision = false
+batch_size = 32
+pin_memory = true
+
+decision_threshold = 0.50
+label_smoothing = 0.03
+focal_gamma = 1.0
+focal_alpha = 0.55
+diversity_loss_weight = 0.03
+enable_swanlab = false
+
+# Focal loss already reshapes per-sample loss; the stratum weights multiply it
+# (trainer._compute_loss combines sample_weights with the focal term), so keep
+# focal_alpha at the lineage value rather than double-correcting the balance.
+
+[data]
+data_dir = "data"
+cache_dir = "data/.cache_712"
+output_dir = "models/round0_712_stratified"
+log_dir = "reports/logs/round0_712_stratified"
+# val/test ratios are unused when --split-file is supplied; the 7:1:2 assignment
+# comes from the split csv itself.
+val_ratio = 0.1
+test_ratio = 0.2
+strict_pe_parsing = true
+allow_pe_fallback = false
+# fixed_v3 == fixed_v2 minus the dead DIRECTORY_ENTRY_SECURITY column, which was
+# constant 0 across all 200,145 cached samples (pefile never sets that attribute).
+# The schema string feeds the cache config hash, so fixed_v2 caches cannot be
+# silently reused against the shifted fixed_v3 layout.
+pe_schema_version = "fixed_v3"
+pe_fixed_section_slots = 32
+follow_symlinks = false
+allowed_symlink_roots = []
+strict_unknown_labels = true
+eval_interval = 1
+save_best_only = true
+
+[device]
+device = "cuda"

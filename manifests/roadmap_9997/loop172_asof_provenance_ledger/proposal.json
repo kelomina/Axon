@@ -1,0 +1,16 @@
+{
+  "schema": "axon_loop172_asof_provenance_ledger_proposal_v1",
+  "loop_id": "loop172_asof_provenance_ledger",
+  "status": "phase_a_metadata_contract_implemented_no_external_records_admitted",
+  "claim_scope": "data_governance_only_not_a_model_feature_or_legacy_f1_evidence",
+  "phase_a": {
+    "allowed_input": ["opaque_subject_commitment", "independent_source_metadata", "published_available_snapshot_timestamps", "external_verdict_or_unknown"],
+    "forbidden_input": ["raw_bytes", "paths", "current_live_query_backfill", "legacy_fulltest_rows", "model_scores", "training_labels"],
+    "invariants": ["available_at_utc_must_not_exceed_score_time", "unknown_remains_unknown", "one_independent_source_votes_once_per_subject", "extra_identity_fields_rejected"],
+    "failure_action": "reject_record_keep_original_dataset_unchanged"
+  },
+  "future_use": "quarantine_and_fresh_same_label_redraw_governance_only_after_independent_asof_sources_are_admitted",
+  "heldout_authorized": false,
+  "target_f1": 0.9997,
+  "target_achieved": false
+}

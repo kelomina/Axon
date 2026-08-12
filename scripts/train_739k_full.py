@@ -24,6 +24,7 @@ import random
 import sys
 import time
 from pathlib import Path
+from typing import Optional
 
 import numpy as np
 import torch
@@ -199,7 +200,13 @@ def _jsonable(value):
     return str(value)
 
 
-def main():
+def main(resume_from: Optional[Path] = None):
+    """训练入口。
+
+    resume_from: 可选，续训 checkpoint 路径。提供且文件存在时，在 trainer 创建后
+    立即 load_checkpoint 恢复 model/optimizer/scheduler/early_stopping 状态，
+    从 last_epoch+1 继续训练；缺省 None 表示全新训练。
+    """
     set_seed(SEED)
 
     print("=" * 70)
@@ -315,6 +322,18 @@ def main():
     print()
 
     trainer = AxonTrainer(model, config, train_config)
+
+    # ── 续训：从 checkpoint 恢复 model/optimizer/scheduler/early_stopping ──────
+    if resume_from is not None:
+        resume_path = Path(resume_from)
+        if not resume_path.exists():
+            raise FileNotFoundError(f"[Resume] checkpoint not found: {resume_path}")
+        summary = trainer.load_checkpoint(resume_path)
+        print(f"[Resume] Loaded {resume_path.name} -> "
+              f"best_epoch={summary['epoch']} best_f1={summary['best_f1']:.4f} "
+              f"last_epoch={summary['last_epoch']}; continuing from epoch "
+              f"{summary['last_epoch'] + 1}")
+
     t0 = time.time()
 
     results = trainer.train(

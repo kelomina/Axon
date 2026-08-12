@@ -1,0 +1,91 @@
+{
+  "claim_scope": "synthetic_and_static_validation_only_no_real_sample_access_or_model_quality",
+  "decision": "phase0_pass_phase_a_256_train_coverage_probe_ready",
+  "loop_id": "Loop175",
+  "raw_opens": 0,
+  "schema": "axon_loop175_phase0_receipt_v1",
+  "sources": [
+    {
+      "bytes": 9511,
+      "path": "docs/phase3_loop175_section_region_moe_proposal.md",
+      "sha256": "1fc966bdf79968f526f8cf532d069781a2db2311b88385a802bed3cd92745979"
+    },
+    {
+      "bytes": 6535,
+      "path": "manifests/roadmap_9997/loop175_section_region_moe/proposal.json",
+      "sha256": "29f92d05e01c675f67e051ab11d28c9678be22f544d6cd7794766170b043c4cf"
+    },
+    {
+      "bytes": 410,
+      "path": "src/loop175/__init__.py",
+      "sha256": "ce080e04205ebf9d660a638a24cd94ead0a213336472745d9dbe5470d523b115"
+    },
+    {
+      "bytes": 12864,
+      "path": "src/loop175/region_extractor.py",
+      "sha256": "b000eea5d771fc4803d7cad03d2fadec939e53a1ff99655e43859ffbd7da01d1"
+    },
+    {
+      "bytes": 9413,
+      "path": "src/loop175/model.py",
+      "sha256": "b19c3b9ee7d127f688bca6557060f1b4dbf15748ca98d7d8ee8330c7b715376d"
+    },
+    {
+      "bytes": 3349,
+      "path": "src/loop175/protocol.py",
+      "sha256": "21beaf525c01bb964b186a560abef767a87af68c8ad8d7c2be75f1515a239b33"
+    },
+    {
+      "bytes": 2250,
+      "path": "src/loop175/resource_guard.py",
+      "sha256": "02f59034ef2462e088b78b97c18e006c3f69361583268a0543573704856207aa"
+    },
+    {
+      "bytes": 4375,
+      "path": "scripts/build_loop175_phase0_receipt.py",
+      "sha256": "7d7a8f53b21664055d297f8ffe4042eac405ad9c06099b4a3c95f1968bca7fc9"
+    },
+    {
+      "bytes": 8490,
+      "path": "scripts/run_loop175_region_coverage_probe.py",
+      "sha256": "d424e064a71a8b6edb9f88d7d43a0fd367e7cd5e838bf7c890d7f7e440510ca5"
+    },
+    {
+      "bytes": 3301,
+      "path": "tests/test_loop175_region_extractor.py",
+      "sha256": "6f98a82dac39c2974b2f61cbaeb8a245aa4ae51e74d1532db7c0731d764c101f"
+    },
+    {
+      "bytes": 1951,
+      "path": "tests/test_loop175_region_model.py",
+      "sha256": "6106dd3bd2f60be389075b3869be821e4c75c68f8f5120a58acb4bd93ca409e3"
+    },
+    {
+      "bytes": 1938,
+      "path": "tests/test_loop175_protocol.py",
+      "sha256": "432fa05e558ac4442c1e11ff967f54bdde83745532dd59c9a0f4b97634c39628"
+    },
+    {
+      "bytes": 2470,
+      "path": "tests/test_run_loop175_region_coverage_probe.py",
+      "sha256": "149246a744b5fa166ab262dd80854c761c3a2c925f8996a8f500b87066a9124a"
+    }
+  ],
+  "training_runs": 0,
+  "validation": {
+    "pytest_command": [
+      "E:\\Project\\python\\Axon_v2.6Exp\\vnev\\Scripts\\python.exe",
+      "-m",
+      "pytest",
+      "tests/test_loop175_region_extractor.py",
+      "tests/test_loop175_region_model.py",
+      "tests/test_loop175_protocol.py",
+      "tests/test_run_loop175_region_coverage_probe.py",
+      "-q"
+    ],
+    "pytest_returncode": 0,
+    "pytest_summary": "============================= 10 passed in 6.85s ==============================",
+    "ruff_returncode": 0,
+    "ruff_summary": "All checks passed!"
+  }
+}

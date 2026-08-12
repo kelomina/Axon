@@ -61,6 +61,7 @@ class FakeApi:
         self.process = FakeProcess()
         self.process.on_exit = lambda: setattr(self, "active", 0)
         self.active = 0
+        self.memory_limit = None
 
     def create_job(self):
         self.calls.append("create_job")
@@ -68,6 +69,15 @@ class FakeApi:
 
     def enable_kill_on_close(self, handle):
         self.calls.append(("enable_kill_on_close", handle))
+
+    def set_process_memory_limit(self, handle, memory_limit_bytes):
+        self.calls.append(("set_process_memory_limit", handle, memory_limit_bytes))
+        self.limit_flag_value |= 0x100
+        self.memory_limit = memory_limit_bytes
+
+    def process_memory_limit(self, handle):
+        self.calls.append(("process_memory_limit", handle))
+        return self.memory_limit
 
     def limit_flags(self, handle):
         self.calls.append(("limit_flags", handle))
@@ -128,6 +138,16 @@ def test_job_rejects_any_limit_flag_drift_and_closes_handle():
         windows_job.WindowsKillOnCloseJob(api=api)
 
     assert ("close_handle", 101) in api.calls
+
+
+def test_job_records_verified_process_memory_limit():
+    api = FakeApi()
+    job = windows_job.WindowsKillOnCloseJob(memory_limit_bytes=1024, api=api)
+
+    assert job.memory_limit_bytes == 1024
+    assert ("set_process_memory_limit", 101, 1024) in api.calls
+    assert ("process_memory_limit", 101) in api.calls
+    job.close()
 
 
 def test_run_callback_happens_after_assignment_and_before_resume(tmp_path: Path):

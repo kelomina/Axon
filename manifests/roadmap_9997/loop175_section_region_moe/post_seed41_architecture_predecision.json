@@ -1,0 +1,80 @@
+{
+  "schema": "axon_loop175_post_seed41_architecture_predecision_v1",
+  "created_at": "2026-07-17",
+  "status": "pre_registered_before_seed41_receipt",
+  "claim_scope": "train_only_future_branch_selection_no_new_execution_or_heldout_access",
+  "evidence_bindings": {
+    "proposal": {
+      "path": "manifests/roadmap_9997/loop175_section_region_moe/proposal.json",
+      "sha256": "29f92d05e01c675f67e051ab11d28c9678be22f544d6cd7794766170b043c4cf"
+    },
+    "phase_b_protocol": {
+      "path": "manifests/roadmap_9997/loop175_section_region_moe/phase_b_protocol.json",
+      "sha256": "6dc4fe4f960e882060722d9b15bfeda72d1c6dd2dff2753eb21f44e2ac540b67"
+    },
+    "phase_b_source_closure": {
+      "path": "manifests/roadmap_9997/loop175_section_region_moe/phase_b_source_closure.json",
+      "sha256": "b09dc4430cbc198657570e270fcbace90a7c917991fde6c48d7164994a572368"
+    },
+    "region_cache_receipt": {
+      "path": "reports/roadmap_9997/loop175/phase_b_region_cache_receipt.json",
+      "sha256": "d540b3163cae5d12811c5cba53f37d77c85ce40598f30ef7a776fd44fc26ce15"
+    }
+  },
+  "receipt_branches": {
+    "missing": "wait_without_pass_fail_claim_or_duplicate_controller_launch",
+    "engineering_or_resource_failure": "close_loop175_attest_failure_then_allow_loop179_hgconv_region_resource_proposal_only",
+    "scientific_failure_region_causal": "close_loop175_then_allow_loop179_hgconv_region_proposal_only",
+    "scientific_failure_region_rejected": "close_region_section_lineage_and_require_new_isolated_behavior_or_trust_evidence_proposal",
+    "seed41_pass_but_three_seed_20pct_impossible": "close_without_seed42_43",
+    "seed41_and_three_seed_feasibility_pass": "allow_new_authorization_and_source_closure_for_seed42_43_only"
+  },
+  "loop179": {
+    "name": "HGConv_Region_control",
+    "lineage": "new_not_loop175_modification_or_full_file_hgconv_replication",
+    "frozen_input_shape": [
+      "batch",
+      16,
+      8192
+    ],
+    "patch_size": 16,
+    "patches_per_region": 512,
+    "model_dim": 192,
+    "hgconv_blocks": 1,
+    "threshold": 0.5,
+    "outer_folds": 5,
+    "first_seed": 41,
+    "resource_gate": {
+      "maximum_gpu_allocated_bytes": 6979321856,
+      "maximum_rss_bytes": 11811160064,
+      "maximum_wall_seconds": 21600,
+      "nonfinite_allowed": false,
+      "silent_drop_allowed": false
+    },
+    "quality_gate": {
+      "minimum_J_net_error_reduction_vs_A": 30,
+      "minimum_repairs": 50,
+      "minimum_override_precision": 0.8,
+      "minimum_positive_folds": 4,
+      "A_J_component_bootstrap_one_sided_95_lcb": ">0",
+      "maximum_relative_fp_regression": 0.05,
+      "maximum_relative_fn_regression": 0.05,
+      "minimum_K_minus_J_errors": 30,
+      "K_J_component_bootstrap_one_sided_95_lcb": ">0"
+    },
+    "execution_authorized": false
+  },
+  "closed_lineages": {
+    "loop166_bpe1024_mlm": "closed_nonfinite_not_recovery_eligible",
+    "loop170_cfg": "closed_coverage_0.13671875",
+    "loop171_host_capa": "closed_host_safety_disposable_sandbox_required"
+  },
+  "heldout_boundaries": {
+    "val_rows_opened": 0,
+    "test10k_rows_opened": 0,
+    "legacy_full_rows_opened": 0,
+    "heldout_selection_allowed": false,
+    "full_test_posthoc_rescue_allowed": false
+  },
+  "decision": "pre_registered_wait_for_loop175_seed41_receipt_no_new_execution_authorized"
+}

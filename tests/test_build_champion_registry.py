@@ -119,11 +119,10 @@ def create_fixture(root: Path) -> None:
                 },
                 {
                     "id": "loop167_ember_v3_novel_delta",
-                    "status": "preregistered_phase_a_static_only_phase_b_source_closure_pending",
+                    "status": "closed_cache_only_train_oof_negative_do_not_retry",
                     "phase_review": {
                         "decision": (
-                            "grant_phase_a_static_only_and_withhold_phase_b_until_"
-                            "new_source_closed_authorization"
+                            "close_loop167_cache_only_novel_delta_negative_do_not_retry_or_promote"
                         )
                     },
                 },
@@ -139,10 +138,10 @@ def test_registry_keeps_research_native_and_connected_scopes_separate(tmp_path: 
 
     assert payload["champions"]["research"]["candidate_id"] == "Loop151"
     assert payload["champions"]["research"]["metrics"]["legacy_full_test"]["errors"] == 1466
-    assert payload["champions"]["research"]["next_candidate"]["candidate_id"] == "Loop167"
+    assert payload["champions"]["research"]["next_candidate"]["candidate_id"] is None
     assert (
         payload["champions"]["research"]["next_candidate"]["decision"]
-        == "grant_phase_a_static_only_and_withhold_phase_b_until_new_source_closed_authorization"
+        == "close_loop167_cache_only_novel_delta_negative_do_not_retry_or_promote"
     )
     assert (
         payload["champions"]["research"]["recently_closed_candidate"]["candidate_id"]

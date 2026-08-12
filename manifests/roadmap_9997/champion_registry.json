@@ -1,6 +1,6 @@
 {
   "schema": "axon_champion_registry_v1",
-  "generated_at_utc": "2026-07-13T13:14:45.564982+00:00",
+  "generated_at_utc": "2026-07-15T06:58:39.030043+00:00",
   "generation_policy": "Generated only from frozen aggregate manifests and receipts. Research, native, and connected scopes are not comparable or interchangeable; no metric is hand-entered by this builder.",
   "source_artifacts": {
     "truth_manifest": {
@@ -21,7 +21,7 @@
     },
     "recommendation_status": {
       "path": "reports/model_review/final_model_selection/ml_recommendation_status.json",
-      "sha256": "5b009a411b618563877d7399053a537705e697044b785bfe99e484a3b7e22e16"
+      "sha256": "20b673194fdfe7dbfb043fc6a3df0d77a8c8daa6103dd93b505b69e1c013b30d"
     }
   },
   "champions": {
@@ -64,9 +64,9 @@
       "native_ready": false,
       "deployment_parity": false,
       "next_candidate": {
-        "candidate_id": "Loop167",
-        "status": "preregistered_phase_a_static_only_phase_b_source_closure_pending",
-        "decision": "grant_phase_a_static_only_and_withhold_phase_b_until_new_source_closed_authorization"
+        "candidate_id": null,
+        "status": "no_open_model_candidate",
+        "decision": "close_loop167_cache_only_novel_delta_negative_do_not_retry_or_promote"
       },
       "recently_closed_candidate": {
         "candidate_id": "Loop166",
@@ -136,7 +136,7 @@
     "legacy_metrics_are_development_only": true,
     "loop164_is_parked_not_champion": true,
     "loop166_is_closed_not_champion": true,
-    "loop167_is_candidate_not_champion": true
+    "loop167_is_closed_not_champion": true
   },
   "decision": "registry_current_scopes_separated_no_connected_champion"
 }

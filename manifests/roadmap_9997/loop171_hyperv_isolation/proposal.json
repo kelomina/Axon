@@ -1,0 +1,46 @@
+{
+  "schema": "axon_loop171_hyperv_isolation_proposal_v1",
+  "loop_id": "loop171_hyperv_isolation",
+  "status": "official_ubuntu_base_and_native_capa_verified_elevated_preflight_pending_no_vm_created",
+  "claim_scope": "isolation_infrastructure_only_not_sample_or_model_evidence",
+  "official_base_image": {
+    "source": "https://cloud-images.ubuntu.com/releases/noble/release/ubuntu-24.04-server-cloudimg-amd64-azure.vhd.tar.gz",
+    "sha256": "05b7b5bb6172e5b0dd1248d5598c1bc27927c4625ba4c09c0442d4751725c43f",
+    "sha256sums_signature_key_fingerprint": "D2EB44626FDDC30B513D5BB71A5D6C4C7DB87C81",
+    "release_format": "official_azure_vhd_tar_gz_not_vhdx"
+  },
+  "guest_capability_toolchain": {
+    "asset": "capa-v9.4.0-linux.zip",
+    "source": "https://github.com/mandiant/capa/releases/download/v9.4.0/capa-v9.4.0-linux.zip",
+    "sha256": "07800a1d20a21eb18fc98716e2ae81b668e0c9a04defd588c8aa17ea3d3281e4",
+    "execution_environment": "future_disposable_ubuntu_guest_only",
+    "windows_binary_or_wine_fallback_forbidden": true
+  },
+  "hard_boundaries": {
+    "new_vm_only": true,
+    "existing_user_vm_vhd_or_switch_reuse_forbidden": true,
+    "network_adapter_count_required": 0,
+    "enhanced_session_guest_services_powershell_direct_and_host_shares_forbidden": true,
+    "sample_copy_or_parser_execution_before_harmless_acceptance_forbidden": true,
+    "input_medium_must_be_read_only": true,
+    "output_must_be_aggregate_only_and_size_bounded": true,
+    "destroy_child_vm_and_disks_after_run": true
+  },
+  "acceptance_requirements": [
+    "base_image_sha256_matches_official_signed_checksum",
+    "new_vm_and_all_disk_paths_have_no_intersection_with_preexisting_assets",
+    "no_network_adapter_before_and_after_boot",
+    "all_guest_integration_services_disabled",
+    "harmless_fixture_cannot_write_input_or_reach_network",
+    "forced_guest_termination_leaves_no_vm_or_host_worker_survivor",
+    "no_sample_access_before_all_acceptance_receipts_pass"
+  ],
+  "authorizations": {
+    "sample_access_allowed": false,
+    "training_allowed": false,
+    "heldout_allowed": false,
+    "f1_claim_allowed": false
+  },
+  "target_f1": 0.9997,
+  "target_achieved": false
+}

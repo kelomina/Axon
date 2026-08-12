@@ -87,8 +87,15 @@ def train_eval(Xv, yv, Xt, yt, sw):
 
 
 def main() -> None:
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--base-dir", type=str, default=str(BASE_DIR),
+                        help="base_prob 目录（难例重训后指向新 checkpoint 的导出目录）")
+    args = parser.parse_args()
+    base_dir = Path(args.base_dir)
+
     t0 = time.time()
-    base_prob = load_chunks(BASE_DIR)
+    base_prob = load_chunks(base_dir)
     content_v1 = load_chunks(CONTENT_V1_DIR)
     v2 = np.load(V2_DIR / "val.npy").astype(np.float32)
     st = np.load(V2_DIR / "test.npy").astype(np.float32)

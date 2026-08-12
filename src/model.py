@@ -8,6 +8,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from typing import Optional, Tuple, Dict
 from dataclasses import dataclass
+import dataclasses
 
 try:
     from .config import AxonExperimentConfig, DSRAArchitectureConfig
@@ -80,7 +81,10 @@ class ByteEmbedding(nn.Module):
         self.embedding = nn.Embedding(vocab_size, embedding_dim)
         self.vocab_size = vocab_size
         self.embedding_dim = embedding_dim
-    
+        # OOB 诊断开关：clamp 后 oob.any() 恒为 False（死代码），关闭可省掉每 chunk
+        # 一次 GPU->CPU 同步（训练每 step 8 次）以及 compile 图断点。
+        self.debug_oob = False
+
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
         Args:
@@ -92,7 +96,7 @@ class ByteEmbedding(nn.Module):
         x = torch.clamp(x, 0, self.vocab_size - 1)
         if x.dtype != torch.long:
             x = x.long()
-        if self.training:
+        if self.training and self.debug_oob:
             oob = (x < 0) | (x >= self.vocab_size)
             if oob.any():
                 import warnings
@@ -154,56 +158,14 @@ class DSRAEncoder(nn.Module):
         super().__init__()
         
         # 创建 MHDSRA2 配置
-        mhdsra_config = MHDSRA2Config(
-            dim=config.dim,
-            heads=config.heads,
-            slots=config.slots,
-            read_topk=config.read_topk,
-            write_topk=config.write_topk,
-            local_window=config.local_window,
-            use_local=config.use_local,
-            use_retrieval=config.use_retrieval,
-            tau_init=config.tau_init,
-            read_tau_max=config.read_tau_max,
-            tau_write_init=config.tau_write_init,
-            retrieval_tau=config.retrieval_tau,
-            forget_base=config.forget_base,
-            forget_conflict=config.forget_conflict,
-            forget_age=config.forget_age,
-            usage_decay=config.usage_decay,
-            conf_decay=config.conf_decay,
-            usage_prior=config.usage_prior,
-            age_write_bias=config.age_write_bias,
-            conf_read_bias=config.conf_read_bias,
-            age_read_penalty=config.age_read_penalty,
-            use_context_film=config.use_context_film,
-            momentum_qkv=config.momentum_qkv,
-            slot_pe=config.slot_pe,
-            hard_write=config.hard_write,
-            hard_read=config.hard_read,
-            exact_write=config.exact_write,
-            exact_read=config.exact_read,
-            write_frequency=config.write_frequency,
-            novelty_threshold=config.novelty_threshold,
-            write_protection=config.write_protection,
-            write_gate_min=config.write_gate_min,
-            conflict_protection_coef=config.conflict_protection_coef,
-            eta=config.eta,
-            max_update=config.max_update,
-            exact_write_gate=config.exact_write_gate,
-            eps=config.eps,
-            max_contexts=config.max_contexts,
-            momentum_decay=config.momentum_decay,
-            forget_max=config.forget_max,
-            write_tau_max=config.write_tau_max,
-            max_v_norm=config.max_v_norm,
-            write_gate_bias_init=config.write_gate_bias_init,
-            write_gate_weight_std=config.write_gate_weight_std,
-            init_confidence=config.init_confidence,
-            age_reset_threshold=config.age_reset_threshold,
-            write_mass_threshold_multiplier=config.write_mass_threshold_multiplier,
-            detach_state=config.detach_state,
-        )
+        mhdsra_fields = {f.name for f in dataclasses.fields(MHDSRA2Config)}
+        config_dict = {
+            k: getattr(config, k)
+            for k in mhdsra_fields
+            if hasattr(config, k)
+        }
+        mhdsra_config = MHDSRA2Config(**config_dict)
+
         
         num_layers = config.num_layers if hasattr(config, 'num_layers') else 1
         if num_layers > 1:

@@ -1,0 +1,54 @@
+{
+  "schema": "axon_loop170_cfg_semantic_expert_proposal_v1",
+  "loop_id": "loop170_cfg_semantic_expert",
+  "status": "closed_phase_a_corrected_coverage_below_minimum",
+  "claim_scope": "static_train_only_extractor_reliability_not_model_quality_or_heldout_evidence",
+  "predecessor_closures": {
+    "loop166_bpe_mlm": "closed_nonfinite_do_not_retry",
+    "loop167_ember_delta": "closed_train_oof_negative_do_not_retry",
+    "loop169_authenticode_calibrator": "closed_val_negative_do_not_tune_or_promote"
+  },
+  "phase_a": {
+    "input": "fixed_SHA_bound_256_row_train_only_loop164_probe_bundle",
+    "allowed_signal": [
+      "executable_section_instruction_class_counts",
+      "aggregate_call_branch_return_interrupt_counts",
+      "estimated_basic_block_count",
+      "explicit_missing_reason"
+    ],
+    "forbidden_signal": [
+      "raw_code_bytes",
+      "instruction_operands_or_targets",
+      "strings",
+      "paths_filenames_extensions_source_sha256_labels_fold_or_row_index",
+      "model_scores_predictions_signer_or_dynamic_execution"
+    ],
+    "gates": {
+      "coverage_minimum": 0.95,
+      "silent_drop": 0,
+      "raw_code_persisted": false,
+      "heldout_access": false,
+      "maximum_wall_seconds": 180
+    },
+    "failure_action": "close_loop170_without_phase_b_or_heldout_access"
+  },
+  "future_phase_b": {
+    "requires_new_preregistration": true,
+    "required_arms": ["B0", "C_cfg_only", "M_B0_plus_cfg", "CF_fit_fold_permuted_cfg"],
+    "required_protocol": "five_fold_train_only_fixed_threshold_0_5_no_hyperparameter_or_threshold_search",
+    "heldout_authorized": false
+  },
+  "phase_a_result": {
+    "corrected_coverage": 0.13671875,
+    "complete_rows": 35,
+    "explicit_missing_rows": 221,
+    "missing_by_reason": {
+      "no_executable_section": 5,
+      "partial_decode": 216
+    },
+    "decision": "closed_do_not_run_phase_b"
+  },
+  "public_key_required": false,
+  "target_f1": 0.9997,
+  "target_achieved": false
+}

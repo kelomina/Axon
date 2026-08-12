@@ -131,6 +131,9 @@ def export_stage2(input_path: Path, output_path: Path) -> dict:
         "node_is_leaf": node_is_leaf,
         "trees": trees,
     }
+    selected_feature_indices = payload.get("selected", {}).get("selected_feature_indices")
+    if selected_feature_indices is not None:
+        out["selected_feature_indices"] = [int(value) for value in selected_feature_indices]
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(json.dumps(out, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")

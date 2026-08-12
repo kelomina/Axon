@@ -34,8 +34,59 @@
 
 namespace {
 
-constexpr std::size_t kAxonByteLength = 8192;
-constexpr std::size_t kAxonPeFeatureDim = 256;
+#ifndef AXON_ORT_INTRA_OP_THREADS
+#define AXON_ORT_INTRA_OP_THREADS 1
+#endif
+
+#ifndef AXON_ORT_GRAPH_OPT_LEVEL
+#define AXON_ORT_GRAPH_OPT_LEVEL 0
+#endif
+
+int ort_intra_op_threads() {
+  const char* value = std::getenv("AXON_ORT_INTRA_OP_THREADS");
+  if (!value || value[0] == '\0') {
+    return AXON_ORT_INTRA_OP_THREADS;
+  }
+  char* end = nullptr;
+  const long parsed = std::strtol(value, &end, 10);
+  if (!end || *end != '\0' || parsed < 1 || parsed > 64) {
+    return AXON_ORT_INTRA_OP_THREADS;
+  }
+  return static_cast<int>(parsed);
+}
+
+GraphOptimizationLevel graph_optimization_level_from_int(int value) {
+  switch (value) {
+    case 1:
+      return GraphOptimizationLevel::ORT_ENABLE_BASIC;
+    case 2:
+      return GraphOptimizationLevel::ORT_ENABLE_EXTENDED;
+    case 99:
+      return GraphOptimizationLevel::ORT_ENABLE_ALL;
+    default:
+      return GraphOptimizationLevel::ORT_DISABLE_ALL;
+  }
+}
+
+GraphOptimizationLevel ort_graph_optimization_level() {
+  const char* value = std::getenv("AXON_ORT_GRAPH_OPT_LEVEL");
+  if (!value || value[0] == '\0') {
+    return graph_optimization_level_from_int(AXON_ORT_GRAPH_OPT_LEVEL);
+  }
+  if (std::strcmp(value, "basic") == 0) {
+    return GraphOptimizationLevel::ORT_ENABLE_BASIC;
+  }
+  if (std::strcmp(value, "extended") == 0) {
+    return GraphOptimizationLevel::ORT_ENABLE_EXTENDED;
+  }
+  if (std::strcmp(value, "all") == 0) {
+    return GraphOptimizationLevel::ORT_ENABLE_ALL;
+  }
+  return graph_optimization_level_from_int(std::atoi(value));
+}
+
+constexpr std::size_t kAxonByteLength = 4096;    // 739k 模型训练截断长度
+constexpr std::size_t kAxonPeFeatureDim = 1500;  // 739k 模型 legacy_dynamic PE 维度
 constexpr std::size_t kAxonStatFeatureDim = 49;
 constexpr std::size_t kAxonLightweightFeatureDim = 256;
 constexpr std::size_t kContentPeFeatureDim = 100;
@@ -74,6 +125,10 @@ struct Prediction {
   float stage2_threshold = 0.5f;
   std::size_t stage2_feature_dim = 0;
   std::uint64_t original_length = 0;
+  double read_ms = 0.0;
+  double feature_ms = 0.0;
+  double onnx_ms = 0.0;
+  double total_ms = 0.0;
 };
 
 struct PredictionCapture {
@@ -93,6 +148,12 @@ struct AxonConfig {
   float threshold = 0.5f;
   bool scan_nested = false;
 };
+
+bool native_student_only_enabled(const AxonConfig& config) {
+  const char* value = std::getenv("AXON_NATIVE_STUDENT_ONLY");
+  return value && value[0] != '\0' && std::strcmp(value, "0") != 0 &&
+      !config.stage2_model_json_path.empty();
+}
 
 struct FamilyPrediction {
   int cluster_id = -1;
@@ -139,6 +200,19 @@ class Stage2HgbModel {
     return n_features_;
   }
 
+  bool accepts_source_features(std::size_t source_dim) const {
+    if (selected_feature_indices_.empty()) {
+      return n_features_ == source_dim;
+    }
+    return selected_feature_indices_.size() == n_features_ &&
+        std::all_of(
+            selected_feature_indices_.begin(),
+            selected_feature_indices_.end(),
+            [source_dim](int index) {
+              return index >= 0 && static_cast<std::size_t>(index) < source_dim;
+            });
+  }
+
  private:
   std::size_t n_features_ = 0;
   double baseline_prediction_ = 0.0;
@@ -151,14 +225,15 @@ class Stage2HgbModel {
   std::vector<int> node_left_;
   std::vector<int> node_right_;
   std::vector<int> node_is_leaf_;
+  std::vector<int> selected_feature_indices_;
 };
 
 class AxonOnnxModel {
  public:
   explicit AxonOnnxModel(const std::string& model_path)
       : env_(ORT_LOGGING_LEVEL_WARNING, "AxonOnnxPredict"), session_options_() {
-    session_options_.SetIntraOpNumThreads(1);
-    session_options_.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_DISABLE_ALL);
+    session_options_.SetIntraOpNumThreads(ort_intra_op_threads());
+    session_options_.SetGraphOptimizationLevel(ort_graph_optimization_level());
 #if defined(_WIN32)
     std::wstring wpath = utf8_to_wide(model_path);
     session_ = std::make_unique<Ort::Session>(env_, wpath.c_str(), session_options_);
@@ -321,6 +396,7 @@ struct kvd_handle {
   AxonConfig config;
   std::shared_ptr<AxonOnnxModel> model;
   std::shared_ptr<Stage2HgbModel> stage2_model;
+  bool native_student_only = false;
   std::shared_ptr<FamilyClassifier> family_classifier;
 };
 
@@ -748,6 +824,7 @@ std::optional<Stage2HgbModel> Stage2HgbModel::load_from_json(const std::string& 
   if (!json.number_value("baseline_prediction", model.baseline_prediction_)) {
     return std::nullopt;
   }
+  json.int_array("selected_feature_indices", model.selected_feature_indices_);
   float threshold = 0.5f;
   if (json.number_value("threshold", threshold) && threshold > 0.0f && threshold < 1.0f) {
     model.threshold_ = threshold;
@@ -787,7 +864,10 @@ std::optional<Stage2HgbModel> Stage2HgbModel::load_from_json(const std::string& 
 }
 
 float Stage2HgbModel::predict_probability(const std::vector<float>& features) const {
-  if (features.size() != n_features_) {
+  if (selected_feature_indices_.empty() && features.size() != n_features_) {
+    return 0.0f;
+  }
+  if (!selected_feature_indices_.empty() && selected_feature_indices_.size() != n_features_) {
     return 0.0f;
   }
   double score = baseline_prediction_;
@@ -808,10 +888,16 @@ float Stage2HgbModel::predict_probability(const std::vector<float>& features) co
         break;
       }
       int feature_idx = node_feature_idx_[idx];
-      if (feature_idx < 0 || static_cast<std::size_t>(feature_idx) >= features.size()) {
+      if (feature_idx < 0 || static_cast<std::size_t>(feature_idx) >= n_features_) {
         break;
       }
-      float value = features[static_cast<std::size_t>(feature_idx)];
+      const std::size_t source_index = selected_feature_indices_.empty()
+          ? static_cast<std::size_t>(feature_idx)
+          : static_cast<std::size_t>(selected_feature_indices_[static_cast<std::size_t>(feature_idx)]);
+      if (source_index >= features.size()) {
+        break;
+      }
+      float value = features[source_index];
       bool go_left = false;
       if (std::isnan(value)) {
         go_left = node_missing_go_to_left_[idx] != 0;
@@ -1103,6 +1189,15 @@ std::string prediction_json(
         << ",\"threshold\":" << family->threshold
         << "}";
   }
+  const char* timing = std::getenv("AXON_ONNX_TIMING");
+  if (timing && timing[0] != '\0' && std::strcmp(timing, "0") != 0) {
+    out << ",\"timing_ms\":{"
+        << "\"read\":" << p.read_ms
+        << ",\"feature_extraction\":" << p.feature_ms
+        << ",\"onnx\":" << p.onnx_ms
+        << ",\"total_before_json\":" << p.total_ms
+        << "}";
+  }
   out
       << "}";
   return out.str();
@@ -1264,6 +1359,37 @@ bool read_file_bytes_limited(
     input.read(reinterpret_cast<char*>(out.data()), static_cast<std::streamsize>(file_size));
     if (!input) {
       error = "Failed to read full file.";
+      return false;
+    }
+  }
+  return true;
+}
+
+bool read_file_prefix_bytes(
+    const std::string& path,
+    std::vector<std::uint8_t>& out,
+    std::uint64_t max_size,
+    std::uint64_t& original_size,
+    std::string& error) {
+  std::ifstream input(path_from_utf8(path), std::ios::binary);
+  if (!input) {
+    error = "Failed to open file.";
+    return false;
+  }
+  input.seekg(0, std::ios::end);
+  const std::streamoff size = input.tellg();
+  if (size < 0) {
+    error = "Failed to get file size.";
+    return false;
+  }
+  original_size = static_cast<std::uint64_t>(size);
+  const std::uint64_t read_size = std::min<std::uint64_t>(original_size, max_size);
+  input.seekg(0, std::ios::beg);
+  out.resize(static_cast<std::size_t>(read_size));
+  if (!out.empty()) {
+    input.read(reinterpret_cast<char*>(out.data()), static_cast<std::streamsize>(read_size));
+    if (input.gcount() != static_cast<std::streamsize>(read_size)) {
+      error = "Failed to read file prefix.";
       return false;
     }
   }
@@ -2389,7 +2515,44 @@ bool has_parsed_exception_directory(
     return false;
   }
   const std::size_t offset = *offset_result;
-  return offset < data.size() && data.size() - offset >= 12;
+  if (offset >= data.size() || data.size() - offset < 12) {
+    return false;
+  }
+  const std::size_t record_count = size / 12;
+  if (record_count == 0 || record_count > (data.size() - offset) / 12) {
+    return false;
+  }
+
+  auto has_valid_unwind_info = [&](std::uint32_t unwind_rva) {
+    const auto unwind_offset = parsed_rva_to_offset(pe, unwind_rva);
+    if (!unwind_offset || *unwind_offset >= data.size() ||
+        data.size() - *unwind_offset < 4) {
+      return false;
+    }
+    const std::uint8_t version_flags = read_le<std::uint8_t>(data, *unwind_offset);
+    const std::uint8_t version = version_flags & 0x07u;
+    const std::uint8_t flags = static_cast<std::uint8_t>(version_flags >> 3);
+    if (version != 1u && version != 2u) {
+      return false;
+    }
+    const std::size_t code_slots =
+        (static_cast<std::size_t>(read_le<std::uint8_t>(data, *unwind_offset + 2)) + 1u) & ~1u;
+    const std::size_t optional_size = flags == 0u ? 0u : 4u;
+    const std::size_t required_size = 4u + code_slots * 2u + optional_size;
+    return required_size <= data.size() - *unwind_offset;
+  };
+
+  for (std::size_t index = 0; index < record_count; ++index) {
+    const std::size_t record_offset = offset + index * 12;
+    const std::uint32_t unwind_data = read_le<std::uint32_t>(data, record_offset + 8);
+    if ((unwind_data & 1u) != 0) {
+      continue;
+    }
+    if (!has_valid_unwind_info(unwind_data & ~1u)) {
+      return false;
+    }
+  }
+  return true;
 }
 
 bool contains_keyword(const std::string& text, const std::vector<std::string>& keywords, bool prefix_only = false) {
@@ -2404,6 +2567,8 @@ bool contains_keyword(const std::string& text, const std::vector<std::string>& k
   }
   return false;
 }
+
+std::string ordinal_import_name(const std::string& dll_name, std::uint32_t ordinal);
 
 void count_import_categories(
     const std::vector<std::uint8_t>& data,
@@ -2442,6 +2607,10 @@ void count_import_categories(
     if (original_first_thunk == 0 && name_rva == 0 && first_thunk == 0) {
       break;
     }
+    const auto name_offset_result = parsed_rva_to_offset(pe, name_rva);
+    const std::string dll_name = name_offset_result
+        ? read_c_string_at(data, *name_offset_result)
+        : std::string{};
     std::uint32_t thunk_rva = original_first_thunk ? original_first_thunk : first_thunk;
     const auto thunk_offset_result = parsed_rva_to_offset(pe, thunk_rva);
     if (!thunk_offset_result || *thunk_offset_result >= data.size()) {
@@ -2457,6 +2626,18 @@ void count_import_categories(
         break;
       }
       if ((value & ordinal_mask) != 0) {
+        const std::string api = ordinal_import_name(
+            dll_name, static_cast<std::uint32_t>(value & 0xffffu));
+        if (api.empty()) {
+          continue;
+        }
+        total_apis += 1;
+        if (matches_category(api, network)) category_counts[0] += 1;
+        if (matches_category(api, process)) category_counts[1] += 1;
+        if (matches_category(api, filesystem)) category_counts[2] += 1;
+        if (matches_category(api, registry)) category_counts[3] += 1;
+        if (matches_category(api, crypto)) category_counts[4] += 1;
+        if (matches_category(api, injection)) category_counts[5] += 1;
         continue;
       }
       std::uint32_t hint_name_rva = static_cast<std::uint32_t>(value & 0xFFFFFFFFu);
@@ -2468,6 +2649,9 @@ void count_import_categories(
       std::string api = read_c_string_at(data, *hint_name_offset_result + 2);
       if (api.empty()) {
         continue;
+      }
+      for (auto& c : api) {
+        c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));  // match Python .lower()
       }
       total_apis += 1;
       if (matches_category(api, network)) category_counts[0] += 1;
@@ -2489,6 +2673,18 @@ struct ImportExportStats {
   std::uint32_t export_count = 0;
   std::uint32_t export_name_count = 0;
 };
+
+std::string ordinal_import_name(const std::string& dll_name, std::uint32_t ordinal) {
+  static const std::array<const char*, 24> ws2_names = {
+      "", "accept", "bind", "closesocket", "connect", "getpeername", "getsockname",
+      "getsockopt", "htonl", "htons", "ioctlsocket", "inet_addr", "inet_ntoa", "listen",
+      "ntohl", "ntohs", "recv", "recvfrom", "select", "send", "sendto", "setsockopt",
+      "shutdown", "socket"};
+  if ((dll_name == "ws2_32.dll" || dll_name == "wsock32.dll") && ordinal < ws2_names.size()) {
+    return ws2_names[ordinal];
+  }
+  return {};
+}
 
 ImportExportStats collect_import_export_stats(const std::vector<std::uint8_t>& data, const ParsedPeInfo& pe) {
   ImportExportStats stats;
@@ -2530,7 +2726,18 @@ ImportExportStats collect_import_export_stats(const std::vector<std::uint8_t>& d
           }
           ++dll_import_count;
           if ((value & ordinal_mask) != 0) {
-            ++stats.ordinal_imports;
+            const std::uint32_t ordinal = static_cast<std::uint32_t>(value & 0xffffu);
+            const std::string api = ordinal_import_name(dll_name, ordinal);
+            if (!api.empty()) {
+              stats.import_names.push_back(api);
+              for (std::size_t i = 0; i < category_keywords.size(); ++i) {
+                if (contains_keyword(api, category_keywords[i])) {
+                  stats.category_counts[i] += 1;
+                }
+              }
+            } else {
+              ++stats.ordinal_imports;
+            }
             continue;
           }
           std::uint32_t hint_name_rva = static_cast<std::uint32_t>(value & 0xFFFFFFFFu);
@@ -3054,6 +3261,173 @@ std::vector<float> fixed_v2_pe_features(const std::vector<std::uint8_t>& data) {
   return features;
 }
 
+// legacy_dynamic 1500-dim PE features (739k model schema).
+// Same as fixed_v2 for the first 18 features, except idx16 is SECURITY dir presence.
+// Layout is dynamic: 3 flags per ALL sections, then the rest shifts accordingly.
+std::vector<float> legacy_dynamic_pe_features(const std::vector<std::uint8_t>& data) {
+  std::vector<float> features(kAxonPeFeatureDim, 0.0f);
+  ParsedPeInfo pe = parse_pe(data);
+  if (!pe.valid) {
+    return features;
+  }
+
+  std::size_t idx = 0;
+  float file_size = static_cast<float>(data.size());
+  features[idx++] = file_size;
+  features[idx++] = std::log1p(file_size);
+  features[idx++] = static_cast<float>(pe.size_of_optional_header);
+  features[idx++] = static_cast<float>(pe.size_of_optional_header + 24) / std::max(file_size, 1.0f);
+  features[idx++] = static_cast<float>(pe.subsystem);
+  features[idx++] = static_cast<float>(pe.dll_characteristics);
+  features[idx++] = static_cast<float>(pe.checksum);
+  features[idx++] = pe.checksum == 0 ? 1.0f : 0.0f;
+  features[idx++] = (pe.dll_characteristics & 0x0040) ? 1.0f : 0.0f;
+  features[idx++] = (pe.dll_characteristics & 0x0080) ? 1.0f : 0.0f;
+  features[idx++] = (pe.dll_characteristics & 0x4000) ? 1.0f : 0.0f;
+  features[idx++] = (pe.characteristics & 0x0004) ? 1.0f : 0.0f;
+  RelocationDirectoryStats relocation_stats = collect_relocation_directory_stats(data, pe);
+  TlsDirectoryStats tls_stats = collect_tls_directory_stats(data, pe);
+  features[idx++] = has_parsed_debug_directory(data, pe) ? 1.0f : 0.0f;
+  features[idx++] = relocation_stats.block_count > 0 ? 1.0f : 0.0f;
+  features[idx++] = tls_stats.parsed ? 1.0f : 0.0f;
+  features[idx++] = has_parsed_exception_directory(data, pe) ? 1.0f : 0.0f;
+  features[idx++] = 0.0f;  // SECURITY: pefile never sets DIRECTORY_ENTRY_SECURITY (always skipped) -> always 0
+  features[idx++] = static_cast<float>(pe.number_of_sections);
+
+  std::vector<std::uint32_t> section_sizes;
+  std::vector<std::uint32_t> section_vsizes;
+  std::vector<double> section_entropies;
+  std::vector<std::string> section_names;
+  section_sizes.reserve(pe.sections.size());
+  section_vsizes.reserve(pe.sections.size());
+  section_names.reserve(pe.sections.size());
+
+  // dynamic layout: 3 flags per ALL sections
+  for (const auto& section : pe.sections) {
+    bool is_exec = (section.characteristics & 0x20000000u) != 0;
+    bool is_write = (section.characteristics & 0x80000000u) != 0;
+    bool is_read = (section.characteristics & 0x40000000u) != 0;
+    features[idx++] = is_exec ? 1.0f : 0.0f;
+    features[idx++] = is_write ? 1.0f : 0.0f;
+    features[idx++] = is_read ? 1.0f : 0.0f;
+    section_sizes.push_back(section.raw_size);
+    section_vsizes.push_back(section.virtual_size);
+    section_names.push_back(section.name);
+    if (section.raw_size > 0 && section.raw_size < 10 * 1024 * 1024 && section.raw_ptr < data.size()) {
+      std::size_t sample = std::min<std::size_t>(256, std::min<std::size_t>(section.raw_size, data.size() - section.raw_ptr));
+      if (sample > 0) {
+        section_entropies.push_back(entropy_normalized_f64(data, section.raw_ptr, sample));
+      }
+    }
+  }
+
+  if (!section_entropies.empty()) {
+    auto [min_it, max_it] = std::minmax_element(section_entropies.begin(), section_entropies.end());
+    double mean = numpy_mean_f64(section_entropies.data(), section_entropies.size());
+    int high_entropy = 0;
+    for (double value : section_entropies) {
+      if (value > 0.8) {
+        high_entropy += 1;
+      }
+    }
+    features[idx++] = static_cast<float>(*max_it);
+    features[idx++] = static_cast<float>(*min_it);
+    features[idx++] = static_cast<float>(mean);
+    features[idx++] = static_cast<float>(numpy_std_f64(section_entropies.data(), section_entropies.size()));
+    features[idx++] = static_cast<float>(high_entropy) / static_cast<float>(section_entropies.size());
+  } else {
+    idx += 5;
+  }
+
+  double avg_raw = 0.0;
+  if (!section_sizes.empty()) {
+    std::uint64_t total_raw = 0;
+    std::uint64_t total_vsize = 0;
+    for (std::size_t i = 0; i < section_sizes.size(); ++i) {
+      total_raw += section_sizes[i];
+      total_vsize += section_vsizes[i];
+    }
+    avg_raw = static_cast<double>(total_raw) / static_cast<double>(section_sizes.size());
+    double avg_vsize = static_cast<double>(total_vsize) / static_cast<double>(section_vsizes.size());
+    auto [min_it, max_it] = std::minmax_element(section_sizes.begin(), section_sizes.end());
+    std::vector<double> squared_size_differences;
+    squared_size_differences.reserve(section_sizes.size());
+    for (std::uint32_t value : section_sizes) {
+      double difference = static_cast<double>(value) - avg_raw;
+      squared_size_differences.push_back(difference * difference);
+    }
+    double variance = numpy_pairwise_sum_f64(
+        squared_size_differences.data(), squared_size_differences.size()) /
+        static_cast<double>(section_sizes.size());
+    double std_raw = std::sqrt(variance);
+    features[idx++] = static_cast<float>(total_raw);
+    features[idx++] = static_cast<float>(total_vsize);
+    features[idx++] = static_cast<float>(avg_raw);
+    features[idx++] = static_cast<float>(avg_vsize);
+    features[idx++] = static_cast<float>(*min_it);
+    features[idx++] = static_cast<float>(*max_it);
+    features[idx++] = static_cast<float>(std_raw);
+    features[idx++] = static_cast<float>(std_raw / std::max(avg_raw, 1.0));
+  } else {
+    idx += 8;
+  }
+
+  std::vector<int> name_lengths;
+  for (const auto& name : section_names) {
+    if (!name.empty()) {
+      name_lengths.push_back(static_cast<int>(name.size()));
+    }
+  }
+  features[idx++] = static_cast<float>(name_lengths.size());
+  if (!name_lengths.empty()) {
+    auto [min_it, max_it] = std::minmax_element(name_lengths.begin(), name_lengths.end());
+    float sum = static_cast<float>(std::accumulate(name_lengths.begin(), name_lengths.end(), 0));
+    features[idx++] = sum / static_cast<float>(name_lengths.size());
+    features[idx++] = static_cast<float>(*max_it);
+    features[idx++] = static_cast<float>(*min_it);
+  } else {
+    idx += 3;
+  }
+
+  if (!section_sizes.empty() && avg_raw > 0.0) {
+    int long_count = 0;
+    int short_count = 0;
+    for (auto size : section_sizes) {
+      if (static_cast<double>(size) > 2.0 * avg_raw) {
+        long_count += 1;
+      }
+      if (static_cast<double>(size) < 0.5 * avg_raw) {
+        short_count += 1;
+      }
+    }
+    features[idx++] = static_cast<float>(long_count);
+    features[idx++] = static_cast<float>(long_count) / static_cast<float>(section_sizes.size());
+    features[idx++] = static_cast<float>(short_count);
+    features[idx++] = static_cast<float>(short_count) / static_cast<float>(section_sizes.size());
+  } else {
+    idx += 4;
+  }
+
+  std::array<std::uint32_t, 6> category_counts{};
+  std::uint32_t total_apis = 0;
+  count_import_categories(data, pe, category_counts, total_apis);
+  for (std::uint32_t count : category_counts) {
+    features[idx++] = static_cast<float>(count) / static_cast<float>(std::max<std::uint32_t>(total_apis, 1));
+  }
+
+  const std::vector<std::string> packer_keywords = {
+      "upx", "themida", "vmprotect", "aspack", "mpress", "pecompact", "obsidium", "enigma", "packed"};
+  int packer_hits = 0;
+  for (const auto& name : section_names) {
+    if (contains_keyword(name, packer_keywords)) {
+      packer_hits += 1;
+    }
+  }
+  features[idx++] = static_cast<float>(packer_hits);
+  features[idx++] = static_cast<float>(packer_hits) / static_cast<float>(std::max<std::uint16_t>(pe.number_of_sections, 1));
+  return features;
+}
+
 std::vector<float> statistical_features(const std::vector<std::uint8_t>& data) {
   std::vector<float> features;
   features.reserve(kAxonStatFeatureDim);
@@ -3212,12 +3586,14 @@ InferenceInput make_inference_input(const std::vector<std::uint8_t>& file_bytes)
     input.byte_seq[i] = static_cast<std::int64_t>(file_bytes[i]);
   }
 
-  std::vector<float> pe = fixed_v2_pe_features(file_bytes);
+  std::vector<float> pe = legacy_dynamic_pe_features(file_bytes);
   std::copy_n(pe.data(), kAxonPeFeatureDim, input.pe_features.data());
 
+  // stat matches training: from the first 65536 bytes (cache max_byte_length)
+  std::size_t stat_len = std::min<std::size_t>(file_bytes.size(), 65536);
   std::vector<std::uint8_t> stat_source(
       file_bytes.begin(),
-      file_bytes.begin() + static_cast<std::ptrdiff_t>(copy_len));
+      file_bytes.begin() + static_cast<std::ptrdiff_t>(stat_len));
   std::vector<float> stat = statistical_features(stat_source);
   std::copy_n(stat.data(), kAxonStatFeatureDim, input.stat_features.data());
   return input;
@@ -3262,16 +3638,66 @@ Prediction predict_bytes_native(
     const std::vector<std::uint8_t>& bytes,
     InferenceInput* out_input = nullptr,
     PredictionCapture* out_capture = nullptr) {
-  // Capture diagnostics from the same feature extraction and prediction pass.
+  const auto feature_started = std::chrono::steady_clock::now();
   InferenceInput input = make_inference_input(bytes);
+  const auto feature_finished = std::chrono::steady_clock::now();
   if (out_input) {
     *out_input = input;
   }
+  if (handle->native_student_only) {
+    Prediction prediction;
+    prediction.original_length = input.original_length;
+    const auto student_started = std::chrono::steady_clock::now();
+    std::vector<float> student_features;
+    student_features.reserve(kStage2FeatureDim);
+    student_features.insert(student_features.end(), 6, 0.0f);
+    student_features.insert(
+        student_features.end(), input.stat_features.begin(), input.stat_features.end());
+    student_features.insert(
+        student_features.end(), input.pe_features.begin(), input.pe_features.end());
+    const std::vector<float> light = lightweight_features(bytes);
+    student_features.insert(student_features.end(), light.begin(), light.end());
+    std::vector<std::uint8_t> byte_sequence(kAxonByteLength, 0);
+    const std::size_t byte_sequence_length = std::min(bytes.size(), byte_sequence.size());
+    std::copy_n(bytes.begin(), byte_sequence_length, byte_sequence.begin());
+    const std::vector<float> byte_summary = byte_summary_features(byte_sequence);
+    student_features.insert(student_features.end(), byte_summary.begin(), byte_summary.end());
+    const std::vector<float> content = content_pe_v1_features(bytes);
+    student_features.insert(student_features.end(), content.begin(), content.end());
+    student_features.resize(kStage2FeatureDim, 0.0f);
+    const float probability = handle->stage2_model->predict_probability(student_features);
+    const auto student_finished = std::chrono::steady_clock::now();
+    prediction.ok = true;
+    prediction.stage2_enabled = true;
+    prediction.stage2_threshold = handle->stage2_model->threshold();
+    prediction.stage2_feature_dim = student_features.size();
+    prediction.prob_malicious = probability;
+    prediction.prob_benign = 1.0f - probability;
+    prediction.prediction = probability >= prediction.stage2_threshold ? 1 : 0;
+    prediction.confidence = prediction.prediction == 1
+        ? prediction.prob_malicious
+        : prediction.prob_benign;
+    prediction.base_prediction = prediction.prediction;
+    prediction.base_confidence = prediction.confidence;
+    prediction.base_prob_benign = prediction.prob_benign;
+    prediction.base_prob_malicious = prediction.prob_malicious;
+    prediction.feature_ms = std::chrono::duration<double, std::milli>(
+        feature_finished - feature_started).count();
+    prediction.onnx_ms = std::chrono::duration<double, std::milli>(
+        student_finished - student_started).count();
+    return prediction;
+  }
   std::array<float, 2> base_logits{};
+  const auto onnx_started = std::chrono::steady_clock::now();
   Prediction prediction = handle->model->predict(
       input,
       handle->config.threshold,
       out_capture ? &base_logits : nullptr);
+  const auto onnx_finished = std::chrono::steady_clock::now();
+  prediction.feature_ms = std::chrono::duration<double, std::milli>(
+      feature_finished - feature_started).count();
+  prediction.onnx_ms = std::chrono::duration<double, std::milli>(
+      onnx_finished - onnx_started).count();
   if (!prediction.ok) {
     return prediction;
   }
@@ -3547,10 +3973,13 @@ KVD_API kvd_handle* KVD_CALL kvd_create(const kvd_config* config) {
   try {
     auto handle = std::make_unique<kvd_handle>();
     handle->config = std::move(cfg);
-    handle->model = std::make_shared<AxonOnnxModel>(handle->config.onnx_model_path);
+    handle->native_student_only = native_student_only_enabled(handle->config);
+    if (!handle->native_student_only) {
+      handle->model = std::make_shared<AxonOnnxModel>(handle->config.onnx_model_path);
+    }
     if (!handle->config.stage2_model_json_path.empty()) {
       auto stage2 = Stage2HgbModel::load_from_json(handle->config.stage2_model_json_path);
-      if (!stage2 || !stage2->ok() || stage2->n_features() != kStage2FeatureDim) {
+      if (!stage2 || !stage2->ok() || !stage2->accepts_source_features(kStage2FeatureDim)) {
         return nullptr;
       }
       handle->stage2_model = std::make_shared<Stage2HgbModel>(std::move(*stage2));
@@ -3573,9 +4002,10 @@ KVD_API void KVD_CALL kvd_destroy(kvd_handle* handle) {
 }
 
 KVD_API int KVD_CALL kvd_scan_path(kvd_handle* handle, const char* path, char** out_json, size_t* out_len) {
-  if (!handle || !handle->model || !path) {
+  if (!handle || (!handle->model && !handle->native_student_only) || !path) {
     return write_error("invalid_argument", "handle and path are required.", out_json, out_len);
   }
+  const auto scan_started = std::chrono::steady_clock::now();
   std::string path_text(path);
   if (!path_allowed(path_text, handle->config.allowed_scan_root)) {
     return write_error("path_not_allowed", "Input path is outside allowed_scan_root.", out_json, out_len);
@@ -3613,14 +4043,25 @@ KVD_API int KVD_CALL kvd_scan_path(kvd_handle* handle, const char* path, char** 
   }
   std::vector<std::uint8_t> bytes;
   std::string error;
-  if (!read_file_bytes_limited(path_text, bytes, error, handle->config.max_file_size)) {
+  const auto read_started = std::chrono::steady_clock::now();
+  std::uint64_t original_size = 0;
+  const bool read_ok = handle->native_student_only
+      ? read_file_prefix_bytes(path_text, bytes, 65536, original_size, error)
+      : read_file_bytes_limited(path_text, bytes, error, handle->config.max_file_size);
+  if (!read_ok) {
     if (error == "file_too_large") {
       return write_error("file_too_large", "Input file exceeds max_file_size.", out_json, out_len);
     }
     return write_error("file_read_failed", error, out_json, out_len);
   }
+  const auto read_finished = std::chrono::steady_clock::now();
   InferenceInput input;
   Prediction prediction = predict_bytes_native(handle, bytes, &input);
+  if (handle->native_student_only) {
+    prediction.original_length = original_size;
+  }
+  prediction.read_ms = std::chrono::duration<double, std::milli>(
+      read_finished - read_started).count();
   std::optional<FamilyPrediction> family;
   if (prediction.ok && prediction.prediction == 1 && handle->family_classifier) {
     std::vector<float> family_features;
@@ -3629,6 +4070,8 @@ KVD_API int KVD_CALL kvd_scan_path(kvd_handle* handle, const char* path, char** 
     family_features.insert(family_features.end(), input.stat_features.begin(), input.stat_features.end());
     family = handle->family_classifier->predict(family_features);
   }
+  prediction.total_ms = std::chrono::duration<double, std::milli>(
+      std::chrono::steady_clock::now() - scan_started).count();
   return write_string_out(
       prediction_json(prediction, path_text, handle->config.threshold, family),
       out_json,
@@ -3828,7 +4271,7 @@ KVD_API int KVD_CALL kvd_validate_models(const kvd_config* config, char** out_er
       return KVD_MODEL_ERR_INVALID_ARGUMENT;
     }
     auto stage2 = Stage2HgbModel::load_from_json(cfg.stage2_model_json_path);
-    if (!stage2 || !stage2->ok() || stage2->n_features() != kStage2FeatureDim) {
+    if (!stage2 || !stage2->ok() || !stage2->accepts_source_features(kStage2FeatureDim)) {
       if (out_error && out_len) {
         write_string_out("stage2_model_invalid", out_error, out_len);
       }
@@ -3865,7 +4308,7 @@ KVD_API int KVD_CALL kvd_extract_pe_features(const char* path, float* out_featur
   if (!read_file_bytes(path, bytes, error)) {
     return -2;
   }
-  std::vector<float> features = fixed_v2_pe_features(bytes);
+  std::vector<float> features = legacy_dynamic_pe_features(bytes);
   std::copy_n(features.data(), kAxonPeFeatureDim, out_features);
   return 0;
 }

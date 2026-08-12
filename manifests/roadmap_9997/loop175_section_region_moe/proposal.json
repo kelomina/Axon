@@ -1,0 +1,182 @@
+{
+  "schema": "axon_loop175_section_region_moe_proposal_v1",
+  "loop_id": "Loop175",
+  "generated_at_utc": "2026-07-17T00:00:00Z",
+  "status": "preregistered_phase0_implementation_only",
+  "claim_scope": "train_only_architecture_diagnostic_not_promotion_or_certification",
+  "research_champion": "Loop151",
+  "target_f1": 0.9997,
+  "target_achieved": false,
+  "baseline": {
+    "legacy_full_test_role": "development_leaderboard_only",
+    "rows": 160000,
+    "positives": 80000,
+    "negatives": 80000,
+    "f1": 0.9908541911012403,
+    "errors": 1466,
+    "fp": 879,
+    "fn": 587,
+    "minimum_net_error_reduction_to_48_errors": 1418,
+    "required_residual_elimination_rate": 0.967257844475,
+    "exact_target_condition": "10003*FN + 9997*FP <= 480000"
+  },
+  "hypothesis": "Explicit PE-semantic region tokens preserve byte-pattern-to-region relationships that Loop151 prefix aggregation and Loop164 whole-file global pooling lose; a compact RegionNet should beat both B0 and a shuffled-region counterfactual under component-isolated OOF.",
+  "closed_routes_not_to_repeat": [
+    "loop164_whole_file_gcg_current_recipe",
+    "loop166_bpe_mlm_current_recipe",
+    "loop167_ember_v3_novel_delta",
+    "loop168_focal_or_component_contrastive_current_recipe",
+    "loop169_broad_authenticode_calibrator",
+    "loop170_low_coverage_cfg_current_route",
+    "loop171_capa_current_route",
+    "speakeasy_timeout_as_benign_rule",
+    "loop151_threshold_selector_or_signer_term_search"
+  ],
+  "region_contract": {
+    "maximum_regions": 16,
+    "maximum_region_bytes": 8192,
+    "maximum_total_bytes": 131072,
+    "padding_token": 256,
+    "priority": [
+      "dos_pe_header",
+      "entrypoint_centered",
+      "up_to_four_executable_section_head_tail_pairs",
+      "up_to_three_entropy_resource_or_large_section_heads",
+      "overlay_head_tail",
+      "explicit_missing_slots"
+    ],
+    "dedup_key": ["region_type", "start", "length"],
+    "silent_drop_allowed": false,
+    "explicit_failure_reasons": ["pe_parse_failure", "empty", "oversize", "read_failure", "unsupported"]
+  },
+  "model": {
+    "parameter_range": [5000000, 8000000],
+    "maximum_parameters": 10000000,
+    "byte_embedding_dim": 64,
+    "patchify": {"kernel": 16, "stride": 16, "dim": 192},
+    "region_blocks": {"count": 6, "kernel": 7, "dilations": [1, 2, 4, 8, 16, 32], "type": "depthwise_separable_glu_residual"},
+    "region_pooling": "attentive_plus_max_gated_projection",
+    "region_transformer": {"layers": 2, "dim": 192, "heads": 6, "ffn_dim": 768},
+    "b0_mlp": [571, 256, 128],
+    "fusion_head": [320, 128, 2]
+  },
+  "arms": {
+    "A": "frozen_B0_HGB",
+    "B": "RegionNet_only",
+    "C": "B0_plus_RegionNet_early_fusion",
+    "D": "B0_plus_label_free_shuffled_region_ownership",
+    "E": "C_plus_inner_OOF_residual_weights_8x"
+  },
+  "extreme_weight_ablation": {
+    "source": "outer_fit_inner_OOF_only",
+    "base_error_weight": 8.0,
+    "near_boundary_weight": 3.0,
+    "ordinary_weight": 1.0,
+    "class_normalized": true,
+    "maximum_weight": 8.0,
+    "weight_search_allowed": false,
+    "sixteen_x_requires_new_preregistration": true
+  },
+  "training": {
+    "seeds": [41, 42, 43],
+    "first_seed_only_until_gate_passes": true,
+    "folds": 5,
+    "partition": "content_component_train_only",
+    "threshold": 0.5,
+    "threshold_search_allowed": false,
+    "optimizer": "AdamW",
+    "learning_rate": 0.0003,
+    "weight_decay": 0.01,
+    "microbatch": 2,
+    "gradient_accumulation": 16,
+    "effective_batch": 32,
+    "epochs": 12,
+    "warmup_epochs": 1,
+    "scheduler": "cosine",
+    "gradient_clip": 1.0,
+    "ema_decay": 0.999,
+    "autocast": "bf16",
+    "optimizer_norm_and_loss_dtype": "fp32",
+    "primary_loss": "cross_entropy"
+  },
+  "phase0": {
+    "raw_opens_allowed": 0,
+    "training_allowed": false,
+    "required_tests": [
+      "synthetic_pe_region_priority",
+      "dedup_and_tail_coverage",
+      "overlay_and_parse_failure",
+      "model_shape_padding_invariance_and_finite_backward",
+      "label_free_shuffle_determinism",
+      "resource_and_accounting_guards"
+    ]
+  },
+  "phase_a_coverage_probe": {
+    "execution_ready": false,
+    "rows": 256,
+    "split_role": "train",
+    "label_balanced": true,
+    "sample_seed": 175,
+    "labels_visible_to_extractor": false,
+    "persist_row_level_identity_or_features": false,
+    "kill_conditions": {
+      "minimum_supported_coverage": 0.995,
+      "maximum_silent_drops": 0,
+      "maximum_class_coverage_gap": 0.02,
+      "maximum_peak_rss_bytes": 11811160064,
+      "maximum_estimated_cache_bytes": 32212254720,
+      "maximum_p95_seconds_per_file": 2.0,
+      "finite_and_reproducible_required": true
+    }
+  },
+  "seed41_kill_gate": {
+    "minimum_C_net_error_reduction_vs_A": 30,
+    "minimum_repairs": 50,
+    "minimum_override_precision": 0.8,
+    "minimum_net_positive_folds": 4,
+    "component_cluster_one_sided_95_lcb": ">0",
+    "maximum_relative_fp_regression": 0.05,
+    "maximum_relative_fn_regression": 0.05,
+    "minimum_C_advantage_over_D": 30,
+    "minimum_coverage": 0.995,
+    "silent_drop_allowed": false,
+    "posthoc_rescue_allowed": false
+  },
+  "three_seed_gate": {
+    "minimum_relative_error_reduction_vs_A_each_seed": 0.2,
+    "minimum_net_positive_folds_each_seed": 4,
+    "component_lcb_must_be_positive_each_seed": true,
+    "maximum_relative_fp_or_fn_regression": 0.05,
+    "minimum_C_advantage_over_D_each_seed": 30
+  },
+  "resource_contract": {
+    "maximum_gpu_allocated_bytes": 6979321856,
+    "maximum_rss_bytes": 11811160064,
+    "workers": 1,
+    "prefetch": 1,
+    "maximum_wall_seconds_per_fold": 21600,
+    "maximum_seed41_wall_seconds": 108000,
+    "maximum_new_disk_bytes": 32212254720,
+    "oom_policy": "reduce_microbatch_only_while_preserving_effective_batch_then_close_on_second_oom"
+  },
+  "forbidden_inputs_and_actions": [
+    "path_filename_extension_directory_or_hash_feature",
+    "source_sha256_sample_index_split_fold_or_row_order_feature",
+    "reviewer_verdict_as_runtime_feature",
+    "legacy_full_test_model_weight_or_threshold_selection",
+    "silent_filtering_or_abstain_deletion",
+    "posthoc_threshold_weight_feature_model_or_seed_rescue"
+  ],
+  "ready_for": {
+    "phase0_implementation": true,
+    "phase_a_coverage_probe": false,
+    "seed41_train_oof": false,
+    "seed42_43": false,
+    "val": false,
+    "test10k": false,
+    "legacy_full_test": false,
+    "promotion": false,
+    "certification": false
+  },
+  "decision": "freeze_loop175_protocol_and_implement_phase0_before_any_real_sample_access"
+}

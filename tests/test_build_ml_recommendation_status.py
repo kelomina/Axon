@@ -122,14 +122,13 @@ def test_build_ml_recommendation_status_summarizes_goal_states():
     )
     assert (
         by_id["loop167_ember_v3_novel_delta"]["status"]
-        == "preregistered_phase_a_static_only_phase_b_source_closure_pending"
+        == "closed_cache_only_train_oof_negative_do_not_retry"
     )
-    assert by_id["loop167_ember_v3_novel_delta"]["remove_from_pending"] is False
-    assert "arms B0/B1/M/A/CF" in by_id["loop167_ember_v3_novel_delta"]["phase_review"]["phase_b"]
-    assert "without a public key" in by_id["loop167_ember_v3_novel_delta"]["phase_review"]["authority"]
+    assert by_id["loop167_ember_v3_novel_delta"]["remove_from_pending"] is True
+    assert "B0 had 232 errors" in by_id["loop167_ember_v3_novel_delta"]["phase_review"]["phase_b"]
     assert (
         by_id["loop167_ember_v3_novel_delta"]["phase_review"]["decision"]
-        == "grant_phase_a_static_only_and_withhold_phase_b_until_new_source_closed_authorization"
+        == "close_loop167_cache_only_novel_delta_negative_do_not_retry_or_promote"
     )
     assert (
         "manifests/roadmap_9997/loop167_ember_v3_novel_delta/proposal.json"

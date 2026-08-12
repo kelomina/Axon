@@ -1,0 +1,161 @@
+{
+  "schema": "axon_loop179_hgconv_region_proposal_v1",
+  "loop_id": "Loop179",
+  "created_at": "2026-07-20",
+  "status": "proposal_frozen_phase0_implementation_only",
+  "claim_scope": "architecture_and_experiment_contract_no_real_input_training_or_heldout_access",
+  "entry_evidence": {
+    "loop175_postdecision": {
+      "path": "reports/roadmap_9997/loop175/seed41_postdecision.json",
+      "sha256": "26f42f3f850bb202a3068de06850c67a8df8bcb963e892123e1ea1c4fce2b92d",
+      "required_decision": "close_loop175_allow_loop179_resource_proposal_only"
+    },
+    "loop175_final_receipt": {
+      "path": "reports/roadmap_9997/loop175/seed41_oof_receipt.json",
+      "sha256": "38700d3f5996e212f55831f887b036dff1b71d386270d2ddbf2120d0f932a217",
+      "decision": "closed_seed41_gate"
+    },
+    "loop175_interruption_adjusted_audit": {
+      "path": "reports/roadmap_9997/loop175/seed41_interruption_adjusted_audit.json",
+      "sha256": "2e2736dfbd6fed8132edcaad82f349bf36037524313877d8dc494ff89b3b83ee",
+      "resource_gate_passed": false
+    },
+    "proposal_document": {
+      "path": "docs/phase3_loop179_hgconv_region_proposal.md",
+      "sha256": "80c318d4bbdb209d7af76e0b6fb5458545da6a4346c2c61873a86a467ae6b0e3"
+    }
+  },
+  "external_references": {
+    "paper": {
+      "title": "Holographic Global Convolutional Networks for Long-Range Prediction Tasks in Malware Detection",
+      "pmlr_url": "https://proceedings.mlr.press/v238/mahmudul-alam24a.html",
+      "arxiv": "2403.17978v1"
+    },
+    "hgconv": {
+      "repository": "https://github.com/FutureComputing4AI/HGConv",
+      "commit": "95bea530460afec8be967d3766d185ff4475b8ec",
+      "license": "Apache-2.0",
+      "malware_reference_paths": [
+        "ember/hgconv.py",
+        "kaggle/hgconv.py"
+      ]
+    },
+    "hrr": {
+      "repository": "https://github.com/MahmudulAlam/Holographic-Reduced-Representations",
+      "commit": "d2e34b073b39936adcc314dbe9efd5f6ed8353b0",
+      "license": "MIT",
+      "reference_path": "HRR/with_flax.py"
+    }
+  },
+  "architecture": {
+    "input_shape": [
+      "batch",
+      16,
+      8192
+    ],
+    "patch_shape": [
+      "batch_times_regions",
+      512,
+      192
+    ],
+    "patch_size": 16,
+    "model_dim": 192,
+    "hgconv_blocks": 1,
+    "convolution_filter_length": 32,
+    "bind_axis": "feature_H",
+    "global_convolution_axis": "sequence_T",
+    "unbind": "flip_then_roll_plus_one_approximate_inverse",
+    "kernel_precondition": "fft_then_ifft_norm_ortho_before_circular_binding",
+    "fft_compute_dtype": "float32_or_float64",
+    "dropout": 0.1,
+    "threshold": 0.5
+  },
+  "phase0": {
+    "inputs": "synthetic_only",
+    "required_tests": [
+      "explicit_circular_bind_parity",
+      "explicit_sequence_convolution_parity",
+      "approximate_inverse_reference_parity",
+      "official_jax_golden_forward_and_gradient_parity",
+      "mask_and_padding_isolation",
+      "finite_forward_backward_and_gradcheck",
+      "deterministic_state_and_output_commitments",
+      "full_synthetic_shape_and_abi",
+      "source_closure_drift_rejection"
+    ],
+    "raw_rows_opened": 0,
+    "training_runs": 0,
+    "execution_authorized": false
+  },
+  "resource_cell": {
+    "arm": "J",
+    "fit_component_folds": [
+      2,
+      3,
+      4
+    ],
+    "selection_component_fold": 1,
+    "excluded_model_fold": 0,
+    "fit_rows": 12000,
+    "selection_rows": 4000,
+    "maximum_epochs": 12,
+    "microbatch": 2,
+    "gradient_accumulation": 16,
+    "effective_batch": 32,
+    "resource_gate": {
+      "maximum_gpu_allocated_bytes": 6979321856,
+      "maximum_rss_bytes": 11811160064,
+      "maximum_wall_seconds": 21600,
+      "oom_allowed": false,
+      "timeout_allowed": false,
+      "nonfinite_allowed": false,
+      "silent_drop_allowed": false
+    },
+    "execution_authorized": false
+  },
+  "phase_b": {
+    "arms": {
+      "A": "frozen_571_value_B0_HGB",
+      "H": "HGConv_Region_only",
+      "J": "B0_plus_HGConv_Region_early_fusion",
+      "K": "J_capacity_with_partition_local_whole_region_ownership_shuffle"
+    },
+    "outer_folds": 5,
+    "rows_per_fold": 4000,
+    "seed": 41,
+    "quality_gate": {
+      "minimum_J_net_error_reduction_vs_A": 30,
+      "minimum_repairs": 50,
+      "minimum_override_precision": 0.8,
+      "minimum_positive_folds": 4,
+      "A_J_component_bootstrap_one_sided_95_lcb": ">0",
+      "maximum_relative_fp_regression": 0.05,
+      "maximum_relative_fn_regression": 0.05,
+      "minimum_K_minus_J_errors": 30,
+      "K_J_component_bootstrap_one_sided_95_lcb": ">0"
+    },
+    "execution_authorized": false
+  },
+  "forbidden": [
+    "modify_or_monkeypatch_src_loop175",
+    "reuse_loop175_engine_worker_controller_evaluation_or_receipt_schema",
+    "path_filename_extension_sha_row_fold_component_family_source_or_reviewer_model_feature",
+    "silent_clamp_nan_to_num_gradient_repair_filtering_abstention_or_denominator_reduction",
+    "posthoc_threshold_weight_seed_normalization_filter_width_or_architecture_search",
+    "val_test10k_full_test_or_sealed_window_access"
+  ],
+  "heldout_boundaries": {
+    "val_rows_opened": 0,
+    "test10k_rows_opened": 0,
+    "full_test_rows_opened": 0,
+    "heldout_selection_allowed": false
+  },
+  "ready_for": {
+    "phase0_implementation": true,
+    "reference_closure": false,
+    "resource_cell": false,
+    "phase_b_training": false,
+    "heldout_evaluation": false
+  },
+  "decision": "phase0_implementation_allowed_no_real_input_or_training_execution_authorized"
+}

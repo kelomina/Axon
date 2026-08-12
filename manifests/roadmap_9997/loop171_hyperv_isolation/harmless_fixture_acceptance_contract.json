@@ -1,0 +1,50 @@
+{
+  "schema": "axon_loop171_harmless_fixture_acceptance_contract_v1",
+  "loop_id": "loop171_hyperv_isolation",
+  "status": "static_plan_only_not_executed",
+  "claim_scope": "future_harmless_vm_isolation_acceptance_only_not_sample_parser_training_heldout_or_f1_evidence",
+  "activation_gate": {
+    "required_preflight_schema": "axon_loop171_hyperv_preflight_v1",
+    "required_preflight_decision": "preflight_pass_no_vm_or_sample_action_authorized",
+    "required_preflight_gates": [
+      "elevated_token",
+      "available_memory_minimum",
+      "official_base_archive",
+      "official_linux_capa_archive",
+      "protected_dedicated_root",
+      "root_separation",
+      "hyperv_zero_reuse"
+    ],
+    "preflight_receipt_sha256_binding_required": true
+  },
+  "future_vm_requirements": {
+    "new_dedicated_root_only": true,
+    "generation": 2,
+    "network_adapter_count": 0,
+    "switch_reuse_forbidden": true,
+    "enhanced_session_and_all_integration_channels_disabled": true,
+    "fixture_input_is_immutable_read_only": true,
+    "fixture_input_contains_no_sample": true,
+    "output_max_bytes": 65536,
+    "output_must_be_aggregate_only": true,
+    "forced_guest_termination_required": true,
+    "no_new_vm_or_vmwp_survivor_required": true,
+    "teardown_receipt_required": true
+  },
+  "pass_requires": [
+    "preflight_receipt_is_sha256_bound_and_current",
+    "host_proves_zero_network_adapters_before_and_after_boot",
+    "host_proves_all_guest_integration_services_disabled_before_boot",
+    "host_proves_fixture_input_hash_unchanged_and_attachment_read_only",
+    "guest_fixture_reports_write_attempt_blocked_and_network_unavailable",
+    "host_enforces_and_observes_bounded_aggregate_only_output",
+    "forced_termination_and_teardown_leave_no_new_vm_or_worker_survivor"
+  ],
+  "authorizations": {
+    "sample_access_allowed": false,
+    "parser_execution_allowed": false,
+    "training_allowed": false,
+    "heldout_allowed": false,
+    "f1_claim_allowed": false
+  }
+}

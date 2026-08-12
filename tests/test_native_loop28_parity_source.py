@@ -62,7 +62,22 @@ def test_native_source_contains_exact_remediation_paths() -> None:
         "std::vector<double> node_values_;",
         "std::vector<double> node_num_thresholds_;",
         "double baseline_prediction_ = 0.0;",
-        "SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_DISABLE_ALL)",
+        'std::getenv("AXON_ORT_INTRA_OP_THREADS")',
+        "session_options_.SetIntraOpNumThreads(ort_intra_op_threads())",
+        'std::getenv("AXON_ORT_GRAPH_OPT_LEVEL")',
+        "return GraphOptimizationLevel::ORT_DISABLE_ALL;",
+        "session_options_.SetGraphOptimizationLevel(ort_graph_optimization_level())",
+        'std::getenv("AXON_ONNX_TIMING")',
+        '\\"feature_extraction\\"',
+        'std::getenv("AXON_NATIVE_STUDENT_ONLY")',
+        "handle->native_student_only",
+        "read_file_bytes_limited(",
+        "student_features.insert(student_features.end(), 6, 0.0f)",
+        'json.int_array("selected_feature_indices", model.selected_feature_indices_)',
+        "stage2->accepts_source_features(kStage2FeatureDim)",
+        "const std::vector<float> light = lightweight_features(bytes);",
+        "std::vector<std::uint8_t> byte_sequence(kAxonByteLength, 0);",
+        "byte_summary_features(byte_sequence)",
     )
     for fragment in required_fragments:
         assert fragment in source

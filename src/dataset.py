@@ -299,10 +299,15 @@ def _is_valid_pe_sample_path(file_path: Path, max_file_size: int) -> bool:
         return False
 
 
-def _feature_cache_path_for_file(file_path: Path, cache_dir: Path, cache_config_hash: str) -> Path:
+def _feature_cache_path_for_file(
+    file_path: Path,
+    cache_dir: Path,
+    cache_config_hash: str,
+    stat_result=None,
+) -> Path:
     """按原始文件指纹和配置哈希生成缓存路径。"""
     try:
-        stat = file_path.stat()
+        stat = stat_result if stat_result is not None else file_path.stat()
         file_sig = f"{stat.st_size}_{int(stat.st_mtime_ns)}"
     except OSError:
         file_sig = "missing"
@@ -318,12 +323,31 @@ def _prepare_sample_cache_worker(payload: Dict) -> Dict:
     file_path = Path(payload['file_path'])
     label = int(payload['label'])
     cache_dir = Path(payload['cache_dir'])
-    cache_path = _feature_cache_path_for_file(file_path, cache_dir, payload['cache_config_hash'])
 
-    if not _is_valid_pe_sample_path(file_path, int(payload['max_file_size'])):
+    try:
+        stat_result = file_path.stat()
+    except OSError:
         return {'status': 'non_pe_skipped', 'cache_path': None}
 
-    source_sha256 = _file_sha256(file_path)
+    cache_path = _feature_cache_path_for_file(
+        file_path, cache_dir, payload['cache_config_hash'], stat_result=stat_result
+    )
+
+    max_file_size = int(payload['max_file_size'])
+    if stat_result.st_size == 0 or stat_result.st_size > max_file_size:
+        return {'status': 'non_pe_skipped', 'cache_path': None}
+    try:
+        with open(file_path, 'rb') as handle:
+            if handle.read(2) != b'MZ':
+                return {'status': 'non_pe_skipped', 'cache_path': None}
+    except Exception:
+        return {'status': 'non_pe_skipped', 'cache_path': None}
+
+    trusted_sha = payload.get('trust_source_sha256')
+    if trusted_sha and _is_valid_source_sha256(trusted_sha):
+        source_sha256 = str(trusted_sha).strip().casefold()
+    else:
+        source_sha256 = _file_sha256(file_path)
 
     if payload['use_cache']:
         cached_meta = _load_cache_metadata(cache_path)

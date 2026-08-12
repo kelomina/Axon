@@ -1,0 +1,113 @@
+{
+  "schema": "axon_corpus_712_split_v1",
+  "generated_at_utc": "2026-07-26T09:43:26Z",
+  "seed": 9997,
+  "ratios": {
+    "train": 0.7,
+    "val": 0.1,
+    "test": 0.2
+  },
+  "roots": {
+    "benign": "G:\\私人\\良性文件\\待加入白名单",
+    "malicious": "G:\\私人\\恶意\\MB\\unziped"
+  },
+  "per_class": 149389,
+  "total_rows": 298778,
+  "counts": {
+    "train_label0": 104572,
+    "train": 209144,
+    "train_label1": 104572,
+    "val_label0": 14938,
+    "val": 29876,
+    "val_label1": 14938,
+    "test_label0": 29879,
+    "test": 59758,
+    "test_label1": 29879
+  },
+  "benign_scan": {
+    "files_seen": 149439,
+    "pe_extension_candidates": 149439
+  },
+  "malicious_scan": {
+    "files_seen": 1130240,
+    "non_pe_extension": 535401,
+    "pe_extension_candidates": 594834,
+    "duplicate_hash": 2,
+    "non_sha_named": 3
+  },
+  "benign_verify": {
+    "verified_pe": 149389,
+    "rejected_not_pe": 9,
+    "examined": 149398
+  },
+  "malicious_verify": {
+    "verified_pe": 149389,
+    "rejected_not_pe": 4747,
+    "examined": 154136
+  },
+  "cross_label_conflicts_dropped": 41,
+  "conflict_hashes": [
+    "0a2073428bee5f1881b068a7a9e3321cbd1f98142233eb8e1d4fe2e2c9813a6f",
+    "11bd2c9f9e2397c9a16e0990e4ed2cf0679498fe0fd418a3dfdac60b5c160ee5",
+    "1d9cfb137cbc3f7c4919273df5f4ef7d317a7d71ab22294ab9a9bc2c84afed76",
+    "1fcd04fe1a3d519c7d585216b414cd947d16997d77d81a2892821f588c630937",
+    "270ba17bf89cc2eb6e6ce536eb78e4614ab5499f653ab7e07fe9e3d33bf3b6e3",
+    "2db7fd3c9c3c4b67f2d50a5a50e8c69154dc859780dd487c28a4e6ed1af90d01",
+    "2eac0a690be435dd72b7a269ee761340099bf444edb4f447fa0030023cbf8e1e",
+    "334e69ac9367f708ce601a6f490ff227d6c20636da5222f148b25831d22e13d4",
+    "46c08aad6543dbc9ccbbff94f7b419220737df3e5862741bc474e2689d121f48",
+    "4df999c0c8cb12589f0864d52be5d4c775577aeb27fee28b49b188f9ba083eea",
+    "5136a49a682ac8d7f1ce71b211de8688fce42ed57210af087a8e2dbc8a934062",
+    "5e66489393f159aa0fd30b630bb345d03418e9324e7d834b2e4195865a637cfe",
+    "6a27826b490457ccfecebaf98a01325cc1ccecc81917b156aa1e566d141b520c",
+    "6d6aeb5557ed14e2093340479d63298b90a0279d8971927148670f02e366a14c",
+    "73170761d6776c0debacfbbc61b6988cb8270a20174bf5c049768a264bb8ffaf",
+    "76359cd4b0349a83337b941332ad042c90351c2bb0a4628307740324c97984cc",
+    "7d3654531c32d941b8cae81c4137fc542172bfa9635f169cb392f245a0a12bcb",
+    "8094af5ee310714caebccaeee7769ffb08048503ba478b879edfef5f1a24fefe",
+    "8639ee6e3714fad54a2be4e4da4f98a4848c67fce3a270d9323d9d57556cd255",
+    "87808453a974763661a0ac83375ae4f9733207653d1627ea7900bb85be1f6c57",
+    "8793353461826fbd48f25ea8b835be204b758ce7510db2af631b28850355bd18",
+    "8cce1ffa9328a8091497964538fd6098a50fd214edbc498f7ec580c711de9d11",
+    "8d9b5190aace52a1db1ac73a65ee9999c329157c8e88f61a772433323d6b7a4a",
+    "8dc562cda7217a3a52db898243de3e2ed68b80e62ddcb8619545ed0b4e7f65a8",
+    "92c37098909f035fa6fb4be4a014423a1520f082f07df0e68c2f880799576f15",
+    "9ca85bbfed42b252002390fe9c5dbbfbe2e76c6e69f681204dd1d403b8f1ce2d",
+    "9d02e952396bdff3abfe5654e07b7a713c84268a225e11ed9a3bf338ed1e424c",
+    "9e987b9fa7c3c401eb97441fdcc761f168bac583a889fd1f83e6aef4be948adb",
+    "a088131e8eb4e2178789af49b646ab463cf9a1f48da51698448206df21db5c95",
+    "bc40c7821dcd3fea9923c6912ab1183a942c11b7690cfd79ed148ded0228777e",
+    "c40bb03199a2054dabfc7a8e01d6098e91de7193619effbd0f142a7bf031c14d",
+    "c4edf7b8cdffb67fcd62ef81485c04648b11a14a8452f407133f131e2f74a57a",
+    "cb7ab3788d10940df874acd97b1821bbb5ee4a91f3eec11982bb5bf7a3c96443",
+    "d3b4b97c2bf97d70e5655ff4c4ca1d8cef9ded51685cfd764247cfda98ee68df",
+    "d591b0db20a152057f48f44a7256bc6f92e3e870b76b9790c3e8039235ff1565",
+    "da72e6677bd1bcd01c453c1998aaa19aeaf6659f4774cf6848409da8232a95b2",
+    "e15b4afe2de4a82351790d4efd1eb5e12e6bdd4d5d143dee1b8ae47bc98e5f28",
+    "e5f78e89e350c850761fc81a24394581b3d91f758b20dced0a07ba9a589b8138",
+    "f02eed05526a3a19db35629fdb8eda6a6f29a176f827ce589d25e5c72094ef16",
+    "f3754fc6ec87bcf84e05f3287b5de7bd305a30a0e1db7d478cb6353600682784",
+    "f801e65f937827635eb462caf8cacbd473b9fc5ca428a9216a60c686f45802c1"
+  ],
+  "max_file_size": 268435456,
+  "pe_extensions": [
+    "",
+    ".cpl",
+    ".dll",
+    ".drv",
+    ".efi",
+    ".exe",
+    ".mui",
+    ".ocx",
+    ".scr",
+    ".sys",
+    ".unknown"
+  ],
+  "elapsed_seconds": 5780.6,
+  "notes": [
+    "Classes are balanced 1:1, then split 7:1:2 independently per class.",
+    "Exact SHA256 duplicates and cross-label conflicts are removed before splitting.",
+    "Split is random over the pooled corpus; the `date` column supports a temporal-holdout evaluation slice for measuring family/campaign leakage.",
+    "Path text, filenames, extensions and row order must not be used as features."
+  ]
+}

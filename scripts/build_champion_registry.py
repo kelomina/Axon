@@ -142,7 +142,7 @@ def build_registry(root: Path, generated_at_utc: Optional[str] = None) -> dict[s
     next_candidate = find_recommendation(recommendations, "loop167_ember_v3_novel_delta")
     require_equal(
         next_candidate.get("status"),
-        "preregistered_phase_a_static_only_phase_b_source_closure_pending",
+        "closed_cache_only_train_oof_negative_do_not_retry",
         "next candidate status",
     )
 
@@ -213,8 +213,8 @@ def build_registry(root: Path, generated_at_utc: Optional[str] = None) -> dict[s
                 "native_ready": bool(capability.get("native_loop151_ready")),
                 "deployment_parity": False,
                 "next_candidate": {
-                    "candidate_id": "Loop167",
-                    "status": next_candidate.get("status"),
+                    "candidate_id": None,
+                    "status": "no_open_model_candidate",
                     "decision": next_candidate.get("phase_review", {}).get("decision"),
                 },
                 "recently_closed_candidate": {
@@ -257,7 +257,7 @@ def build_registry(root: Path, generated_at_utc: Optional[str] = None) -> dict[s
             "legacy_metrics_are_development_only": True,
             "loop164_is_parked_not_champion": True,
             "loop166_is_closed_not_champion": True,
-            "loop167_is_candidate_not_champion": True,
+            "loop167_is_closed_not_champion": True,
         },
         "decision": "registry_current_scopes_separated_no_connected_champion",
     }
@@ -265,7 +265,8 @@ def build_registry(root: Path, generated_at_utc: Optional[str] = None) -> dict[s
 
 def write_json(path: Path, payload: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    with path.open("w", encoding="utf-8", newline="\n") as handle:
+        handle.write(json.dumps(payload, indent=2, ensure_ascii=False) + "\n")
 
 
 def build_parser() -> argparse.ArgumentParser:

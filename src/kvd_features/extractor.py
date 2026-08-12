@@ -530,7 +530,14 @@ class PEFeatureExtractor:
         }
 
     def _write_pe_header_features(self, features: np.ndarray, pe, file_path: str) -> int:
-        """写入两种 PE schema 共享的前 18 个稳定字段。"""
+        """写入 PE schema 的稳定头部字段（fixed_v2 为 18 个，fixed_v3 为 17 个）。
+
+        fixed_v2 保留一个恒为 0 的 ``DIRECTORY_ENTRY_SECURITY`` 列：pefile 从不
+        设置该属性（证书表在 ``OPTIONAL_HEADER.DATA_DIRECTORY[4]``），所以那一
+        列在 20 万样本上只有单一取值，对模型没有贡献。fixed_v3 直接删掉它，
+        后续列相应前移 1；fixed_v2 逐位保持不变以维持既有 checkpoint 的可复现性。
+        """
+        emit_dead_security_column = self.config.pe_schema_version != "fixed_v3"
         idx = 0
         file_size = os.path.getsize(file_path)
         features[idx] = float(file_size); idx += 1
@@ -553,7 +560,8 @@ class PEFeatureExtractor:
         features[idx] = 1.0 if hasattr(pe, 'DIRECTORY_ENTRY_BASERELOC') else 0.0; idx += 1
         features[idx] = 1.0 if hasattr(pe, 'DIRECTORY_ENTRY_TLS') else 0.0; idx += 1
         features[idx] = 1.0 if hasattr(pe, 'DIRECTORY_ENTRY_EXCEPTION') else 0.0; idx += 1
-        features[idx] = 1.0 if hasattr(pe, 'DIRECTORY_ENTRY_SECURITY') else 0.0; idx += 1
+        if emit_dead_security_column:
+            features[idx] = 1.0 if hasattr(pe, 'DIRECTORY_ENTRY_SECURITY') else 0.0; idx += 1
         features[idx] = float(pe.FILE_HEADER.NumberOfSections); idx += 1
         return idx
 
@@ -626,12 +634,17 @@ class PEFeatureExtractor:
         return idx
 
     def _extract_fixed_v2_features(self, pe, file_path: str) -> np.ndarray:
-        """固定 PE schema：每一列语义固定，不随 section_count 偏移。"""
-        used_dim = 18 + 3 * self.config.pe_fixed_section_slots + 29
+        """固定 PE schema：每一列语义固定，不随 section_count 偏移。
+
+        fixed_v2 和 fixed_v3 共用这条路径，只差头部字段数（见
+        ``_write_pe_header_features``）。
+        """
+        header_dim = 17 if self.config.pe_schema_version == "fixed_v3" else 18
+        used_dim = header_dim + 3 * self.config.pe_fixed_section_slots + 29
         if self.config.pe_feature_dim < used_dim:
             raise ValueError(
                 f"pe_feature_dim ({self.config.pe_feature_dim}) must be at least {used_dim} "
-                f"for fixed_v2 PE schema"
+                f"for {self.config.pe_schema_version} PE schema"
             )
 
         features = np.zeros(self.config.pe_feature_dim, dtype=np.float32)
@@ -687,7 +700,7 @@ class PEFeatureExtractor:
                 ])
             except Exception:
                 pass
-            if self.config.pe_schema_version == "fixed_v2":
+            if self.config.pe_schema_version in ("fixed_v2", "fixed_v3"):
                 return self._extract_fixed_v2_features(pe, file_path)
 
             features = np.zeros(self.config.pe_feature_dim, dtype=np.float32)

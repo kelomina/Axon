@@ -1,0 +1,10 @@
+[package]
+name = "axon-loop151-rust-example"
+version = "0.1.0"
+edition = "2021"
+publish = false
+description = "Rust caller for the frozen Axon Loop151 KVD C ABI"
+
+[dependencies]
+libloading = "0.8"
+serde_json = "1"

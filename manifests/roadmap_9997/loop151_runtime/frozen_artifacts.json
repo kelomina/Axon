@@ -1,0 +1,30 @@
+{
+  "schema": "axon_loop151_raw_runtime_artifacts_v1",
+  "purpose": "Allow only the frozen Loop151 research artifacts required for raw-file parity reconstruction.",
+  "artifacts": {
+    "checkpoint": {
+      "path": "models/random_20w_8192/best_model.pt",
+      "sha256": "96a1b1ece41dd7dd9142a0f7f4330da3a7938a26cca8b01e0e7c7a1074e5e3a4"
+    },
+    "primary": {
+      "path": "reports/phase3_loop127/oof_fixed_v2_all_valonly_with_logreg/stage2_oof_stacker_selected_model.pkl",
+      "sha256": "2429cc21a5f43c79b484e421ec4fbc5da92f0322ad8fcefbde03f2b60e2ecec9"
+    },
+    "conservative": {
+      "path": "reports/phase3_loop127/oof_fixed_v2_all_valonly_no_logreg/stage2_oof_stacker_selected_model.pkl",
+      "sha256": "4c17e2b38ecea6f8f02aeebfaf4002fb8cd517adcebafbee84bd60a12a05fd8b"
+    },
+    "content_cross": {
+      "path": "reports/phase3_loop127/phase1_content_cross_hgb_local_valonly/loop43_content_cross_selected_model.pkl",
+      "sha256": "43c09a9db391606d98084d60fc1ca21f6f797387a9c511dcfbde6577b73c9372"
+    },
+    "noise": {
+      "path": "reports/phase3_loop134/oof_fixed_v2_string_noise_valonly/stage2_oof_stacker_selected_model.pkl",
+      "sha256": "7eee28e5c324d42e45ed8bc47c1b7c76b26993a9b5eb9d31c94625337b588339"
+    },
+    "selector": {
+      "path": "reports/phase3_loop136/r5_oof_noise_pairwise_selector_recall_valonly/loop135_pairwise_selector.pkl",
+      "sha256": "cdc838d64d55ce2697c5b46c8a85e04e32a3ecdba21f18f6e905888d93424516"
+    }
+  }
+}

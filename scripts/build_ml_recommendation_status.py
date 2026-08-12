@@ -177,17 +177,18 @@ RECOMMENDATIONS = [
     {
         "id": "loop167_ember_v3_novel_delta",
         "title": "Loop167 EMBER-v3 novel-delta structural control",
-        "priority": "P0_frontier_fallback_control",
-        "status": "preregistered_phase_a_static_only_phase_b_source_closure_pending",
-        "remove_from_pending": False,
+        "priority": "closed_train_only_oof_negative",
+        "status": "closed_cache_only_train_oof_negative_do_not_retry",
+        "remove_from_pending": True,
         "evidence": [
             "docs/phase3_loop167_ember_v3_novel_delta_proposal.md",
             "manifests/roadmap_9997/loop167_ember_v3_novel_delta/proposal.json",
             "manifests/roadmap_9997/loop167_ember_v3_novel_delta/authorization.json",
             "tests/test_loop166_v2_failure_and_loop167_preregistration.py",
+            "reports/roadmap_9997/loop167/phase_b_v14_cache_only_fit/phase_b_execution_receipt_v14.json",
         ],
         "phase_review": {
-            "claim_scope": "Static semantic-delta preregistration only; Phase B raw access and Train-OOF are not yet executable.",
+            "claim_scope": "Completed Train-only cache-only OOF failure closure; no heldout or model-quality promotion evidence.",
             "external_basis": (
                 "EMBER2024 commit 0ef753e81d98bf209f71b03cd331dfc190b5b54d defines a 2568-dimensional "
                 "v3 PE feature schema. Axon must classify every column as exact overlap, partial overlap, "
@@ -199,24 +200,21 @@ RECOMMENDATIONS = [
                 "semantics must pass; Authenticode and data directories are forced overlap controls."
             ),
             "phase_b": (
-                "Preregistered but source-closure blocked: Train-only 20000-row five-fold OOF, seeds 41/42/43, "
-                "fixed threshold 0.5 and HGB, arms B0/B1/M/A/CF, one raw pass, at most 75 fits and 8h total wall."
+                "The frozen 20000-row cache-only five-fold OOF completed for seeds 41/42/43. "
+                "B0 had 232 errors and B0+novel had 245: net error reduction -13, only 1/5 positive folds, "
+                "override precision 0.4253, component LCB -29, and M-vs-CF -4."
             ),
             "quality_gate": (
                 "Every seed requires net error reduction >=max(30, 10% of the stronger control errors), at "
                 "least 50 repairs, override precision >=0.80, 4/5 positive folds, one-sided component LCB >0, "
                 "bounded FP/FN regression, low delta error overlap, and a >=30 causal advantage over shuffled delta."
             ),
-            "authority": (
-                "Phase A static work is authorized without a public key. Phase B requires a new source-closed "
-                "authorization and one-shot lease; Val/Test/full/promotion remain denied."
-            ),
-            "decision": "grant_phase_a_static_only_and_withhold_phase_b_until_new_source_closed_authorization",
+            "authority": "All completed work remained Train-only; Val/Test/full/promotion remain denied.",
+            "decision": "close_loop167_cache_only_novel_delta_negative_do_not_retry_or_promote",
         },
         "next_action": (
-            "Implement the project-native semantic mapping, extractor, frozen deduplicated baseline allowlist, "
-            "controller, synthetic tests, and resource guard. Issue the separate one-shot Phase B authorization "
-            "only after all hashes and canonical paths are closed; do not open raw data before then."
+            "Do not repeat this EMBER novel-delta recipe, tune its arms, or advance it to heldout evaluation. "
+            "Preserve the receipt and seek independent evidence with a materially different causal hypothesis."
         ),
     },
     {

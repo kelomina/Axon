@@ -113,6 +113,7 @@ class _ProcessInformation(ctypes.Structure):
 class _Kernel32JobApi:
     _EXTENDED_LIMIT_CLASS = 9
     _BASIC_ACCOUNTING_CLASS = 1
+    _PROCESS_MEMORY_LIMIT = 0x00000100
     _KILL_ON_JOB_CLOSE = 0x00002000
     _CREATE_SUSPENDED = 0x00000004
     _CREATE_UNICODE_ENVIRONMENT = 0x00000400
@@ -247,6 +248,26 @@ class _Kernel32JobApi:
         ):
             raise self._error("SetInformationJobObject")
 
+    def set_process_memory_limit(self, handle: Any, memory_limit_bytes: int) -> None:
+        if (
+            not isinstance(memory_limit_bytes, int)
+            or isinstance(memory_limit_bytes, bool)
+            or memory_limit_bytes <= 0
+        ):
+            raise WindowsJobError("Windows Job process memory limit is invalid")
+        limits = _JobExtendedLimitInformation()
+        limits.BasicLimitInformation.LimitFlags = (
+            self._KILL_ON_JOB_CLOSE | self._PROCESS_MEMORY_LIMIT
+        )
+        limits.ProcessMemoryLimit = memory_limit_bytes
+        if not self.kernel32.SetInformationJobObject(
+            handle,
+            self._EXTENDED_LIMIT_CLASS,
+            ctypes.byref(limits),
+            ctypes.sizeof(limits),
+        ):
+            raise self._error("SetInformationJobObject(PROCESS_MEMORY_LIMIT)")
+
     def limit_flags(self, handle: Any) -> int:
         limits = _JobExtendedLimitInformation()
         if not self.kernel32.QueryInformationJobObject(
@@ -258,6 +279,18 @@ class _Kernel32JobApi:
         ):
             raise self._error("QueryInformationJobObject(extended limits)")
         return int(limits.BasicLimitInformation.LimitFlags)
+
+    def process_memory_limit(self, handle: Any) -> int:
+        limits = _JobExtendedLimitInformation()
+        if not self.kernel32.QueryInformationJobObject(
+            handle,
+            self._EXTENDED_LIMIT_CLASS,
+            ctypes.byref(limits),
+            ctypes.sizeof(limits),
+            None,
+        ):
+            raise self._error("QueryInformationJobObject(PROCESS_MEMORY_LIMIT)")
+        return int(limits.ProcessMemoryLimit)
 
     def assign_process(self, handle: Any, process_handle: int) -> None:
         if not self.kernel32.AssignProcessToJobObject(handle, wintypes.HANDLE(process_handle)):
@@ -596,18 +629,32 @@ class JobRunResult:
 class WindowsKillOnCloseJob:
     """Own a Job Object whose complete process tree dies when the handle closes."""
 
-    def __init__(self, *, api: Any | None = None) -> None:
+    def __init__(self, *, memory_limit_bytes: int | None = None, api: Any | None = None) -> None:
+        if memory_limit_bytes is not None and (
+            not isinstance(memory_limit_bytes, int)
+            or isinstance(memory_limit_bytes, bool)
+            or memory_limit_bytes <= 0
+        ):
+            raise WindowsJobError("Windows Job process memory limit is invalid")
         self._api = api if api is not None else _Kernel32JobApi()
         self._handle = self._api.create_job()
         self._closed = False
         self._assigned_pids: list[int] = []
+        self._memory_limit_bytes = memory_limit_bytes
         try:
             self._api.enable_kill_on_close(self._handle)
+            if memory_limit_bytes is not None:
+                self._api.set_process_memory_limit(self._handle, memory_limit_bytes)
             self._limit_flags = self._api.limit_flags(self._handle)
-            if self._limit_flags != _Kernel32JobApi._KILL_ON_JOB_CLOSE:
+            expected_flags = _Kernel32JobApi._KILL_ON_JOB_CLOSE
+            if memory_limit_bytes is not None:
+                expected_flags |= _Kernel32JobApi._PROCESS_MEMORY_LIMIT
+            if self._limit_flags != expected_flags:
                 raise WindowsJobError(
-                    "Windows Job Object limit flags are not exactly KILL_ON_JOB_CLOSE"
+                    "Windows Job Object limit flags are not exactly the containment contract"
                 )
+            if memory_limit_bytes is not None and self._api.process_memory_limit(self._handle) != memory_limit_bytes:
+                raise WindowsJobError("Windows Job Object process memory limit differs from contract")
         except Exception:
             self._api.close_handle(self._handle)
             self._closed = True
@@ -624,6 +671,10 @@ class WindowsKillOnCloseJob:
     @property
     def limit_flags(self) -> int:
         return self._limit_flags
+
+    @property
+    def memory_limit_bytes(self) -> int | None:
+        return self._memory_limit_bytes
 
     def _require_open(self) -> None:
         if self._closed:
@@ -661,6 +712,7 @@ class WindowsKillOnCloseJob:
             "kill_on_job_close": True,
             "exact_limit_flags": self._limit_flags,
             "breakaway_allowed": False,
+            "process_memory_limit_bytes": self._memory_limit_bytes,
             "process_pid": process.pid,
             "process_creation_time_filetime": process.creation_time_filetime,
             "assigned_before_resume": True,

@@ -1,0 +1,58 @@
+{
+  "schema": "axon_round0_strata_v1",
+  "source_split": "E:\\Project\\python\\Axon_v2.6Exp\\manifests\\roadmap_9997\\corpus_712_funnel\\split_1k.csv",
+  "alpha": 1.0,
+  "max_weight_ratio": 25.0,
+  "entropy_threshold": 7.0,
+  "parse_failures": 1,
+  "train_counts": {
+    "highent_signed_label0": 3,
+    "highent_signed_label1": 16,
+    "highent_unsigned_label0": 9,
+    "highent_unsigned_label1": 185,
+    "lowent_signed_label0": 217,
+    "lowent_signed_label1": 17,
+    "lowent_unsigned_label0": 121,
+    "lowent_unsigned_label1": 132
+  },
+  "train_weights": {
+    "highent_signed_label0": 25.0,
+    "highent_signed_label1": 5.46875,
+    "highent_unsigned_label0": 9.722222222222221,
+    "highent_unsigned_label1": 0.472972972972973,
+    "lowent_signed_label0": 0.4032258064516129,
+    "lowent_signed_label1": 5.147058823529412,
+    "lowent_unsigned_label0": 0.7231404958677686,
+    "lowent_unsigned_label1": 0.6628787878787878
+  },
+  "cell_totals": {
+    "test_highent_signed_label0": 1,
+    "test_highent_signed_label1": 6,
+    "test_highent_unsigned_label0": 1,
+    "test_highent_unsigned_label1": 60,
+    "test_lowent_signed_label0": 61,
+    "test_lowent_signed_label1": 6,
+    "test_lowent_unsigned_label0": 37,
+    "test_lowent_unsigned_label1": 28,
+    "train_highent_signed_label0": 3,
+    "train_highent_signed_label1": 16,
+    "train_highent_unsigned_label0": 9,
+    "train_highent_unsigned_label1": 185,
+    "train_lowent_signed_label0": 217,
+    "train_lowent_signed_label1": 17,
+    "train_lowent_unsigned_label0": 121,
+    "train_lowent_unsigned_label1": 132,
+    "val_highent_signed_label0": 1,
+    "val_highent_signed_label1": 2,
+    "val_highent_unsigned_label1": 31,
+    "val_lowent_signed_label0": 32,
+    "val_lowent_signed_label1": 1,
+    "val_lowent_unsigned_label0": 17,
+    "val_lowent_unsigned_label1": 16
+  },
+  "notes": [
+    "Weights apply to train rows only; val/test stay at 1.0 so metrics are read on the natural distribution.",
+    "Report F1 per stratum as well as overall -- an aggregate F1 hides the shortcut.",
+    "alpha=0 is the unweighted control arm."
+  ]
+}

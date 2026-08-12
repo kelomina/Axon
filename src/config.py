@@ -174,21 +174,27 @@ class AxonExperimentConfig:
             raise ValueError("val_ratio and test_ratio must be non-negative")
         if self.val_ratio + self.test_ratio >= 1:
             raise ValueError("val_ratio + test_ratio must be less than 1")
-        if self.pe_schema_version not in ["legacy_dynamic", "fixed_v2"]:
+        if self.pe_schema_version not in ["legacy_dynamic", "fixed_v2", "fixed_v3"]:
             raise ValueError(f"Unknown pe_schema_version: {self.pe_schema_version}")
         if self.pe_fixed_section_slots <= 0:
             raise ValueError("pe_fixed_section_slots must be positive")
-        if self.pe_schema_version == "fixed_v2" and self.pe_feature_dim < self.fixed_pe_schema_used_dim():
+        if (
+            self.pe_schema_version in ("fixed_v2", "fixed_v3")
+            and self.pe_feature_dim < self.fixed_pe_schema_used_dim()
+        ):
             raise ValueError(
                 f"pe_feature_dim ({self.pe_feature_dim}) must be at least "
-                f"{self.fixed_pe_schema_used_dim()} for fixed_v2 PE schema"
+                f"{self.fixed_pe_schema_used_dim()} for {self.pe_schema_version} PE schema"
             )
 
     def expected_stat_feature_dim(self):
         return 7 + 4 + 1 + 3 * self.stat_segment_count + 2 * self.stat_chunk_count + 8
 
     def fixed_pe_schema_used_dim(self):
-        return 18 + 3 * self.pe_fixed_section_slots + 29
+        # fixed_v3 drops the dead DIRECTORY_ENTRY_SECURITY column from the header
+        # block, so its header contributes 17 columns instead of 18.
+        header_dim = 17 if self.pe_schema_version == "fixed_v3" else 18
+        return header_dim + 3 * self.pe_fixed_section_slots + 29
 
     def get_device(self):
         """获取计算设备"""
@@ -300,6 +306,9 @@ class DSRAArchitectureConfig:
     # 多层模型参数
     num_layers: int = 2
     detach_state: bool = True
+    # 诊断统计开关：last_write_stats 仅在 return_aux=True 时被读；训练热路径关闭
+    # 可省每 chunk ~12 个 reduction kernel（~192/step）。默认关。
+    compute_write_stats: bool = False
 
     # 兼容层参数
     compat_K: int = 512
@@ -357,6 +366,12 @@ class TrainingConfig:
     early_stopping_patience: int = 5
     early_stopping_min_delta: float = 0.0
     eval_interval: int = 1
+
+    # 最佳模型选择指标。"f1" = 仅按 val F1 选择（默认，向后兼容）；
+    # "goal" = 按 F1 - best_metric_beta * FPR 选择（惩罚误报，用于降低白文件误报的重训）。
+    # best_metric_beta 是 FPR 在目标分数中的权重（FPR ~0.04 量级，beta=5 时 0.01 FPR 与 0.05 F1 等价）。
+    best_metric: str = "f1"
+    best_metric_beta: float = 5.0
 
     # 批次
     batch_size: int = 16
@@ -443,6 +458,10 @@ class TrainingConfig:
             raise ValueError("early_stopping_min_delta must be non-negative")
         if self.eval_interval <= 0:
             raise ValueError("eval_interval must be positive")
+        if self.best_metric not in ("f1", "goal"):
+            raise ValueError("best_metric must be 'f1' or 'goal'")
+        if self.best_metric_beta <= 0:
+            raise ValueError("best_metric_beta must be positive")
         if self.batch_size <= 0:
             raise ValueError("batch_size must be positive")
         if self.num_workers < 0:

@@ -1,0 +1,20 @@
+LIBRARY axon_loop151_champion
+EXPORTS
+  axon_predict_json @1
+  axon_string_free @2
+  axon_version @3
+  kvd_create @4
+  kvd_destroy @5
+  kvd_extract_pe_features @6
+  kvd_extract_pe_features_batch @7
+  kvd_free @8
+  kvd_get_pe_feature_dimension @9
+  kvd_parity_diagnostics_path_v1 @10
+  kvd_scan_bytes @11
+  kvd_scan_path @12
+  kvd_scan_paths @13
+  kvd_signature_flush @14
+  kvd_train_from_path @15
+  kvd_train_path @16
+  kvd_train_paths @17
+  kvd_validate_models @18

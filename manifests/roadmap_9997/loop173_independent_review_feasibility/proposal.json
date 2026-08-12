@@ -1,0 +1,22 @@
+{
+  "schema": "axon_loop173_independent_review_feasibility_proposal_v1",
+  "loop_id": "loop173_independent_review_feasibility",
+  "status": "phase_a_aggregate_contract_implemented_no_reviews_received",
+  "claim_scope": "review_governance_only_not_label_correction_training_or_model_quality_evidence",
+  "input_policy": {
+    "allowed": ["aggregate_component_time_source_stratum_counts", "independent_review_agreement_counts", "asof_verified_actionable_counts"],
+    "forbidden": ["raw_bytes", "paths", "sample_hashes", "model_scores", "predictions", "training_labels", "heldout_rows"]
+  },
+  "pre_registered_gates": {
+    "required_strata": 3,
+    "minimum_reviewed_rows": 162,
+    "minimum_one_sided_97_5_agreement_lcb": 0.8,
+    "minimum_one_sided_97_5_actionable_lcb": 0.05,
+    "unknown_or_unreviewed_is_not_actionable": true
+  },
+  "success_action": "permit_only_a_new_versioned_dual_blind_row_level_ingress_then_same_original_label_redraw_readiness",
+  "legacy_ingress_boundary": "Loop158 is a single-return import guard and does not prove dual independence, blind assignment, case-level as-of linkage, or component/time/source coverage; it cannot satisfy Loop173.",
+  "heldout_authorized": false,
+  "target_f1": 0.9997,
+  "target_achieved": false
+}

@@ -1,0 +1,108 @@
+{
+  "schema": "axon_712_nested_funnel_v1",
+  "source_split": "E:\\Project\\python\\Axon_v2.6Exp\\manifests\\roadmap_9997\\corpus_712_split\\split_712.csv",
+  "source_split_sha256": "4f95ca881cfc9a98122d424071048f2d88bcf77834c2fafccc08927e011b25a8",
+  "source_rows_after_exclusions": 298768,
+  "selection_seed": 9997,
+  "selection_algorithm": "sha256(seed,split,label,source_sha256)_prefix",
+  "stage_sizes_are_total_rows": true,
+  "split_ratios": {
+    "train": 0.7,
+    "val": 0.1,
+    "test": 0.2
+  },
+  "class_balance": "1:1",
+  "excluded_sha256_count": 10,
+  "artifacts": {
+    "1k": {
+      "path": "E:\\Project\\python\\Axon_v2.6Exp\\manifests\\roadmap_9997\\corpus_712_funnel\\split_1k.csv",
+      "sha256": "bb17657de444f421372ff404f00db7586b498a77f44a1208a2fb5be449e96388",
+      "rows": 1000,
+      "counts": {
+        "label0": 500,
+        "label1": 500,
+        "test": 200,
+        "test_label0": 100,
+        "test_label1": 100,
+        "train": 700,
+        "train_label0": 350,
+        "train_label1": 350,
+        "val": 100,
+        "val_label0": 50,
+        "val_label1": 50
+      }
+    },
+    "5k": {
+      "path": "E:\\Project\\python\\Axon_v2.6Exp\\manifests\\roadmap_9997\\corpus_712_funnel\\split_5k.csv",
+      "sha256": "0afb052d996a597c58a34379443541df5a785eb4a517919ac21bf36577521731",
+      "rows": 5000,
+      "counts": {
+        "label0": 2500,
+        "label1": 2500,
+        "test": 1000,
+        "test_label0": 500,
+        "test_label1": 500,
+        "train": 3500,
+        "train_label0": 1750,
+        "train_label1": 1750,
+        "val": 500,
+        "val_label0": 250,
+        "val_label1": 250
+      }
+    },
+    "10k": {
+      "path": "E:\\Project\\python\\Axon_v2.6Exp\\manifests\\roadmap_9997\\corpus_712_funnel\\split_10k.csv",
+      "sha256": "9c5838f39e1d11fe3ec744ba226c82712b4c3183c573a6d9d34e335fff8a301f",
+      "rows": 10000,
+      "counts": {
+        "label0": 5000,
+        "label1": 5000,
+        "test": 2000,
+        "test_label0": 1000,
+        "test_label1": 1000,
+        "train": 7000,
+        "train_label0": 3500,
+        "train_label1": 3500,
+        "val": 1000,
+        "val_label0": 500,
+        "val_label1": 500
+      }
+    },
+    "full": {
+      "path": "E:\\Project\\python\\Axon_v2.6Exp\\manifests\\roadmap_9997\\corpus_712_funnel\\split_full.csv",
+      "sha256": "0578bb6fe21c4788175ccd62be00b0f049db398a3ac83a1c24d1d06aac3ccf8a",
+      "rows": 298768,
+      "counts": {
+        "label0": 149384,
+        "label1": 149384,
+        "test": 59755,
+        "test_label0": 29877,
+        "test_label1": 29878,
+        "train": 209137,
+        "train_label0": 104569,
+        "train_label1": 104568,
+        "val": 29876,
+        "val_label0": 14938,
+        "val_label1": 14938
+      }
+    }
+  },
+  "nesting": [
+    {
+      "child": "1k",
+      "parent": "5k",
+      "missing_rows": 0
+    },
+    {
+      "child": "5k",
+      "parent": "10k",
+      "missing_rows": 0
+    },
+    {
+      "child": "10k",
+      "parent": "full",
+      "missing_rows": 0
+    }
+  ],
+  "test_policy": "1k_5k_10k_test_rows_reserved_unopened; full_test_once_after_freeze"
+}

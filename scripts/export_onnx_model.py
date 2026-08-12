@@ -59,6 +59,7 @@ def export_onnx(
     output_path: Path,
     opset: int = 17,
     verify: bool = False,
+    byte_length: Optional[int] = None,
 ) -> dict:
     checkpoint_path = checkpoint_path.resolve()
     output_path = output_path.resolve()
@@ -71,7 +72,8 @@ def export_onnx(
 
     wrapper = AxonOnnxWrapper(model).eval()
 
-    byte_seq = torch.zeros(1, config.max_byte_length, dtype=torch.long)
+    export_byte_length = int(byte_length or config.max_byte_length)
+    byte_seq = torch.zeros(1, export_byte_length, dtype=torch.long)
     pe_features = torch.zeros(1, config.pe_feature_dim, dtype=torch.float32)
     stat_features = torch.zeros(1, config.stat_feature_dim, dtype=torch.float32)
 
@@ -105,7 +107,7 @@ def export_onnx(
     summary = {
         "checkpoint": str(checkpoint_path),
         "onnx": str(output_path),
-        "max_byte_length": int(config.max_byte_length),
+        "max_byte_length": export_byte_length,
         "pe_feature_dim": int(config.pe_feature_dim),
         "stat_feature_dim": int(config.stat_feature_dim),
         "pe_schema_version": str(config.pe_schema_version),
@@ -145,6 +147,8 @@ def parse_args(argv: Optional[Sequence[str]] = None):
     parser.add_argument("--checkpoint", type=Path, required=True, help="Path to trusted .pt checkpoint")
     parser.add_argument("--output", type=Path, required=True, help="Output .onnx path")
     parser.add_argument("--opset", type=int, default=17, help="ONNX opset version")
+    parser.add_argument("--byte-length", type=int, default=None,
+                        help="导出 byte_seq 输入长度（默认取 config.max_byte_length）")
     parser.add_argument("--verify", action="store_true", help="Verify with onnxruntime if available")
     return parser.parse_args(argv)
 
@@ -153,7 +157,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     _prefer_utf8_stdio()
     args = parse_args(argv)
     try:
-        summary = export_onnx(args.checkpoint, args.output, opset=args.opset, verify=args.verify)
+        summary = export_onnx(args.checkpoint, args.output, opset=args.opset,
+                              verify=args.verify, byte_length=args.byte_length)
     except Exception as exc:  # noqa: BLE001 - CLI users need a concise action item.
         print(f"[Error] {exc}", file=sys.stderr)
         return 1

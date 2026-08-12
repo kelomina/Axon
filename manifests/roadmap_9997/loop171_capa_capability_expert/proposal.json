@@ -1,0 +1,25 @@
+{
+  "schema": "axon_loop171_capa_capability_expert_proposal_v1",
+  "loop_id": "loop171_capa_capability_expert",
+  "status": "closed_host_coverage_attempt_disposable_sandbox_required_before_reconsideration",
+  "claim_scope": "fixed_rules_static_train_only_coverage_not_model_quality_or_heldout_evidence",
+  "toolchain": {
+    "capa_release": "v9.4.0-windows",
+    "capa_binary_sha256": "356db59a7f0d22b00ee63bda6ebb5b05149530eec5dd84101caef6d6bae94dfd",
+    "capa_release_archive_sha256": "670ab1a58b81f59cb57533bf4021ac1e7033fbe9b5d5cc180f796976081e3bb5",
+    "capa_rules_commit": "aed45e2571ebf7d2330e3daddbb5c472cc54966e",
+    "network_policy": "offline_process_environment_no_network_inputs"
+  },
+  "phase_a": {
+    "input": "fixed_sha_bound_256_row_train_only_loop164_probe_bundle",
+    "allowed_output": ["rule_count", "namespace_aggregate_counts", "explicit_missing_reason", "tool_resource_aggregate"],
+    "forbidden_output": ["raw_bytes", "rule_match_locations", "operands", "strings", "paths", "source_sha256", "labels", "folds", "scores"],
+    "gates": {"coverage_minimum": 0.95, "silent_drop": 0, "heldout_access": false, "maximum_wall_seconds": 7200},
+    "failure_action": "close_loop171_without_phase_b_or_heldout_access",
+    "current_execution_boundary": "The host coverage attempt was safety-stopped after capa fast-fail and timeout receipts exposed that an inner worker can outlive the outer launcher timeout. The partial run is not coverage evidence. Any reconsideration requires a disposable sandbox, read-only input copy, outbound network block, launcher-level containment proof, and a new source-closed authorization."
+  },
+  "future_phase_b": {"requires_new_preregistration": true, "arms": ["B0", "C_capability", "M_B0_plus_capability", "CF_fit_fold_permuted_capability"], "heldout_authorized": false},
+  "public_key_required": false,
+  "target_f1": 0.9997,
+  "target_achieved": false
+}
