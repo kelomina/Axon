@@ -1,6 +1,6 @@
-# Axon v2.6 Experiment
+# Axon
 
-Axon v2.6 是一个面向 Windows PE 文件的二分类恶意软件检测实验项目。主链路同时使用：
+Axon 是一个面向 Windows PE 文件的二分类恶意软件检测项目，从 Axon v2.6-EXP 实验连续演进而来，当前版本 v3.0.0。仓库曾用名 `Axon_V2.6Exp`（GitHub 对旧地址自动重定向）。主链路同时使用：
 
 - 原始文件字节序列（`byte_seq`）
 - PE 结构特征（`pe_features`）

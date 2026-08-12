@@ -3,9 +3,9 @@ requires = ["setuptools>=78.1.1", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "axon-v26-exp"
-version = "0.1.0"
-description = "Axon v2.6 - Hybrid Malware Detection with DSRA and KVD Features"
+name = "axon"
+version = "3.0.0"
+description = "Axon - Hybrid Malware Detection with DSRA and KVD Features"
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "Apache-2.0"}
@@ -45,9 +45,9 @@ tracking = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/axon-team/axon-v26-exp"
-Repository = "https://github.com/axon-team/axon-v26-exp"
-Documentation = "https://axon-v26-exp.readthedocs.io"
+Homepage = "https://github.com/kelomina/Axon"
+Repository = "https://github.com/kelomina/Axon"
+Documentation = "https://github.com/kelomina/Axon"
 
 [project.scripts]
 axon-train = "scripts.main:main"
